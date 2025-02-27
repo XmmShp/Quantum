@@ -27,6 +27,9 @@ public interface IUiModule : IModule
     IEnumerable<NavigationItem> GetNavigationItems();
 }
 
+/// <summary>
+/// 表示一个导航项
+/// </summary>
 public class NavigationItem
 {
     /// <summary>

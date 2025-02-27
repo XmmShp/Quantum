@@ -2,18 +2,48 @@ using System.Net;
 
 namespace Quantum.Sdk.Utilities;
 
+/// <summary>
+/// HTTP请求选项类，用于配置RequestClient的行为
+/// </summary>
 public class RequestOptions
 {
+    /// <summary>
+    /// 获取或设置请求的Cookie列表
+    /// </summary>
     public List<Cookie>? Cookies { get; set; }
+
+    /// <summary>
+    /// 获取或设置请求超时时间（秒），默认为100秒
+    /// </summary>
     public int TimeoutSeconds { get; set; } = 100;
+
+    /// <summary>
+    /// 获取或设置是否允许自动重定向，默认为false
+    /// </summary>
     public bool AllowRedirects { get; set; } = false;
+
+    /// <summary>
+    /// 获取或设置请求头字典
+    /// </summary>
     public Dictionary<string, string>? Headers { get; set; }
 }
 
+/// <summary>
+/// HTTP请求客户端类，继承自HttpClient，提供更多的配置选项和Cookie管理功能
+/// </summary>
 public class RequestClient : HttpClient
 {
+    /// <summary>
+    /// 获取Cookie容器实例
+    /// </summary>
     public CookieContainer CookieContainer { get; }
 
+    /// <summary>
+    /// 创建RequestClient的私有构造函数
+    /// </summary>
+    /// <param name="handler">HTTP消息处理器</param>
+    /// <param name="cookieContainer">Cookie容器</param>
+    /// <param name="options">请求选项</param>
     private RequestClient(HttpMessageHandler handler, CookieContainer cookieContainer, RequestOptions? options = null) : base(handler)
     {
         CookieContainer = cookieContainer;
@@ -39,6 +69,11 @@ public class RequestClient : HttpClient
         }
     }
 
+    /// <summary>
+    /// 创建RequestClient实例的工厂方法
+    /// </summary>
+    /// <param name="options">请求选项</param>
+    /// <returns>新的RequestClient实例</returns>
     public static RequestClient Create(RequestOptions? options = null)
     {
         var cookieContainer = new CookieContainer();
