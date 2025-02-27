@@ -1,5 +1,5 @@
 {
-  "executable": "Quantum.Shell",
+  "executable": "Quantum.Runtime",
   "splashscreen": {
     "imageFile": ""
   },
@@ -20,14 +20,18 @@
       {
         "from": "./bin/Release/net9.0",
         "to": "bin",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       }
     ],
     "files": [
       {
         "from": "./ElectronHostHook/node_modules",
         "to": "ElectronHostHook/node_modules",
-        "filter": ["**/*"]
+        "filter": [
+          "**/*"
+        ]
       },
       "**/*",
       "!data/**/*",
@@ -38,7 +42,9 @@
       "target": [
         {
           "target": "nsis",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ]
     },
@@ -47,11 +53,15 @@
       "target": [
         {
           "target": "AppImage",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         },
         {
           "target": "deb",
-          "arch": ["x64"]
+          "arch": [
+            "x64"
+          ]
         }
       ],
       "category": "Development",
@@ -63,7 +73,10 @@
       "target": [
         {
           "target": "dmg",
-          "arch": ["x64", "arm64"]
+          "arch": [
+            "x64",
+            "arm64"
+          ]
         }
       ],
       "category": "public.app-category.developer-tools",

@@ -1,0 +1,43 @@
+name: Build Test
+
+on:
+  # Trigger on main branch pushes and PRs
+  push:
+    branches: ["main"]
+  pull_request:
+    branches: ["main"]
+  # Allow manual trigger for any branch
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: "9.0.x"
+  CONFIGURATION: "Release"
+
+jobs:
+  build-test:
+    name: Build and Test
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+
+      - name: Restore dependencies
+        run: |
+          dotnet restore ./SDK/Quantum.Sdk/Quantum.Sdk.csproj
+          dotnet restore ./SDK/Quantum.BundleTool/Quantum.BundleTool.csproj
+          dotnet restore ./Runtime/Quantum.Runtime.csproj
+
+      - name: Build SDK Projects
+        run: |
+          dotnet build ./SDK/Quantum.Sdk/Quantum.Sdk.csproj -c ${{ env.CONFIGURATION }} --no-restore
+          dotnet build ./SDK/Quantum.BundleTool/Quantum.BundleTool.csproj -c ${{ env.CONFIGURATION }} --no-restore
+
+      - name: Build Runtime
+        run: dotnet build ./Runtime/Quantum.Runtime.csproj -c ${{ env.CONFIGURATION }} --no-restore

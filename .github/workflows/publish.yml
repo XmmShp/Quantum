@@ -4,13 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: 'Version number (e.g. 1.0.0)'
+        description: "Version number (e.g. 1.0.0)"
         required: true
         type: string
 
 env:
-  DOTNET_VERSION: '9.0.x'
-  CONFIGURATION: 'Release'
+  DOTNET_VERSION: "9.0.x"
+  CONFIGURATION: "Release"
 
 jobs:
   publish:
@@ -27,61 +27,61 @@ jobs:
           - os: Linux
             runner: ubuntu-latest
             target: linux
-            path-separator: '/'
-            dotnet-tools: '$HOME/.dotnet/tools'
+            path-separator: "/"
+            dotnet-tools: "$HOME/.dotnet/tools"
           - os: macOS
             runner: macos-latest
             target: osx
-            path-separator: '/'
-            dotnet-tools: '$HOME/.dotnet/tools'
+            path-separator: "/"
+            dotnet-tools: "$HOME/.dotnet/tools"
     steps:
-    - uses: actions/checkout@v4
-      with:
-        fetch-depth: 1
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v3
-      with:
-        dotnet-version: |
-          6.0.x
-          ${{ env.DOTNET_VERSION }}
-    
-    - name: Setup Node.js
-      uses: actions/setup-node@v4
-      with:
-        node-version: 22
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 1
 
-    - name: Install ElectronNET.CLI
-      run: |
-        dotnet tool install ElectronNET.CLI -g
-        echo "${{ matrix.dotnet-tools }}" >> $GITHUB_PATH
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: |
+            6.0.x
+            ${{ env.DOTNET_VERSION }}
 
-    - name: Update Version (Windows)
-      if: matrix.os == 'Windows'
-      run: |
-        $manifestPath = "Runtime${{ matrix.path-separator }}electron.manifest.json"
-        $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
-        $manifest.build.buildVersion = "${{ github.event.inputs.version }}"
-        $manifest | ConvertTo-Json -Depth 32 | Set-Content $manifestPath
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
 
-    - name: Update Version (Unix)
-      if: matrix.os != 'Windows'
-      run: |
-        manifestPath="Runtime${{ matrix.path-separator }}electron.manifest.json"
-        manifest=$(cat $manifestPath)
-        echo "$manifest" | jq --arg version "${{ github.event.inputs.version }}" '.build.buildVersion = $version' > $manifestPath
+      - name: Install ElectronNET.CLI
+        run: |
+          dotnet tool install ElectronNET.CLI -g
+          echo "${{ matrix.dotnet-tools }}" >> $GITHUB_PATH
 
-    - name: Build and Package Runtime
-      run: electronize build /PublishSingleFile false /target ${{ matrix.target }} /dotnet-configuration ${{ env.CONFIGURATION }}
-      working-directory: ./Runtime
-      env:
-        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Update Version (Windows)
+        if: matrix.os == 'Windows'
+        run: |
+          $manifestPath = "Runtime${{ matrix.path-separator }}electron.manifest.json"
+          $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
+          $manifest.build.buildVersion = "${{ github.event.inputs.version }}"
+          $manifest | ConvertTo-Json -Depth 32 | Set-Content $manifestPath
 
-    - name: Upload Artifacts
-      uses: actions/upload-artifact@v4
-      with:
-        name: ${{ matrix.os }}-artifacts
-        path: ./Runtime/bin/Desktop
+      - name: Update Version (Unix)
+        if: matrix.os != 'Windows'
+        run: |
+          manifestPath="Runtime${{ matrix.path-separator }}electron.manifest.json"
+          manifest=$(cat $manifestPath)
+          echo "$manifest" | jq --arg version "${{ github.event.inputs.version }}" '.build.buildVersion = $version' > $manifestPath
+
+      - name: Build and Package Runtime
+        run: electronize build /PublishSingleFile false /target ${{ matrix.target }} /dotnet-configuration ${{ env.CONFIGURATION }}
+        working-directory: ./Runtime
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.os }}-artifacts
+          path: ./Runtime/bin/Desktop
 
   create-release:
     name: Create Release
@@ -94,7 +94,7 @@ jobs:
         uses: actions/download-artifact@v4
         with:
           path: artifacts
-          
+
       - name: Create Release and Upload Assets
         uses: softprops/action-gh-release@v1
         with:

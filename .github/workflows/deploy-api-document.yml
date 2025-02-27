@@ -1,0 +1,45 @@
+name: Deploy API Documentation
+
+on:
+  # Only trigger on main branch after build-test workflow succeeds
+  workflow_run:
+    workflows: ["Build Test"]
+    branches: [main]
+    types:
+      - completed
+
+permissions:
+  pages: write
+  id-token: write
+
+jobs:
+  deploy_api_document:
+    # Only run if the build-test workflow succeeded
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v3
+        with:
+          dotnet-version: "9.0.x"
+
+      - name: Setup DocFX
+        run: dotnet tool install -g docfx
+
+      - name: Build Documentation
+        run: docfx docfx.json
+
+      - name: Upload to Pages
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "_site"
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
