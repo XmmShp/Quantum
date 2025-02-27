@@ -4,6 +4,7 @@
 @using Quantum.Sdk
 @using System.Globalization
 @using System.IO.Compression
+@inject IQuantum Quantum
 @inject IEnumerable<IModule> Modules
 @inject IMessageService MessageService
 
@@ -12,8 +13,8 @@
     安装插件
 </Button>
 <Table TItem="IModule"
-       DataSource="@Modules"
-       HidePagination>
+DataSource="@Modules"
+HidePagination>
     <PropertyColumn Property="c=>c.ModuleId" Title="插件ID" />
     <PropertyColumn Property="c=>c.Version" Title="版本" />
     <PropertyColumn Property="c=>c.Author" Title="作者" />
@@ -30,26 +31,28 @@
 
 <style>
     .module-list {
-        margin-top: 20px;
+    margin-top: 20px;
     }
     .module-item {
-        display: flex;
-        align-items: center;
-        margin-bottom: 10px;
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
     }
     .module-item span {
-        margin-right: 10px;
+    margin-right: 10px;
     }
 </style>
 
 @code {
+
     private const string UninstallMarkFile = "TobeUninstalled.Quantum.MarkTag";
 
     private async Task InstallModule()
     {
         try
         {
-            var mainWindow = Electron.WindowManager.BrowserWindows.First();
+            var mainWindow = Quantum.Window;
+            if(Quantum.Window is null){ return; }
             var options = new OpenDialogOptions
             {
                 Properties =
@@ -88,12 +91,12 @@
                 var pendingPath = Path.Combine(Directory.GetCurrentDirectory(), "PendingModule", moduleName);
 
                 // 确保PendingModule目录存在
-                Directory.CreateDirectory(Path.GetDirectoryName(pendingPath) 
+                Directory.CreateDirectory(Path.GetDirectoryName(pendingPath)
                     ?? throw new InvalidOperationException($"无法获取目录名称: {pendingPath}"));
-                
+
                 if (Directory.Exists(pendingPath))
                     Directory.Delete(pendingPath, true);
-                
+
                 // 使用复制代替移动，因为可能跨卷
                 CopyDirectory(moduleFolder, pendingPath, true);
                 Directory.Delete(moduleFolder, true);
@@ -138,8 +141,8 @@
         {
             var relativePath = Path.GetRelativePath(sourceDir, file);
             var targetPath = Path.Combine(targetDir, relativePath);
-            Directory.CreateDirectory(Path.GetDirectoryName(targetPath) 
-                                      ?? throw new InvalidOperationException($"无法获取目录名称: {targetPath}"));     
+            Directory.CreateDirectory(Path.GetDirectoryName(targetPath)
+                                      ?? throw new InvalidOperationException($"无法获取目录名称: {targetPath}"));
             File.Copy(file, targetPath, overwrite);
         }
     }

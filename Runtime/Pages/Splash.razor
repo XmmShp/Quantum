@@ -1,9 +1,9 @@
 @page "/"
-@    using System.Text.Json.Serialization
-@    using Quantum.Infrastructure.Utilities
-@    using System.Diagnostics.CodeAnalysis
-@    using Quantum.Infrastructure.Abstractions
-@    using Quantum.Runtime.Components
+@using Quantum.Infrastructure.Abstractions
+@using Quantum.Runtime.Components
+@using System.Diagnostics.CodeAnalysis
+@using System.Text.Json.Serialization
+@using Quantum.Sdk.Utilities
 @inject NavigationManager NavigationManager
 @inject IEnumerable<IInitializableService> InitializableServices
 
@@ -101,6 +101,7 @@
 
     private async Task InitializeApplicationAsync()
     {
+        await Task.Delay(2500);
         UpdateProgress("正在初始化服务...", 10);
         
         var services = InitializableServices.ToList();

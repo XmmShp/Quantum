@@ -1,7 +1,6 @@
-@    using Quantum.Infrastructure.Utilities
-@    using Quantum.Infrastructure.Abstractions
-@    using Quantum.Infrastructure.Extensions
-@    using Quantum.Runtime.Layout
+@using Quantum.Infrastructure.Extensions
+@using Quantum.Runtime.Layout
+@using Quantum.Sdk
 @inject IEnumerable<IModule> Modules
 
 <Router AppAssembly="typeof(Program).Assembly" AdditionalAssemblies="Modules.GetAssemblies()">
@@ -16,7 +15,7 @@
                 <h1>404</h1>
                 <h3>页面不存在</h3>
                 <p>抱歉，您访问的页面不存在或已被移除。</p>
-                <a href="/">返回首页</a>
+                <a href="/home">返回首页</a>
             </div>
         </LayoutView>
     </NotFound>

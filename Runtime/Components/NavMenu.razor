@@ -7,7 +7,7 @@
       Class="nav-menu"
       SelectedKeys="@(new[] { _currentModuleKey })"
       OnMenuItemClicked="OnMenuItemClicked">
-    @foreach (var module in Modules.OrderBy(m => m.ModuleTitle))
+    @foreach (var module in Modules)
     {
         <MenuItem Key="@module.DefaultRoute">
             <Template>
@@ -19,24 +19,12 @@
                         </SpaceItem>
                     }
                     <SpaceItem>
-                        <span class="module-title">@module.ModuleTitle</span>
+                        @module.ModuleTitle
                     </SpaceItem>
                 </Space>
             </Template>
         </MenuItem>
     }
-    <MenuItem Key="/accounts">
-        <Template>
-            <Space Size="@SpaceSize.Middle">
-                <SpaceItem>
-                    <Icon Type="user" Theme="IconThemeType.Outline" />
-                </SpaceItem>
-                <SpaceItem>
-                    <span class="module-title">账号管理</span>
-                </SpaceItem>
-            </Space>
-        </Template>
-    </MenuItem>
     <MenuItem Key="/modules">
         <Template>
             <Space Size="@SpaceSize.Middle">
@@ -44,7 +32,7 @@
                     <Icon Type="appstore" Theme="IconThemeType.Outline" />
                 </SpaceItem>
                 <SpaceItem>
-                    <span class="module-title">插件管理</span>
+                    插件管理
                 </SpaceItem>
             </Space>
         </Template>

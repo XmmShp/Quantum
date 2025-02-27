@@ -1,6 +1,7 @@
-@using ElectronNET.API
+@using Quantum.Sdk
 @inject IJSRuntime Js
 @inject NavigationManager NavigationManager
+@inject IQuantum Quantum
 
 <div class="title-bar">
     <div class="drag-area">
@@ -9,9 +10,9 @@
     </div>
     <div class="window-controls">
         <Button Type="@ButtonType.Link"
-                Icon="clear"
-                OnClick="ClearAllCache"
-                Style="color: rgba(255,255,255,0.65)">
+        Icon="clear"
+        OnClick="ClearAllCache"
+        Style="color: rgba(255,255,255,0.65)">
             清除缓存
         </Button>
         <button class="control-button" @onclick="MinimizeWindow">
@@ -28,88 +29,89 @@
 
 <style>
     .title-bar {
-        height: 100%;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        -webkit-app-region: drag;
-        user-select: none;
-        width: 100%;
+    height: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    -webkit-app-region: drag;
+    user-select: none;
+    width: 100%;
     }
 
     .drag-area {
-        flex: 1;
-        display: flex;
-        align-items: center;
-        padding: 0 12px;
-        height: 100%;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding: 0 12px;
+    height: 100%;
     }
 
     .app-icon {
-        font-size: 18px;
-        color: #1890ff;
+    font-size: 18px;
+    color: #1890ff;
     }
 
     .app-title {
-        color: #fff;
-        font-size: 12px;
-        opacity: 0.65;
+    color: #fff;
+    font-size: 12px;
+    opacity: 0.65;
     }
 
     .window-controls {
-        display: flex;
-        height: 100%;
-        -webkit-app-region: no-drag;
+    display: flex;
+    height: 100%;
+    -webkit-app-region: no-drag;
     }
 
     .control-button {
-        width: 45px;
-        height: 100%;
-        border: none;
-        background: transparent;
-        color: #fff;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: all 0.2s;
-        opacity: 0.45;
+    width: 45px;
+    height: 100%;
+    border: none;
+    background: transparent;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: all 0.2s;
+    opacity: 0.45;
     }
 
     .control-button:hover {
-        background: rgba(255,255,255,0.1);
-        opacity: 0.85;
+    background: rgba(255,255,255,0.1);
+    opacity: 0.85;
     }
 
     .control-button.close:hover {
-        background: #e81123;
-        opacity: 1;
+    background: #e81123;
+    opacity: 1;
     }
 
     :global(.control-button .anticon) {
-        font-size: 10px;
+    font-size: 10px;
     }
 
     :global(.title-bar .ant-btn-link) {
-        height: 32px;
-        padding: 4px 8px;
+    height: 32px;
+    padding: 4px 8px;
     }
 
     :global(.title-bar .ant-btn-link:hover) {
-        color: white !important;
-        background: rgba(255,255,255,0.1);
+    color: white !important;
+    background: rgba(255,255,255,0.1);
     }
 </style>
 
 @code {
     private void MinimizeWindow()
     {
-        Electron.WindowManager.BrowserWindows.First().Minimize();
+        Quantum.Window?.Minimize();
     }
 
     private async Task MaximizeWindow()
     {
-        var window = Electron.WindowManager.BrowserWindows.First();
+        var window = Quantum.Window;
+        if(window is null){ return; }
         if (await window.IsMaximizedAsync())
         {
             window.Unmaximize();
@@ -122,7 +124,7 @@
 
     private void CloseWindow()
     {
-        Electron.WindowManager.BrowserWindows.First().Close();
+        Quantum.Window?.Close();
     }
 
     private async Task ClearAllCache()

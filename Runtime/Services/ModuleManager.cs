@@ -1,4 +1,3 @@
-using Quantum.Infrastructure.Models;
 using Quantum.Sdk;
 using Quantum.Sdk.Services;
 using Quantum.Sdk.Utilities;
@@ -6,11 +5,12 @@ using System.Reflection;
 
 namespace Quantum.Runtime.Services;
 
-internal class ModuleManager(ILogger<ModuleManager> logger, IServiceCollection services, IInjectedCodeManager codeManager) : IModuleManager
+internal class ModuleManager(ILogger<ModuleManager> logger) : IModuleManager
 {
     private readonly List<IModule> _loadedModules = [];
     private readonly List<Assembly> _loadedAssemblies = [];
-    public IServiceProvider ServiceProvider { get; set; } = null!;
+    public required IServiceCollection HostServices { get; init; }
+    public required IServiceProvider Activator { get; init; }
     public IReadOnlyList<Assembly> LoadedAssemblies => _loadedAssemblies.AsReadOnly();
 
     public async Task LoadModulesAsync()
@@ -74,21 +74,16 @@ internal class ModuleManager(ILogger<ModuleManager> logger, IServiceCollection s
 
         var moduleType = moduleTypes[0];
         // 创建模块实例并添加到已加载模块列表
-        var module = (IModule)ActivatorUtilities.CreateInstance(ServiceProvider, moduleType);
+        var module = (IModule)ActivatorUtilities.CreateInstance(Activator, moduleType);
         _loadedModules.Add(module);
 
-        // 注册模块类型本身
-        services.AddSingleton(moduleType, module);
-
         // 注册为 IModule
-        services.AddSingleton(module);
+        HostServices.AddSingleton(module);
 
-        logger.LogInformation("Registered module {ModuleId} of type {ModuleType}",
-            module.ModuleId, moduleType.FullName);
-
+        logger.LogInformation("Registered module {ModuleId} of type {ModuleType}", module.ModuleId, moduleType.FullName);
     }
 
-    public Result<T> GetModule<T>(string moduleId, Version? minVersion = null, Version? maxVersion = null) where T : IModule
+    public Result<IModule> GetModule(string moduleId, Version? minVersion = null, Version? maxVersion = null)
     {
         var module = _loadedModules.FirstOrDefault(m => m.ModuleId == moduleId);
         if (module is null)
