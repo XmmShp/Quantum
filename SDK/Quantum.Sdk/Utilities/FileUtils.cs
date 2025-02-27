@@ -1,7 +1,7 @@
-namespace Quantum.Infrastructure.Utilities;
+namespace Quantum.Sdk.Utilities;
 
 public static class FileUtils
 {
     public static readonly string DataFileFolder = Path.Combine(".", "data");
-    public static string ToDataPath(this string filename) => Path.Combine(DataFileFolder, filename);
+    public static string GetDataFilePath(string moduleName, string filename) => Path.Combine(DataFileFolder, moduleName, filename);
 }

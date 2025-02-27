@@ -15,4 +15,8 @@
 		<PackageReference Include="Microsoft.AspNetCore.Components.Web" Version="9.0.1" />
 	</ItemGroup>
 
+	<ItemGroup>
+	  <Folder Include="Models\" />
+	</ItemGroup>
+
 </Project>

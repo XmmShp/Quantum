@@ -1,7 +1,7 @@
 using System.Security.Cryptography;
 using System.Text;
 
-namespace Quantum.Infrastructure.Utilities;
+namespace Quantum.Sdk.Utilities;
 
 public static class Encryption
 {
@@ -17,7 +17,7 @@ public static class Encryption
         return (deriveBytes.GetBytes(32), deriveBytes.GetBytes(16));
     });
 
-    public static string Encrypt(this string plainText)
+    public static string Encrypt(string plainText)
     {
         using var aes = Aes.Create();
         aes.Key = DeviceSpecificKeyIv.Value.Key;
@@ -29,7 +29,7 @@ public static class Encryption
         return Convert.ToBase64String(cipherBytes);
     }
 
-    public static string Decrypt(this string cipherText)
+    public static string Decrypt(string cipherText)
     {
         using var aes = Aes.Create();
         aes.Key = DeviceSpecificKeyIv.Value.Key;

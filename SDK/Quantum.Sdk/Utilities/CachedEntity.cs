@@ -1,4 +1,4 @@
-namespace Quantum.Infrastructure.Utilities;
+namespace Quantum.Sdk.Utilities;
 
 public class CachedEntity<T>(Func<Task<Result<T>>> updateFunc, T initValue)
 {

@@ -14,13 +14,4 @@ public static class ServiceCollectionExtension
         return services.AddScoped<TService, TImplement>(sp => sp.GetRequiredService<TImplement>())
                         .AddScoped<IInitializableService>(sp => sp.GetRequiredService<TImplement>());
     }
-
-    public static IServiceCollection AddAccountService<TService, TImplement>(this IServiceCollection services)
-        where TService : class, IAccountService
-        where TImplement : class, TService
-    {
-        services.TryAddScoped<TImplement>();
-        return services.AddScoped<TService, TImplement>(sp => sp.GetRequiredService<TImplement>())
-                        .AddScoped<IAccountService>(sp => sp.GetRequiredService<TImplement>());
-    }
 }

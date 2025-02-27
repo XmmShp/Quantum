@@ -1,7 +1,10 @@
 using ElectronNET.API;
 using ElectronNET.API.Entities;
 using Quantum.Infrastructure.Models;
-using Quantum.Shell.Services;
+using Quantum.Runtime.Services;
+using Quantum.Sdk;
+using Quantum.Sdk.Services;
+
 
 #if RELEASE
 using Serilog;
@@ -34,6 +37,21 @@ Log.Logger = new LoggerConfiguration()
 builder.Host.UseSerilog();
 #endif
 
+var preloadServices = new ServiceCollection();
+preloadServices.AddSingleton<InjectedCodeManager>()
+    .AddSingleton<IInjectedCodeManager>(sp => sp.GetRequiredService<InjectedCodeManager>())
+    .AddSingleton<ModuleManager>()
+    .AddSingleton<IModuleManager>(sp => sp.GetRequiredService<ModuleManager>())
+    .AddSingleton<IQuantum, Quantum.Runtime.Services.Quantum>()
+    .AddSingleton<IServiceCollection>(preloadServices);
+
+var preloadProvider = preloadServices.BuildServiceProvider();
+var injectedCodeManager = preloadProvider.GetRequiredService<InjectedCodeManager>();
+var moduleManager = preloadProvider.GetRequiredService<ModuleManager>();
+moduleManager.ServiceProvider = preloadProvider;
+await moduleManager.LoadModulesAsync();
+
+
 // Add services to the container.
 builder.Services.AddRazorComponents()
     .AddInteractiveServerComponents();
@@ -48,26 +66,15 @@ builder.Services.AddCors(options =>
     });
 });
 
-var codeManager = new InjectedCodeManager();
-
 builder.Services.AddAntDesign()
-                .AddSingleton(codeManager)
-                .AddSingleton<ModuleLoader>()
-                .AddSingleton(builder.Services);
+    .AddSingleton(injectedCodeManager)
+    .AddSingleton(moduleManager);
 
-#pragma warning disable ASP0000 // Do not call 'IServiceCollection.BuildServiceProvider' in 'ConfigureServices'
-var provider = builder.Services.BuildServiceProvider();
-#pragma warning restore ASP0000 // Do not call 'IServiceCollection.BuildServiceProvider' in 'ConfigureServices'
-
-var loader = provider.GetRequiredService<ModuleLoader>();
-loader.ServiceProvider = provider;
 
 #region MODULE_DEBUG
 // 在这里手动加载模块，方便调试
 // loader.LoadModule(typeof(IModule).Assembly);
 #endregion
-
-await loader.LoadModulesAsync();
 
 var app = builder.Build();
 
@@ -93,7 +100,7 @@ app.UseStaticFiles(new StaticFileOptions
 
 app.MapRazorComponents<Quantum.Runtime.App>()
     .AddInteractiveServerRenderMode()
-    .AddAdditionalAssemblies([.. loader.LoadedAssemblies]);
+    .AddAdditionalAssemblies([.. moduleManager.LoadedAssemblies]);
 
 if (HybridSupport.IsElectronActive)
 {

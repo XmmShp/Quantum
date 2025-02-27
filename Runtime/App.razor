@@ -1,15 +1,16 @@
-@using Quantum.Infrastructure.Models
+@using Quantum.Runtime.Services
 @inject InjectedCodeManager CodeManager
 
 <!DOCTYPE html>
 <html lang="en">
 
 <head>
+    <title>Quantum</title>
     <meta charset="utf-8"/>
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <base href="/"/>
     <link rel="stylesheet" href="@Assets["Quantum.Shell.styles.css"]" />
-    <ImportMap />
+    <ImportMap/>
     <HeadOutlet @rendermode="RenderMode.InteractiveServer"/>
     @foreach (var markupCode in CodeManager.HeadCodes)
     {
@@ -30,6 +31,7 @@
     {
         @markupCode
     }
+    @* ReSharper disable once Html.PathError *@
     <script src="_framework/blazor.web.js"></script>
     @foreach (var markupCode in CodeManager.PostBlazorCodes)
     {

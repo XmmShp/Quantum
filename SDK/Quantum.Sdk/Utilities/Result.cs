@@ -1,4 +1,4 @@
-namespace Quantum.Infrastructure.Utilities;
+namespace Quantum.Sdk.Utilities;
 
 public record Result(bool IsSuccess, object? Value, string Message)
 {

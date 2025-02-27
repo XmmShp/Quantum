@@ -1,6 +1,6 @@
 using System.Net;
 
-namespace Quantum.Infrastructure.Utilities;
+namespace Quantum.Sdk.Utilities;
 
 public class RequestOptions
 {
