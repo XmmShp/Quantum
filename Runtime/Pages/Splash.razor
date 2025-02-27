@@ -27,7 +27,7 @@
                 <div class="hitokoto-section">
                     <div class="hitokoto-content">@_hitokoto.Content</div>
                     <div class="hitokoto-from">
-                        —— @_hitokoto.From 
+                        —— @_hitokoto.From
                         @if (!string.IsNullOrWhiteSpace(_hitokoto.FromWho))
                         {
                             <span>「@_hitokoto.FromWho」</span>
@@ -101,9 +101,8 @@
 
     private async Task InitializeApplicationAsync()
     {
-        await Task.Delay(2500);
         UpdateProgress("正在初始化服务...", 10);
-        
+
         var services = InitializableServices.ToList();
         if (!services.Any())
         {
