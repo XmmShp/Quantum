@@ -2,12 +2,15 @@
 
 [![.NET 9](https://img.shields.io/badge/.NET-9-512BD4)](https://dotnet.microsoft.com/)
 [![Blazor](https://img.shields.io/badge/Blazor-WebAssembly-blue)](https://dotnet.microsoft.com/apps/aspnet/web-apps/blazor)
+[![Build Test Status](https://github.com/XmmShp/Quantum/actions/workflows/build-test.yml/badge.svg)](https://github.com/XmmShp/Quantum/actions/workflows/build-test.yml)
+[![Api Deployment Status](https://github.com/XmmShp/Quantum/actions/workflows/deploy-api-document.yml/badge.svg)](https://xmmshp.github.io/Quantum/)
+[![Publish Status](https://github.com/XmmShp/Quantum/actions/workflows/publish.yml/badge.svg)](https://github.com/XmmShp/Quantum/releases/latest)
 
 ## 🌟 项目简介
 
 一个基于.NET 9和Blazor构建的现代化桌面应用框架，采用模块化架构设计。通过内置的模块管理器，用户可以轻松安装/卸载功能模块，开发者可以快速创建可扩展的桌面应用程序。
 
-**核心特性：**
+**核心特性:**
 - 🧩 模块化架构 - 功能按模块动态加载
 - 📦 内置模块管理器 - 支持模块的安装/卸载/更新
 - 🚀 跨平台 - 支持Windows/macOS/Linux
@@ -27,9 +30,9 @@
 # 克隆仓库
 git clone https://github.com/XmmShp/Quantum.git
 
-# 进入Quantum.Shell运行目录
+# 进入Quantum.Runtime运行目录
 cd Quantum
-cd Quantum.Shell
+cd Quantum.Runtime
 
 # 启动项目
 

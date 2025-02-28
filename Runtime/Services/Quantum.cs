@@ -4,10 +4,10 @@ using Quantum.Sdk.Services;
 
 namespace Quantum.Runtime.Services;
 
-internal class Quantum(ModuleManager moduleManager, InjectedCodeManager injectedCodeManager, ServiceManager serviceManager) : IQuantum
+internal class Quantum : IQuantum
 {
     public BrowserWindow? Window { get; set; }
-    public IServiceManager ServiceManager => serviceManager;
-    public IModuleManager ModuleManager => moduleManager;
-    public IInjectedCodeManager InjectedCodeManager => injectedCodeManager;
+    public required IServiceCollection HostServices { get; init; }
+    public required IModuleManager ModuleManager { get; init; }
+    public required IInjectedCodeManager InjectedCodeManager { get; init; }
 }

@@ -1,4 +1,5 @@
 using ElectronNET.API;
+using Microsoft.Extensions.DependencyInjection;
 using Quantum.Sdk.Services;
 
 namespace Quantum.Sdk;
@@ -14,9 +15,9 @@ public interface IQuantum
     BrowserWindow? Window { get; }
 
     /// <summary>
-    /// 获取服务管理器实例
+    /// 获取运行时服务集合
     /// </summary>
-    IServiceManager ServiceManager { get; }
+    IServiceCollection HostServices { get; }
 
     /// <summary>
     /// 获取模块管理器实例

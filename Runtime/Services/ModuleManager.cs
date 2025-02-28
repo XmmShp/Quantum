@@ -8,10 +8,9 @@ namespace Quantum.Runtime.Services;
 internal class ModuleManager(ILogger<ModuleManager> logger) : IModuleManager
 {
     private readonly List<IModule> _loadedModules = [];
-    private readonly List<Assembly> _loadedAssemblies = [];
     public required IServiceCollection HostServices { get; init; }
     public required IServiceProvider Activator { get; init; }
-    public IReadOnlyList<Assembly> LoadedAssemblies => _loadedAssemblies.AsReadOnly();
+    public List<Assembly> LoadedAssemblies { get; } = [];
 
     public async Task LoadModulesAsync()
     {
@@ -36,10 +35,10 @@ internal class ModuleManager(ILogger<ModuleManager> logger) : IModuleManager
             }
 
             var assembly = Assembly.LoadFrom(dllPath);
-            _loadedAssemblies.Add(assembly);
+            LoadedAssemblies.Add(assembly);
         }
 
-        _loadedAssemblies.ForEach(RegisterModule);
+        LoadedAssemblies.ForEach(RegisterModule);
 
         // 调用所有模块的 OnAllLoaded 方法
         var initTasks = _loadedModules.Select(module =>
@@ -52,7 +51,7 @@ internal class ModuleManager(ILogger<ModuleManager> logger) : IModuleManager
 
     public void LoadModule(Assembly assembly)
     {
-        _loadedAssemblies.Add(assembly);
+        LoadedAssemblies.Add(assembly);
         RegisterModule(assembly);
     }
 
