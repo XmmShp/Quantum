@@ -1,6 +1,6 @@
 using Microsoft.JSInterop;
 
-namespace TemplateModule;
+namespace TemplateUiModule;
 
 public class ExampleJsInterop(IJSRuntime jsRuntime) : IAsyncDisposable // 如果需要，可以在 C# 中进行 JS 互操作
 {

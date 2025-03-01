@@ -14,6 +14,19 @@ internal class ModuleManager(ILogger<ModuleManager> logger) : IModuleManager
 
     public async Task LoadModulesAsync()
     {
+        LoadModules();
+
+        // 调用所有模块的 OnAllLoaded 方法
+        var initTasks = _loadedModules.Select(module =>
+            module.OnAllLoadedAsync()).ToList();
+
+        await Task.WhenAll(initTasks);
+
+        logger.LogInformation("All modules loaded successfully. Total modules: {Count}", _loadedModules.Count);
+    }
+
+    private void LoadModules()
+    {
         // 扫描模块目录
         var modulesPath = Path.Combine(AppContext.BaseDirectory, "Modules");
         if (!Directory.Exists(modulesPath))
@@ -39,14 +52,6 @@ internal class ModuleManager(ILogger<ModuleManager> logger) : IModuleManager
         }
 
         LoadedAssemblies.ForEach(RegisterModule);
-
-        // 调用所有模块的 OnAllLoaded 方法
-        var initTasks = _loadedModules.Select(module =>
-            module.OnAllLoadedAsync()).ToList();
-
-        await Task.WhenAll(initTasks);
-
-        logger.LogInformation("All modules loaded successfully. Total modules: {Count}", _loadedModules.Count);
     }
 
     public void LoadModule(Assembly assembly)
@@ -78,6 +83,11 @@ internal class ModuleManager(ILogger<ModuleManager> logger) : IModuleManager
 
         // 注册为 IModule
         HostServices.AddSingleton(module);
+
+        if (module is IUiModule uiModule)
+        {
+            HostServices.AddSingleton(uiModule);
+        }
 
         logger.LogInformation("Registered module {ModuleId} of type {ModuleType}", module.ModuleId, moduleType.FullName);
     }

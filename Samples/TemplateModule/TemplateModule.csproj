@@ -8,7 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Quantum.Infrastructure\Quantum.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\SDK\Quantum.Sdk\Quantum.Sdk.csproj" />
   </ItemGroup>
 
 </Project>

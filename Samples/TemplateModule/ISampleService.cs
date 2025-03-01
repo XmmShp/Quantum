@@ -1,7 +1,7 @@
-using Quantum.Infrastructure.Abstractions;
+using Quantum.Sdk.Abstractions;
 
 namespace TemplateModule;
-public interface ISampleService : IInitializableService, IAccountService // 可以继承 Quantum.Infrastructure 中的接口哦~
+public interface ISampleService : IInitializableService // 可以继承 Quantum.Sdk 中的接口
 {
     string SayHello();
 }

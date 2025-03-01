@@ -9,6 +9,12 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Quantum.Runtime", "Runtime\
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Quantum.BundleTool", "SDK\Quantum.BundleTool\Quantum.BundleTool.csproj", "{87CED238-4C37-4461-B52F-4C0052140BEC}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TemplateModule", "Samples\TemplateModule\TemplateModule.csproj", "{B70BB02D-4064-4588-AB0D-460267B89D50}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TemplateUiModule", "Samples\TemplateUiModule\TemplateUiModule.csproj", "{96B420E5-DB52-4BD2-943C-0F9A315F7DB8}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Samples", "Samples", "{C8CEA4FD-E427-4419-9600-F99B32427B31}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,8 +33,20 @@ Global
 		{87CED238-4C37-4461-B52F-4C0052140BEC}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{87CED238-4C37-4461-B52F-4C0052140BEC}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{87CED238-4C37-4461-B52F-4C0052140BEC}.Release|Any CPU.Build.0 = Release|Any CPU
+		{B70BB02D-4064-4588-AB0D-460267B89D50}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B70BB02D-4064-4588-AB0D-460267B89D50}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B70BB02D-4064-4588-AB0D-460267B89D50}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B70BB02D-4064-4588-AB0D-460267B89D50}.Release|Any CPU.Build.0 = Release|Any CPU
+		{96B420E5-DB52-4BD2-943C-0F9A315F7DB8}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{96B420E5-DB52-4BD2-943C-0F9A315F7DB8}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{96B420E5-DB52-4BD2-943C-0F9A315F7DB8}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{96B420E5-DB52-4BD2-943C-0F9A315F7DB8}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{B70BB02D-4064-4588-AB0D-460267B89D50} = {C8CEA4FD-E427-4419-9600-F99B32427B31}
+		{96B420E5-DB52-4BD2-943C-0F9A315F7DB8} = {C8CEA4FD-E427-4419-9600-F99B32427B31}
 	EndGlobalSection
 EndGlobal

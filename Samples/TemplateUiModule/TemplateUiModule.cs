@@ -1,27 +1,24 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Quantum.Infrastructure.Abstractions;
-using Quantum.Infrastructure.Extensions;
-using Quantum.Infrastructure.Models;
-using Quantum.Infrastructure.Utilities;
-using TemplateModule;
+using Quantum.Sdk;
+using Quantum.Sdk.Utilities;
 
 namespace TemplateUiModule;
 
-public class TemplateUiModule(ILogger<TemplateUiModule> logger, IServiceCollection services, InjectedCodeManager codeManager) : IUiModule // 实现了IUiModule接口的类是UI模块加载的入口，一个程序集中只能有一个
+public class TemplateUiModule(ILogger<TemplateUiModule> logger, IQuantum quantum) : IUiModule // 实现了IUiModule接口的类是UI模块加载的入口，一个程序集中只能有一个
 {
     public string ModuleId => "TemplateUiModule"; // ModuleId是模块的唯一标识符，用于区分不同的模块
     public Version Version { get; } = new(1, 0);
     public string Author => "QuantumTeam"; // Author是模块的作者信息
     public string Description => "示例UI模块"; // Description是模块的描述信息
-    public Task<Result> OnAllLoadedAsync(IEnumerable<IModule> modules)// OnAllLoadedAsync方法是所有模块加载完成后的回调方法
-                                                                      // 通常用于检查依赖项是否已加载，注册服务等
+    public Task<Result> OnAllLoadedAsync()// OnAllLoadedAsync方法是所有模块加载完成后的回调方法
+                                          // 通常用于检查依赖项是否已加载，注册服务等
 
     {
-        codeManager.AddPreBlazor("<script>console.log('hello, world');</script>");
+        quantum.InjectedCodeManager.AddPreBlazor("<script>console.log('hello, world');</script>");
         logger.LogInformation("TemplateUiModule is Loaded");
-        services.AddScoped<ExampleJsInterop>();
-        return Task.FromResult<Result>(modules.GetModule("TemplateModule", new Version(1, 0)));
+        quantum.HostServices.AddScoped<ExampleJsInterop>();
+        return Task.FromResult<Result>(quantum.ModuleManager.GetModule("TemplateModule", new Version(1, 0)));
     }
 
     public string ModuleTitle => "示例模块"; // ModuleTitle是模块的标题，用于显示在上方导航栏上

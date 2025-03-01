@@ -5,9 +5,12 @@ namespace Quantum.Sdk.Extensions;
 
 public static class ServiceCollectionExtension
 {
-    public static IServiceCollection AddEagerInitializeService<T>(this IServiceCollection services) where T : class, IInitializableService
+    public static IServiceCollection AddEagerInitializeService<TService, TImplement>(this IServiceCollection services)
+        where TService : class, IInitializableService
+        where TImplement : class, TService
     {
-        services.AddSingleton<IInitializableService, T>();
+        services.AddSingleton<TService, TImplement>();
+        services.AddSingleton<IInitializableService>(sp => sp.GetRequiredService<TService>());
         return services;
     }
 }
