@@ -134,7 +134,7 @@ try
                     "Microsoft.Win32.SystemEvents.dll",
                     "Newtonsoft.Json.dll",
                     "OneOf.dll",
-                    "Quantum.Infrastructure.*",
+                    "Quantum.Sdk.*",
                     "Serilog.AspNetCore.dll",
                     "Serilog.dll",
                     "Serilog.Extensions.Hosting.dll",
