@@ -9,7 +9,9 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\SDK\Quantum.Sdk\Quantum.Sdk.csproj" />
-    <ProjectReference Include="..\TemplateModule\TemplateModule.csproj" />
+    <ProjectReference Include="..\TemplateModule\TemplateModule.csproj">
+      <Private>false</Private>
+    </ProjectReference>
   </ItemGroup>
 
 	<ItemGroup>
