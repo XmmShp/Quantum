@@ -280,6 +280,20 @@ a {
   background: #fff0f3;
 }
 
+.web-contribution-warning {
+  position: fixed;
+  z-index: 900;
+  right: 20px;
+  bottom: 20px;
+  max-width: min(460px, calc(100vw - 40px));
+  padding: 12px 15px;
+  border-radius: 12px;
+  color: #9b3e50;
+  background: #fff0f3;
+  box-shadow: 0 14px 42px rgba(83, 38, 49, 0.16);
+  font-size: 12px;
+}
+
 .plugin-list,
 .empty-card,
 .failure-row {
@@ -351,6 +365,75 @@ a {
 .plugin-actions button.danger {
   color: #9b3e50;
   background: #fff0f3;
+}
+
+.dialog-backdrop {
+  position: fixed;
+  z-index: 1000;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background: rgba(27, 22, 47, 0.42);
+  backdrop-filter: blur(6px);
+}
+
+.unload-dialog {
+  width: min(480px, calc(100vw - 48px));
+  padding: 26px;
+  border: 1px solid rgba(60, 52, 90, 0.1);
+  border-radius: 22px;
+  background: #fff;
+  box-shadow: 0 28px 80px rgba(36, 28, 68, 0.24);
+}
+
+.unload-dialog h2 {
+  margin: 7px 0 14px;
+  font-size: 22px;
+  letter-spacing: -0.03em;
+}
+
+.unload-dialog p,
+.unload-dialog li {
+  color: #706b7d;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+.unload-dialog ul {
+  max-height: 180px;
+  margin: 12px 0;
+  padding: 12px 12px 12px 32px;
+  overflow: auto;
+  border-radius: 12px;
+  background: #f7f6fa;
+}
+
+.unload-dialog .dialog-note {
+  color: #918ca1;
+  font-size: 11px;
+}
+
+.dialog-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+.dialog-actions button {
+  border: 0;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.danger-button {
+  color: #fff;
+  background: #b7445a;
 }
 
 .failure-row {

@@ -68,7 +68,7 @@
                     <span class="plugin-avatar">@plugin.Manifest.Id.Value[0].ToString().ToUpperInvariant()</span>
                     <div class="plugin-meta">
                         <strong>@plugin.Manifest.Id</strong>
-                        <span>v@plugin.Manifest.Version · @plugin.Routes.Count 个页面</span>
+                        <span>v@(plugin.Manifest.Version) · @plugin.Routes.Count 个页面</span>
                     </div>
                     <span class="healthy-pill">运行中</span>
                     <div class="plugin-actions">
@@ -78,7 +78,7 @@
                         </button>
                         <button class="danger"
                                 disabled="@IsBusy"
-                                @onclick="() => UnloadAsync(plugin.Manifest.Id.Value)">
+                                @onclick="() => PrepareUnload(plugin.Manifest.Id.Value)">
                             卸载
                         </button>
                     </div>
@@ -87,6 +87,42 @@
         </div>
     }
 </section>
+
+@if (_pendingUnloadImpact is { } unloadImpact)
+{
+    <div class="dialog-backdrop">
+        <section class="unload-dialog"
+                 role="alertdialog"
+                 aria-modal="true"
+                 aria-labelledby="unload-dialog-title">
+            <p class="eyebrow">UNLOAD PLUGIN</p>
+            <h2 id="unload-dialog-title">确认卸载 @unloadImpact.PluginId？</h2>
+            @if (unloadImpact.DependentPluginIds.Count == 0)
+            {
+                <p>该插件没有下游强依赖插件。</p>
+            }
+            else
+            {
+                <p>以下直接或传递依赖插件会被一起卸载：</p>
+                <ul>
+                    @foreach (var dependentPluginId in unloadImpact.DependentPluginIds)
+                    {
+                        <li>@dependentPluginId</li>
+                    }
+                </ul>
+            }
+            <p class="dialog-note">Modules 中的源文件不会被删除，可通过重新扫描恢复。</p>
+            <div class="dialog-actions">
+                <button type="button" class="secondary-button" @onclick="CancelUnload">
+                    取消
+                </button>
+                <button type="button" class="danger-button" @onclick="ConfirmUnloadAsync">
+                    确认卸载
+                </button>
+            </div>
+        </section>
+    </div>
+}
 
 @if (PluginCatalog.Failures.Count > 0)
 {
@@ -111,8 +147,9 @@
     private string? _busyPluginId;
     private string? _operationMessage;
     private bool _operationSucceeded;
+    private PluginUnloadImpact? _pendingUnloadImpact;
 
-    private bool IsBusy => _busyPluginId is not null;
+    private bool IsBusy => _busyPluginId is not null || _pendingUnloadImpact is not null;
 
     protected override void OnInitialized()
     {
@@ -127,8 +164,41 @@
     private Task ReloadAsync(string pluginId)
         => RunOperationAsync(pluginId, () => PluginRuntimeManager.ReloadAsync(pluginId));
 
-    private Task UnloadAsync(string pluginId)
-        => RunOperationAsync(pluginId, () => PluginRuntimeManager.UnloadAsync(pluginId));
+    private void PrepareUnload(string pluginId)
+    {
+        if (IsBusy)
+        {
+            return;
+        }
+
+        try
+        {
+            _pendingUnloadImpact = PluginRuntimeManager.GetUnloadImpact(pluginId);
+            _operationMessage = null;
+        }
+        catch (Exception exception)
+        {
+            _operationSucceeded = false;
+            _operationMessage = $"无法准备卸载：{exception.Message}";
+        }
+    }
+
+    private void CancelUnload()
+        => _pendingUnloadImpact = null;
+
+    private async Task ConfirmUnloadAsync()
+    {
+        var impact = _pendingUnloadImpact;
+        if (impact is null || _busyPluginId is not null)
+        {
+            return;
+        }
+
+        _pendingUnloadImpact = null;
+        await RunOperationAsync(
+            impact.PluginId,
+            () => PluginRuntimeManager.UnloadAsync(impact.PluginId, impact.CatalogRevision));
+    }
 
     private Task RefreshAsync()
         => RunOperationAsync("*", () => PluginRuntimeManager.RefreshAsync());

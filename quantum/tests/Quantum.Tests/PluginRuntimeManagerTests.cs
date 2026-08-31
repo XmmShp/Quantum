@@ -80,17 +80,85 @@ public sealed class PluginRuntimeManagerTests
     }
 
     [Fact]
-    public async Task UnloadAsync_RejectsPluginWithLoadedStrongDependent()
+    public async Task UnloadAsync_CascadesThroughStrongDependents()
+    {
+        using var fixture = new RuntimeFixture();
+        fixture.AddDependentPlugin();
+        fixture.AddTransitiveDependentPlugin();
+        await using var manager = fixture.CreateManager();
+        await manager.InitializeAsync(fixture.HostServices);
+
+        var impact = manager.GetUnloadImpact("quantum.plugin.example");
+        var unconfirmed = await manager.UnloadAsync("quantum.plugin.example");
+        Assert.False(unconfirmed.Succeeded);
+        Assert.Contains("quantum.plugin.transitive", unconfirmed.Message, StringComparison.Ordinal);
+        Assert.Equal(3, fixture.Catalog.Plugins.Count);
+
+        var result = await manager.UnloadAsync(
+            "quantum.plugin.example",
+            impact.CatalogRevision);
+
+        Assert.Equal(
+            ["quantum.plugin.transitive", "quantum.plugin.dependent"],
+            impact.DependentPluginIds);
+        Assert.True(result.Succeeded, result.Message);
+        Assert.Contains("quantum.plugin.dependent", result.Message, StringComparison.Ordinal);
+        Assert.Contains("quantum.plugin.transitive", result.Message, StringComparison.Ordinal);
+        Assert.Empty(fixture.Catalog.Plugins);
+    }
+
+    [Fact]
+    public async Task ReloadAsync_RestartsStrongDependentsAfterDependencyUpdate()
+    {
+        using var fixture = new RuntimeFixture();
+        fixture.AddDependentPlugin();
+        fixture.AddTransitiveDependentPlugin();
+        var logger = new RecordingLogger();
+        await using var manager = fixture.CreateManager(logger);
+        await manager.InitializeAsync(fixture.HostServices);
+        var originalRuntimeIds = fixture.Catalog.Plugins
+            .ToDictionary(plugin => plugin.Manifest.Id.Value, plugin => plugin.RuntimeId);
+        logger.Messages.Clear();
+
+        fixture.WriteManifest("1.1.0");
+        var result = await manager.ReloadAsync("quantum.plugin.example");
+
+        Assert.True(result.Succeeded, result.Message);
+        Assert.Contains("quantum.plugin.dependent", result.Message, StringComparison.Ordinal);
+        Assert.Contains("quantum.plugin.transitive", result.Message, StringComparison.Ordinal);
+        Assert.Equal("1.1.0", fixture.Catalog.FindPlugin("quantum.plugin.example")!.Manifest.Version.ToString());
+        Assert.All(fixture.Catalog.Plugins, plugin =>
+            Assert.NotEqual(originalRuntimeIds[plugin.Manifest.Id.Value], plugin.RuntimeId));
+        Assert.Collection(
+            logger.Messages.Where(static message => message.StartsWith("Stopped lifecycle", StringComparison.Ordinal)),
+            message => Assert.Contains("quantum.plugin.transitive", message, StringComparison.Ordinal),
+            message => Assert.Contains("quantum.plugin.dependent", message, StringComparison.Ordinal),
+            message => Assert.Contains("quantum.plugin.example", message, StringComparison.Ordinal));
+        Assert.Collection(
+            logger.Messages.Where(static message => message.StartsWith("Started lifecycle", StringComparison.Ordinal)),
+            message => Assert.Contains("quantum.plugin.example", message, StringComparison.Ordinal),
+            message => Assert.Contains("quantum.plugin.dependent", message, StringComparison.Ordinal),
+            message => Assert.Contains("quantum.plugin.transitive", message, StringComparison.Ordinal));
+    }
+
+    [Fact]
+    public async Task UnloadAsync_RejectsStaleCascadeConfirmation()
     {
         using var fixture = new RuntimeFixture();
         fixture.AddDependentPlugin();
         await using var manager = fixture.CreateManager();
         await manager.InitializeAsync(fixture.HostServices);
+        var staleImpact = manager.GetUnloadImpact("quantum.plugin.example");
 
-        var result = await manager.UnloadAsync("quantum.plugin.example");
+        fixture.WriteManifest("1.1.0");
+        var reload = await manager.ReloadAsync("quantum.plugin.example");
+        Assert.True(reload.Succeeded, reload.Message);
+        var result = await manager.UnloadAsync(
+            "quantum.plugin.example",
+            staleImpact.CatalogRevision);
 
         Assert.False(result.Succeeded);
-        Assert.Contains("quantum.plugin.dependent", result.Message, StringComparison.Ordinal);
+        Assert.Contains("最新清单", result.Message, StringComparison.Ordinal);
         Assert.Equal(2, fixture.Catalog.Plugins.Count);
     }
 
@@ -199,11 +267,11 @@ public sealed class PluginRuntimeManagerTests
 
         public ServiceProvider HostServices { get; }
 
-        public PluginRuntimeManager CreateManager()
+        public PluginRuntimeManager CreateManager(ILogger<PluginRuntimeManager>? logger = null)
             => new(
                 Catalog,
                 new PluginRuntimeOptions(ModulesRoot, ShadowRoot),
-                logger: NullLogger<PluginRuntimeManager>.Instance);
+                logger: logger ?? NullLogger<PluginRuntimeManager>.Instance);
 
         public void WriteManifest(string version)
         {
@@ -244,12 +312,59 @@ public sealed class PluginRuntimeManagerTests
                 """);
         }
 
+        public void AddTransitiveDependentPlugin()
+        {
+            var transitiveRoot = Path.Combine(ModulesRoot, "quantum.plugin.transitive");
+            Directory.CreateDirectory(transitiveRoot);
+            File.Copy(SourceAssemblyPath, Path.Combine(transitiveRoot, "Quantum.ExamplePlugin.dll"));
+            File.WriteAllText(
+                Path.Combine(transitiveRoot, "plugin.json"),
+                """
+                {
+                  "id": "quantum.plugin.transitive",
+                  "version": "1.0.0",
+                  "entryAssembly": "Quantum.ExamplePlugin.dll",
+                  "dependencies": [{
+                    "id": "quantum.plugin.dependent",
+                    "minVersion": "1.0.0"
+                  }]
+                }
+                """);
+        }
+
         public void Dispose()
         {
             HostServices.Dispose();
             if (Directory.Exists(_root))
             {
                 Directory.Delete(_root, recursive: true);
+            }
+        }
+    }
+
+    private sealed class RecordingLogger : ILogger<PluginRuntimeManager>
+    {
+        public List<string> Messages { get; } = [];
+
+        public IDisposable BeginScope<TState>(TState state) where TState : notnull
+            => Scope.Instance;
+
+        public bool IsEnabled(LogLevel logLevel) => true;
+
+        public void Log<TState>(
+            LogLevel logLevel,
+            EventId eventId,
+            TState state,
+            Exception? exception,
+            Func<TState, Exception?, string> formatter)
+            => Messages.Add(formatter(state, exception));
+
+        private sealed class Scope : IDisposable
+        {
+            public static Scope Instance { get; } = new();
+
+            public void Dispose()
+            {
             }
         }
     }

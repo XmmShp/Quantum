@@ -1,9 +1,19 @@
+@using Microsoft.Extensions.Logging
 @inject PluginCatalog PluginCatalog
 @inject IJSRuntime JavaScript
+@inject ILogger<PluginWebInjection> Logger
 @implements IDisposable
+
+@if (!string.IsNullOrWhiteSpace(_failureMessage))
+{
+    <div class="web-contribution-warning" role="status">
+        插件 Web 扩展更新失败：@_failureMessage
+    </div>
+}
 
 @code {
     private long _appliedRevision = -1;
+    private string? _failureMessage;
 
     protected override void OnInitialized()
     {
@@ -24,9 +34,31 @@
             plugin.Manifest.Web.Head,
             plugin.Manifest.Web.PostBlazor
         }).ToArray();
+        var previousFailureMessage = _failureMessage;
 
-        await JavaScript.InvokeVoidAsync("quantum.plugins.replaceContributions", contributions);
+        try
+        {
+            // The cast is required: anonymous-type arrays are covariant with object[], which
+            // otherwise makes JS interop treat every contribution as a separate argument.
+            await JavaScript.InvokeVoidAsync(
+                "quantum.plugins.replaceContributions",
+                (object)contributions);
+            _failureMessage = null;
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            _failureMessage = exception.Message;
+            Logger.LogError(
+                exception,
+                "Could not apply plugin Web contributions for catalog revision {Revision}.",
+                revision);
+        }
+
         _appliedRevision = revision;
+        if (!string.Equals(previousFailureMessage, _failureMessage, StringComparison.Ordinal))
+        {
+            await InvokeAsync(StateHasChanged);
+        }
     }
 
     public void Dispose()

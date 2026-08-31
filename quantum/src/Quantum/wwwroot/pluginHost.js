@@ -4,14 +4,20 @@ window.quantum.plugins = {
   nodes: [],
 
   replaceContributions(contributions) {
+    const items = Array.isArray(contributions)
+      ? contributions
+      : contributions
+        ? [contributions]
+        : [];
+
     for (const node of this.nodes) {
       node.remove();
     }
     this.nodes = [];
 
-    for (const contribution of contributions) {
-      this.appendFragments(document.head, contribution.head, contribution.pluginId, "head");
-      this.appendFragments(document.body, contribution.postBlazor, contribution.pluginId, "post-blazor");
+    for (const contribution of items) {
+      this.appendFragments(document.head, contribution.head ?? [], contribution.pluginId, "head");
+      this.appendFragments(document.body, contribution.postBlazor ?? [], contribution.pluginId, "post-blazor");
     }
   },
 

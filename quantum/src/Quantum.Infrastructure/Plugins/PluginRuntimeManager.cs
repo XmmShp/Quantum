@@ -59,7 +59,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
 
             _hostServices = hostServices;
             Directory.CreateDirectory(SessionShadowRoot);
-            var discovery = Discover(excludedPluginId: null);
+            var discovery = Discover(excludedPluginIds: null);
             var staged = await StageAsync(discovery.Plan, tolerateFailures: true, cancellationToken)
                 .ConfigureAwait(false);
             if (cancellationToken.IsCancellationRequested)
@@ -140,7 +140,10 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                 return PluginOperationResult.Failure($"插件 '{normalized}' 当前未加载，请使用重新扫描。");
             }
 
-            var discovery = Discover(excludedPluginId: null);
+            var dependentPluginIds = FindStrongDependentIds(
+                _runtimes.Select(static runtime => runtime.Candidate.Manifest),
+                normalized);
+            var discovery = Discover(excludedPluginIds: null);
             var candidate = discovery.Plan.OrderedCandidates.FirstOrDefault(item => item.Manifest.Id == normalized);
             if (candidate is null)
             {
@@ -148,7 +151,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                     $"插件 '{normalized}' 的磁盘版本无效或已不存在，当前版本继续运行。");
             }
 
-            var missingCurrent = FindMissingCurrentPlugins(discovery.Plan, excludedPluginId: null);
+            var missingCurrent = FindMissingCurrentPlugins(discovery.Plan, excludedPluginIds: null);
             if (missingCurrent.Length > 0)
             {
                 return PluginOperationResult.Failure(
@@ -162,7 +165,10 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             }
 
             return PluginOperationResult.Success(
-                $"插件 '{normalized}' 已从 {current.Candidate.Manifest.Version} 热切换到 {candidate.Manifest.Version}；关联插件已重新启动。");
+                dependentPluginIds.Count == 0
+                    ? $"插件 '{normalized}' 已从 {current.Candidate.Manifest.Version} 热切换到 {candidate.Manifest.Version}。"
+                    : $"插件 '{normalized}' 已从 {current.Candidate.Manifest.Version} 热切换到 {candidate.Manifest.Version}；"
+                        + $"下游强依赖插件已按顺序停用并恢复：{string.Join(", ", dependentPluginIds)}。");
         }
         finally
         {
@@ -170,9 +176,40 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         }
     }
 
-    public async Task<PluginOperationResult> UnloadAsync(
+    public PluginUnloadImpact GetUnloadImpact(string pluginId)
+    {
+        var normalized = NormalizePluginId(pluginId);
+        while (true)
+        {
+            var revision = _catalog.Revision;
+            var plugins = _catalog.Plugins;
+            var dependents = FindStrongDependentIds(
+                    plugins.Select(static plugin => plugin.Manifest),
+                    normalized)
+                .Select(static id => id.Value)
+                .ToArray();
+            if (revision == _catalog.Revision)
+            {
+                return new PluginUnloadImpact(normalized.Value, dependents, revision);
+            }
+        }
+    }
+
+    public Task<PluginOperationResult> UnloadAsync(
         string pluginId,
         CancellationToken cancellationToken = default)
+        => UnloadCoreAsync(pluginId, confirmedCatalogRevision: null, cancellationToken);
+
+    public Task<PluginOperationResult> UnloadAsync(
+        string pluginId,
+        long confirmedCatalogRevision,
+        CancellationToken cancellationToken = default)
+        => UnloadCoreAsync(pluginId, confirmedCatalogRevision, cancellationToken);
+
+    private async Task<PluginOperationResult> UnloadCoreAsync(
+        string pluginId,
+        long? confirmedCatalogRevision,
+        CancellationToken cancellationToken)
     {
         var normalized = NormalizePluginId(pluginId);
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -185,19 +222,20 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                 return PluginOperationResult.Failure($"插件 '{normalized}' 当前未加载。");
             }
 
-            var dependents = _runtimes
-                .Where(runtime => runtime.Candidate.Manifest.Dependencies.Any(dependency => dependency.Id == normalized))
-                .Select(runtime => runtime.Candidate.Manifest.Id.Value)
-                .Order(StringComparer.Ordinal)
-                .ToArray();
-            if (dependents.Length > 0)
+            var dependentPluginIds = FindStrongDependentIds(
+                _runtimes.Select(static runtime => runtime.Candidate.Manifest),
+                normalized);
+            if (dependentPluginIds.Count > 0
+                && confirmedCatalogRevision != _catalog.Revision)
             {
                 return PluginOperationResult.Failure(
-                    $"无法卸载 '{normalized}'，以下插件仍强依赖它：{string.Join(", ", dependents)}。");
+                    $"卸载插件 '{normalized}' 会同时卸载以下下游强依赖插件，请按最新清单确认后重试："
+                    + $"{string.Join(", ", dependentPluginIds)}。");
             }
 
-            var discovery = Discover(normalized);
-            var missingCurrent = FindMissingCurrentPlugins(discovery.Plan, normalized);
+            var excludedPluginIds = dependentPluginIds.Append(normalized).ToHashSet();
+            var discovery = Discover(excludedPluginIds);
+            var missingCurrent = FindMissingCurrentPlugins(discovery.Plan, excludedPluginIds);
             if (missingCurrent.Length > 0)
             {
                 return PluginOperationResult.Failure(
@@ -207,7 +245,10 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             var result = await ReplaceAllAsync(discovery, cancellationToken).ConfigureAwait(false);
             return result.Succeeded
                 ? PluginOperationResult.Success(
-                    $"插件 '{normalized}' 已从运行时卸载；Modules 中的文件保留，可重新扫描恢复。")
+                    dependentPluginIds.Count == 0
+                        ? $"插件 '{normalized}' 已从运行时卸载；Modules 中的文件保留，可重新扫描恢复。"
+                        : $"插件 '{normalized}' 及其下游强依赖插件已从运行时卸载："
+                            + $"{string.Join(", ", dependentPluginIds)}；Modules 中的文件均保留，可重新扫描恢复。")
                 : result;
         }
         finally
@@ -222,7 +263,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         try
         {
             EnsureReady();
-            var discovery = Discover(excludedPluginId: null);
+            var discovery = Discover(excludedPluginIds: null);
             var result = await ReplaceAllAsync(discovery, cancellationToken).ConfigureAwait(false);
             return result.Succeeded
                 ? PluginOperationResult.Success("Modules 已重新扫描，插件运行时快照已热切换。")
@@ -387,16 +428,46 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         return new PluginStageResult(runtimes, failures);
     }
 
-    private string[] FindMissingCurrentPlugins(PluginLoadPlan plan, PluginId? excludedPluginId)
+    private string[] FindMissingCurrentPlugins(
+        PluginLoadPlan plan,
+        IReadOnlySet<PluginId>? excludedPluginIds)
     {
         var plannedIds = plan.OrderedCandidates
             .Select(static candidate => candidate.Manifest.Id)
             .ToHashSet();
         return _runtimes
-            .Where(runtime => runtime.Candidate.Manifest.Id != excludedPluginId)
+            .Where(runtime => excludedPluginIds is null
+                || !excludedPluginIds.Contains(runtime.Candidate.Manifest.Id))
             .Where(runtime => !plannedIds.Contains(runtime.Candidate.Manifest.Id))
             .Select(runtime => runtime.Candidate.Manifest.Id.Value)
             .Order(StringComparer.Ordinal)
+            .ToArray();
+    }
+
+    private static IReadOnlyList<PluginId> FindStrongDependentIds(
+        IEnumerable<PluginManifest> manifests,
+        PluginId targetPluginId)
+    {
+        var orderedManifests = manifests.ToArray();
+        var affectedIds = new HashSet<PluginId> { targetPluginId };
+        var changed = true;
+        while (changed)
+        {
+            changed = false;
+            foreach (var manifest in orderedManifests)
+            {
+                if (!affectedIds.Contains(manifest.Id)
+                    && manifest.Dependencies.Any(dependency => affectedIds.Contains(dependency.Id)))
+                {
+                    changed |= affectedIds.Add(manifest.Id);
+                }
+            }
+        }
+
+        return orderedManifests
+            .Reverse()
+            .Where(manifest => manifest.Id != targetPluginId && affectedIds.Contains(manifest.Id))
+            .Select(static manifest => manifest.Id)
             .ToArray();
     }
 
@@ -413,7 +484,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         }
     }
 
-    private PluginDiscovery Discover(PluginId? excludedPluginId)
+    private PluginDiscovery Discover(IReadOnlySet<PluginId>? excludedPluginIds)
     {
         var candidates = new List<PluginCandidate>();
         var failures = new List<PluginLoadFailure>();
@@ -429,7 +500,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             try
             {
                 var candidate = _manifestReader.Read(directory);
-                if (candidate.Manifest.Id != excludedPluginId)
+                if (excludedPluginIds is null || !excludedPluginIds.Contains(candidate.Manifest.Id))
                 {
                     candidates.Add(candidate);
                 }
