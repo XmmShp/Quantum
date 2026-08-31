@@ -1,0 +1,67 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">net10.0-maccatalyst</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">net10.0-windows10.0.19041.0</TargetFrameworks>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>Quantum.Host</RootNamespace>
+    <UseMaui>true</UseMaui>
+    <SingleProject>true</SingleProject>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <ApplicationTitle>Quantum</ApplicationTitle>
+    <ApplicationId>io.quantum.desktop</ApplicationId>
+    <ApplicationDisplayVersion>2.0.0</ApplicationDisplayVersion>
+    <ApplicationVersion>1</ApplicationVersion>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">15.0</SupportedOSPlatformVersion>
+    <MtouchLink Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">None</MtouchLink>
+    <UseInterpreter Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">true</UseInterpreter>
+    <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</SupportedOSPlatformVersion>
+    <TargetPlatformMinVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">10.0.17763.0</TargetPlatformMinVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#6D5DFB" />
+    <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#171528" BaseSize="128,128" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Quantum.Application\Quantum.Application.csproj" />
+    <ProjectReference Include="..\Quantum.Infrastructure\Quantum.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\..\sdk\Quantum.Plugin.Abstraction\Quantum.Plugin.Abstraction.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
+    <PackageReference Include="NOF.Hosting.Maui" />
+  </ItemGroup>
+
+  <Target Name="BuildExamplePlugin"
+          BeforeTargets="Build"
+          Condition="'$(Configuration)' == 'Debug' And '$(TargetFramework)' != ''">
+    <MSBuild Projects="$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExamplePlugin\Quantum.ExamplePlugin.csproj"
+             Targets="Build"
+             Properties="Configuration=$(Configuration);TargetFramework=net10.0"
+             RemoveProperties="RuntimeIdentifier;TargetFrameworks" />
+  </Target>
+
+  <Target Name="StageExamplePlugin"
+          AfterTargets="Build"
+          Condition="'$(Configuration)' == 'Debug' And '$(TargetFramework)' != ''">
+    <PropertyGroup>
+      <ExamplePluginOutput>$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExamplePlugin\bin\$(Configuration)\net10.0</ExamplePluginOutput>
+      <ExamplePluginTarget>$(TargetDir)Modules\quantum.plugin.example</ExamplePluginTarget>
+    </PropertyGroup>
+    <ItemGroup>
+      <ExamplePluginBinary Include="$(ExamplePluginOutput)\Quantum.ExamplePlugin.dll" />
+      <ExamplePluginBinary Include="$(ExamplePluginOutput)\Quantum.ExamplePlugin.pdb" Condition="Exists('$(ExamplePluginOutput)\Quantum.ExamplePlugin.pdb')" />
+      <ExamplePluginBinary Include="$(ExamplePluginOutput)\plugin.json" />
+      <ExamplePluginAsset Include="$(ExamplePluginOutput)\wwwroot\**\*" />
+    </ItemGroup>
+    <MakeDir Directories="$(ExamplePluginTarget)\wwwroot" />
+    <Copy SourceFiles="@(ExamplePluginBinary)" DestinationFolder="$(ExamplePluginTarget)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(ExamplePluginAsset)"
+          DestinationFolder="$(ExamplePluginTarget)\wwwroot\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+</Project>

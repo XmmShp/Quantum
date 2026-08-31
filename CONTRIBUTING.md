@@ -19,7 +19,7 @@
    ```
 2. 提交原子化的commit：
    ```bash
-   git commit -m "feat(module): 添加热加载支持"
+   git commit -m "feat(plugin): 添加插件能力"
    ```
 
 ## 🔄 PR提交规范
@@ -27,12 +27,15 @@
 ### 创建PR
 1. 确保通过所有测试：
    ```bash
-   dotnet test
+   dotnet restore Quantum.slnx
+   dotnet build Quantum.slnx --no-restore
+   dotnet test quantum/tests/Quantum.Tests/Quantum.Tests.csproj --no-build
+   dotnet test quantum-extension-market/tests/Quantum.ExtensionMarket.Tests/Quantum.ExtensionMarket.Tests.csproj --no-build
    ```
 2. 更新文档（如有接口变更）：
    ```markdown
    ## API变更
-   - `IModule.OnAllLoadedAsync` 新增modules参数
+   - `IQuantumPlugin` 或 `plugin.json` 的兼容性变化
    ```
 3. 推送分支并创建Pull Request
 
@@ -43,4 +46,3 @@
 
 ## ⚖️ 许可协议
 所有贡献将遵循项目的[MIT许可证](LICENSE)。提交PR即表示您同意遵守此协议。
-

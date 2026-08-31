@@ -1,0 +1,62 @@
+@host = http://localhost:5080
+@token = replace-after-login
+
+### Register
+POST {{host}}/rpc
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "register-1",
+  "method": "RegisterUser",
+  "params": {
+    "username": "developer",
+    "email": "developer@example.com",
+    "password": "a-strong-development-password"
+  }
+}
+
+### Login
+POST {{host}}/rpc
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "login-1",
+  "method": "Login",
+  "params": {
+    "email": "developer@example.com",
+    "password": "a-strong-development-password"
+  }
+}
+
+### Create plugin
+POST {{host}}/rpc
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "plugin-1",
+  "method": "CreatePlugin",
+  "params": {
+    "pluginId": "quantum.plugin.example",
+    "name": "Example Plugin",
+    "description": "Example Quantum plugin",
+    "tags": ["sample", "desktop"]
+  }
+}
+
+### List published plugins
+POST {{host}}/rpc
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "plugins-1",
+  "method": "ListPlugins",
+  "params": {
+    "search": "example",
+    "tags": ["sample"]
+  }
+}

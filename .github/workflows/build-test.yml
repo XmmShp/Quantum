@@ -28,10 +28,13 @@ jobs:
         run: dotnet workload install maui --skip-manifest-update
 
       - name: Restore
-        run: dotnet restore Quantum.sln
+        run: dotnet restore Quantum.slnx
 
       - name: Build
-        run: dotnet build Quantum.sln -c ${{ env.CONFIGURATION }} --no-restore
+        run: dotnet build Quantum.slnx -c ${{ env.CONFIGURATION }} --no-restore
 
       - name: Test
-        run: dotnet test Tests/Quantum.Tests/Quantum.Tests.csproj -c ${{ env.CONFIGURATION }} --no-build
+        run: dotnet test quantum/tests/Quantum.Tests/Quantum.Tests.csproj -c ${{ env.CONFIGURATION }} --no-build
+
+      - name: Test extension market
+        run: dotnet test quantum-extension-market/tests/Quantum.ExtensionMarket.Tests/Quantum.ExtensionMarket.Tests.csproj -c ${{ env.CONFIGURATION }} --no-build

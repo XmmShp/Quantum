@@ -1,5 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
-using Quantum.Plugin.Abstractions;
+using Quantum.Plugin.Abstraction;
 
 namespace Quantum.ExamplePlugin;
 

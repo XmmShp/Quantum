@@ -17,21 +17,26 @@ Quantum 是基于 .NET 10、NOF 与 .NET MAUI Blazor Hybrid 的本地优先插�
 ## 目录结构
 
 ```text
-Src/
-├── Quantum.Domain/              插件模型、版本、依赖、权限和安装状态
-├── Quantum.Contract/            对外契约
-├── Quantum.Application/         依赖规划、运行目录与路由注册
-├── Quantum.Infrastructure/      manifest、ALC、文件系统与静态资源实现
-└── Quantum.Host/                NOF MAUI Blazor Hybrid 桌面宿主
-SDK/
-└── Quantum.Plugin.Abstractions/ 插件与宿主共享的稳定 ABI/SDK
-Samples/
+quantum/
+├── src/
+│   ├── Quantum.Domain/          插件模型、版本、依赖、权限和安装状态
+│   ├── Quantum.Contract/        对外契约
+│   ├── Quantum.Application/     依赖规划、运行目录与路由注册
+│   ├── Quantum.Infrastructure/  manifest、ALC、文件系统与静态资源实现
+│   └── Quantum.Host/            NOF MAUI Blazor Hybrid 桌面宿主
+└── tests/
+    └── Quantum.Tests/           领域和加载基础设施测试
+quantum-extension-market/
+├── src/                         NOF 分层的插件市场与 JSON-RPC Host
+└── tests/                       市场领域与安全存储测试
+sdk/
+└── Quantum.Plugin.Abstraction/  插件与宿主共享的 .NET ABI/SDK
+samples/
 └── Quantum.ExamplePlugin/       页面、DI、CSS 与 JS 的完整示例插件
-Tests/
-└── Quantum.Tests/               领域和加载基础设施测试
+docs/                            架构与插件开发文档
 ```
 
-Quantum 1.0 的 Electron `Runtime`、旧 `Quantum.Sdk`、`Quantum.BundleTool` 和 `Samples/Template*` 均已移除。`SDK/` 现在只承载 Quantum 2.0 插件 ABI。
+Quantum 1.0 的 Electron `Runtime`、旧 `Quantum.Sdk`、`Quantum.BundleTool` 和 `Samples/Template*` 均已移除。仓库按产品、SDK、样例和文档边界组织。
 
 ## 本地开发
 
@@ -42,15 +47,16 @@ Quantum 1.0 的 Electron `Runtime`、旧 `Quantum.Sdk`、`Quantum.BundleTool` �
 - macOS 上使用 Mac Catalyst；Windows 上使用 WinUI
 
 ```bash
-dotnet restore Quantum.sln
-dotnet build Quantum.sln
-dotnet test Tests/Quantum.Tests/Quantum.Tests.csproj
+dotnet restore Quantum.slnx
+dotnet build Quantum.slnx
+dotnet test quantum/tests/Quantum.Tests/Quantum.Tests.csproj
+dotnet test quantum-extension-market/tests/Quantum.ExtensionMarket.Tests/Quantum.ExtensionMarket.Tests.csproj
 ```
 
 macOS 启动：
 
 ```bash
-dotnet build Src/Quantum.Host/Quantum.Host.csproj \
+dotnet build quantum/src/Quantum.Host/Quantum.Host.csproj \
   -t:Run \
   -f net10.0-maccatalyst
 ```
@@ -59,7 +65,7 @@ Debug 构建会把示例插件暂存到 Host 输出目录，便于 Windows 调�
 
 ```bash
 QUANTUM_MODULES_PATH=/absolute/path/to/Modules \
-dotnet build Src/Quantum.Host/Quantum.Host.csproj -t:Run -f net10.0-maccatalyst
+dotnet build quantum/src/Quantum.Host/Quantum.Host.csproj -t:Run -f net10.0-maccatalyst
 ```
 
 目录中的每个直接子目录代表一个插件，至少包含 `plugin.json` 与入口 DLL。
@@ -72,7 +78,11 @@ Catalyst Release 默认的 AOT-only 模式不能加载外部 IL，因此 Host �
 
 ## 插件开发
 
-完整流程见 [如何开发插件](Documents/如何开发模块.md)，架构边界见 [Quantum 2.0 架构](Documents/architecture-2.0.md)。可直接从 [Quantum.ExamplePlugin](Samples/Quantum.ExamplePlugin) 复制起步。
+完整流程见 [如何开发插件](docs/如何开发模块.md)，架构边界见 [Quantum 2.0 架构](docs/architecture-2.0.md)。可直接从 [Quantum.ExamplePlugin](samples/Quantum.ExamplePlugin) 复制起步。
+
+## 插件市场
+
+[Quantum Extension Market](quantum-extension-market/README.md) 已从原独立项目迁入，重构为 .NET 10 + NOF 的 Domain/Contract/Application/Infrastructure/Host 分层。用户、插件、版本、审核、下载、兼容性和审计 Contract 统一通过 `/rpc` 的 JSON-RPC 2.0 暴露；PostgreSQL、JWT、ZIP 安全校验和 Docker 部署说明均在子项目文档中。
 
 ## 许可证
 

@@ -3,6 +3,8 @@
 - name: API Documentation
   href: api/
 - name: Documents
-  href: Documents/
+  href: docs/
+- name: Extension Market
+  href: quantum-extension-market/README.md
 - name: Contributing
   href: CONTRIBUTING.md

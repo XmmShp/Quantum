@@ -1,0 +1,23 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\src\Quantum.ExtensionMarket.Application\Quantum.ExtensionMarket.Application.csproj" />
+    <ProjectReference Include="..\..\src\Quantum.ExtensionMarket.Contract\Quantum.ExtensionMarket.Contract.csproj" />
+    <ProjectReference Include="..\..\src\Quantum.ExtensionMarket.Domain\Quantum.ExtensionMarket.Domain.csproj" />
+    <ProjectReference Include="..\..\src\Quantum.ExtensionMarket.Infrastructure\Quantum.ExtensionMarket.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>

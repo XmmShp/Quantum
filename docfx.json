@@ -4,11 +4,15 @@
       "src": [
         {
           "files": [
-            "Src/Quantum.Domain/**.csproj",
-            "Src/Quantum.Contract/**.csproj",
-            "SDK/Quantum.Plugin.Abstractions/**.csproj",
-            "Src/Quantum.Application/**.csproj",
-            "Src/Quantum.Infrastructure/**.csproj"
+            "quantum/src/Quantum.Domain/**.csproj",
+            "quantum/src/Quantum.Contract/**.csproj",
+            "sdk/Quantum.Plugin.Abstraction/**.csproj",
+            "quantum/src/Quantum.Application/**.csproj",
+            "quantum/src/Quantum.Infrastructure/**.csproj",
+            "quantum-extension-market/src/Quantum.ExtensionMarket.Domain/**.csproj",
+            "quantum-extension-market/src/Quantum.ExtensionMarket.Contract/**.csproj",
+            "quantum-extension-market/src/Quantum.ExtensionMarket.Application/**.csproj",
+            "quantum-extension-market/src/Quantum.ExtensionMarket.Infrastructure/**.csproj"
           ],
           "src": "."
         }
@@ -30,8 +34,9 @@
       },
       {
         "files": [
-          "Documents/**.md",
-          "Documents/**/toc.yml",
+          "docs/**.md",
+          "docs/**/toc.yml",
+          "quantum-extension-market/**.md",
           "*.md",
           "toc.yml"
         ]
@@ -40,7 +45,7 @@
     "resource": [
       {
         "files": [
-          "Documents/images/**"
+          "docs/images/**"
         ]
       }
     ],

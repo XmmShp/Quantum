@@ -41,7 +41,7 @@ jobs:
 
       - name: Publish host
         run: >-
-          dotnet publish Src/Quantum.Host/Quantum.Host.csproj
+          dotnet publish quantum/src/Quantum.Host/Quantum.Host.csproj
           -c ${{ env.CONFIGURATION }}
           -f ${{ matrix.framework }}
           -r ${{ matrix.runtime }}
