@@ -1,7 +1,6 @@
 @inject PluginCatalog PluginCatalog
 
-<Router AppAssembly="typeof(MauiProgram).Assembly"
-        AdditionalAssemblies="PluginCatalog.Plugins.Select(plugin => plugin.EntryAssembly)">
+<Router AppAssembly="typeof(MauiProgram).Assembly">
     <Found Context="routeData">
         <RouteView RouteData="routeData" DefaultLayout="typeof(MainLayout)" />
         <FocusOnNavigate RouteData="routeData" Selector="h1" />

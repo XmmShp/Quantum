@@ -1,4 +1,5 @@
 @inherits LayoutComponentBase
+@implements IDisposable
 @inject PluginCatalog PluginCatalog
 
 <div class="app-shell">
@@ -41,3 +42,20 @@
         @Body
     </main>
 </div>
+
+@code {
+    protected override void OnInitialized()
+    {
+        PluginCatalog.Changed += OnCatalogChanged;
+    }
+
+    public void Dispose()
+    {
+        PluginCatalog.Changed -= OnCatalogChanged;
+    }
+
+    private void OnCatalogChanged(object? sender, EventArgs eventArgs)
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
+}

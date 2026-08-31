@@ -1,5 +1,7 @@
 @page "/"
+@implements IDisposable
 @inject PluginCatalog PluginCatalog
+@inject IPluginRuntimeManager PluginRuntimeManager
 
 <PageTitle>Quantum</PageTitle>
 
@@ -33,7 +35,19 @@
             <p class="eyebrow">RUNTIME</p>
             <h2>插件运行状态</h2>
         </div>
+        <button class="secondary-button"
+                disabled="@IsBusy"
+                @onclick="RefreshAsync">
+            重新扫描 Modules
+        </button>
     </div>
+
+    @if (!string.IsNullOrWhiteSpace(_operationMessage))
+    {
+        <div class="operation-message @(_operationSucceeded ? "success" : "error")">
+            @_operationMessage
+        </div>
+    }
 
     @if (PluginCatalog.Plugins.Count == 0)
     {
@@ -57,6 +71,17 @@
                         <span>v@plugin.Manifest.Version · @plugin.Routes.Count 个页面</span>
                     </div>
                     <span class="healthy-pill">运行中</span>
+                    <div class="plugin-actions">
+                        <button disabled="@IsBusy"
+                                @onclick="() => ReloadAsync(plugin.Manifest.Id.Value)">
+                            热升级
+                        </button>
+                        <button class="danger"
+                                disabled="@IsBusy"
+                                @onclick="() => UnloadAsync(plugin.Manifest.Id.Value)">
+                            卸载
+                        </button>
+                    </div>
                 </article>
             }
         </div>
@@ -80,4 +105,64 @@
             </div>
         }
     </section>
+}
+
+@code {
+    private string? _busyPluginId;
+    private string? _operationMessage;
+    private bool _operationSucceeded;
+
+    private bool IsBusy => _busyPluginId is not null;
+
+    protected override void OnInitialized()
+    {
+        PluginCatalog.Changed += OnCatalogChanged;
+    }
+
+    public void Dispose()
+    {
+        PluginCatalog.Changed -= OnCatalogChanged;
+    }
+
+    private Task ReloadAsync(string pluginId)
+        => RunOperationAsync(pluginId, () => PluginRuntimeManager.ReloadAsync(pluginId));
+
+    private Task UnloadAsync(string pluginId)
+        => RunOperationAsync(pluginId, () => PluginRuntimeManager.UnloadAsync(pluginId));
+
+    private Task RefreshAsync()
+        => RunOperationAsync("*", () => PluginRuntimeManager.RefreshAsync());
+
+    private async Task RunOperationAsync(
+        string operationId,
+        Func<Task<PluginOperationResult>> operation)
+    {
+        if (IsBusy)
+        {
+            return;
+        }
+
+        _busyPluginId = operationId;
+        _operationMessage = null;
+        try
+        {
+            var result = await operation();
+            _operationSucceeded = result.Succeeded;
+            _operationMessage = result.Message;
+        }
+        catch (Exception exception)
+        {
+            _operationSucceeded = false;
+            _operationMessage = $"插件操作失败：{exception.Message}";
+        }
+        finally
+        {
+            _busyPluginId = null;
+        }
+    }
+
+    private void OnCatalogChanged(object? sender, EventArgs eventArgs)
+    {
+        _ = InvokeAsync(StateHasChanged);
+    }
 }

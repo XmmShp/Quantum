@@ -6,8 +6,9 @@ Quantum 是基于 .NET 10、NOF 与 .NET MAUI Blazor Hybrid 的本地优先插�
 
 - `NOFMauiAppBuilder` 驱动 MAUI 应用和 NOF 初始化管线。
 - 插件按 `plugin.json` 发现；`dependencies` 提供强前置约束，`integrations` 提供缺失时不阻塞加载的弱联动与软排序。
-- 每个插件使用独立、可回收的 `AssemblyLoadContext`；插件在进程生命周期内只加载一次，更新或卸载后重启生效。
-- 插件程序集作为 NOF Application Part 加入宿主，可使用 NOF `AutoInject`、Handler 和 Initialization Step。
+- 每个插件使用独立、可回收的 `AssemblyLoadContext` 和 DI 容器；入口 DLL 从影子目录以流方式加载，源文件可随时替换。
+- `IQuantumPlugin.StartAsync` / `StopAsync` 驱动可逆生命周期；卸载与热升级无需重启宿主，升级失败会自动回滚旧快照。
+- NOF `AutoInject` 生成的注册元数据在插件私有容器内执行，不会让宿主根 DI 持有插件类型。
 - manifest 页面通过 `DynamicComponent` 注入路由和菜单。
 - 插件 `wwwroot` 通过自定义 `IFileProvider` 映射为 `_content/{pluginId}/...`。
 - `head` 与 `postBlazor` Web 贡献在 Blazor 启动后注入；脚本节点会被重新创建以确保执行。
@@ -74,6 +75,8 @@ dotnet build quantum/src/Quantum/Quantum.csproj -t:Run -f net10.0-maccatalyst
 ```
 
 目录中的每个直接子目录代表一个插件，至少包含 `plugin.json` 与入口 DLL。
+
+运行时可在首页对单个插件执行“热升级”或“卸载”，也可重新扫描整个 `Modules`。卸载只释放生命周期、私有 DI 容器和 ALC，不删除插件源目录；热升级会从源目录创建新影子副本，并在生命周期启动失败时回滚到旧版本。存在强依赖插件时，运行时会拒绝卸载其前置插件。
 
 Mac Catalyst 受应用沙箱限制，不能直接读取任意工作区路径；macOS 插件应安装到应用数据目录。不可访问的 `QUANTUM_MODULES_PATH` 会安全回退到该目录，并在首页显示一条加载异常。
 

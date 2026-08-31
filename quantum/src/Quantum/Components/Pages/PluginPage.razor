@@ -1,4 +1,5 @@
 @page "/{**PluginPath}"
+@implements IDisposable
 @inject PluginCatalog PluginCatalog
 @inject NavigationManager NavigationManager
 
@@ -13,7 +14,7 @@
 }
 else
 {
-    <DynamicComponent Type="_route.ComponentType" />
+    <DynamicComponent @key="_plugin?.RuntimeId" Type="_route.ComponentType" />
 }
 
 @code {
@@ -21,13 +22,39 @@ else
     public string? PluginPath { get; set; }
 
     private PluginRouteRegistration? _route;
+    private LoadedPlugin? _plugin;
 
     private string CurrentPath => $"/{PluginPath ?? string.Empty}".TrimEnd('/');
 
+    protected override void OnInitialized()
+    {
+        PluginCatalog.Changed += OnCatalogChanged;
+    }
+
     protected override void OnParametersSet()
+    {
+        ResolveRoute();
+    }
+
+    public void Dispose()
+    {
+        PluginCatalog.Changed -= OnCatalogChanged;
+    }
+
+    private void ResolveRoute()
     {
         var relativePath = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
         var path = $"/{relativePath.Split('?', '#')[0]}";
         _route = PluginCatalog.FindRoute(path);
+        _plugin = _route is null ? null : PluginCatalog.FindPlugin(_route.PluginId.Value);
+    }
+
+    private void OnCatalogChanged(object? sender, EventArgs eventArgs)
+    {
+        _ = InvokeAsync(() =>
+        {
+            ResolveRoute();
+            StateHasChanged();
+        });
     }
 }

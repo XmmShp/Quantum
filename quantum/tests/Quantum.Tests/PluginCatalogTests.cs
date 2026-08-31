@@ -36,6 +36,21 @@ public sealed class PluginCatalogTests
         Assert.False(environment.IsIntegrationActive("owner", "target"));
     }
 
+    [Fact]
+    public void Replace_PublishesSnapshotAndIsolatesObservers()
+    {
+        var catalog = new PluginCatalog([]);
+        var observerCalls = 0;
+        catalog.Changed += (_, _) => throw new InvalidOperationException("observer failed");
+        catalog.Changed += (_, _) => observerCalls++;
+
+        catalog.Replace([Loaded("target", "1.0.0")]);
+
+        Assert.Equal(1, observerCalls);
+        Assert.Equal(1, catalog.Revision);
+        Assert.True(catalog.IsPluginLoaded("target"));
+    }
+
     private static LoadedPlugin Loaded(
         string id,
         string version,

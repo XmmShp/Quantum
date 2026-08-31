@@ -1,24 +1,41 @@
 @inject PluginCatalog PluginCatalog
 @inject IJSRuntime JavaScript
+@implements IDisposable
 
 @code {
-    private bool _injected;
+    private long _appliedRevision = -1;
+
+    protected override void OnInitialized()
+    {
+        PluginCatalog.Changed += OnCatalogChanged;
+    }
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!firstRender || _injected)
+        var revision = PluginCatalog.Revision;
+        if (_appliedRevision == revision)
         {
             return;
         }
 
-        _injected = true;
         var contributions = PluginCatalog.Plugins.Select(plugin => new
         {
             PluginId = plugin.Manifest.Id.Value,
             plugin.Manifest.Web.Head,
             plugin.Manifest.Web.PostBlazor
-        });
+        }).ToArray();
 
-        await JavaScript.InvokeVoidAsync("quantum.plugins.applyContributions", contributions);
+        await JavaScript.InvokeVoidAsync("quantum.plugins.replaceContributions", contributions);
+        _appliedRevision = revision;
+    }
+
+    public void Dispose()
+    {
+        PluginCatalog.Changed -= OnCatalogChanged;
+    }
+
+    private void OnCatalogChanged(object? sender, EventArgs eventArgs)
+    {
+        _ = InvokeAsync(StateHasChanged);
     }
 }

@@ -1,4 +1,5 @@
 using Microsoft.Extensions.Logging;
+using Microsoft.AspNetCore.Components;
 using NOF.Hosting;
 using NOF.Hosting.Maui;
 using Quantum.Application.Plugins;
@@ -12,19 +13,12 @@ public static class MauiProgram
     public static MauiApp CreateMauiApp()
     {
         var builder = NOFMauiAppBuilder.Create();
-        var catalog = LoadPluginCatalog();
-        if (PluginDiagnosticsEnabled())
-        {
-            WritePluginDiagnostics(catalog);
-        }
+        var (runtimeOptions, locationFailures) = ResolvePluginRuntimeOptions();
+        var catalog = new PluginCatalog([], locationFailures);
 
         builder
             .AddApplicationPart(typeof(PluginCatalog).Assembly)
             .AddApplicationPart(typeof(PluginCatalogBootstrapper).Assembly);
-        foreach (var plugin in catalog.Plugins)
-        {
-            builder.AddApplicationPart(plugin.EntryAssembly);
-        }
 
         builder.MauiAppBuilder
             .UseMauiApp<App>();
@@ -36,15 +30,26 @@ public static class MauiProgram
 #endif
         builder.Services.AddSingleton(catalog);
         builder.Services.AddSingleton<IQuantumPluginEnvironment>(catalog);
+        builder.Services.AddSingleton(runtimeOptions);
+        builder.Services.AddSingleton<IPluginReferenceRelease, BlazorPluginReferenceRelease>();
+        builder.Services.AddSingleton<PluginRuntimeManager>(services => new PluginRuntimeManager(
+            catalog,
+            runtimeOptions,
+            services.GetRequiredService<IPluginReferenceRelease>(),
+            logger: services.GetRequiredService<ILogger<PluginRuntimeManager>>()));
+        builder.Services.AddSingleton<IPluginRuntimeManager>(services =>
+            services.GetRequiredService<PluginRuntimeManager>());
         builder.Services.AddSingleton<PluginStaticAssetFileProvider>();
         builder.Services.AddSingleton<MainPage>();
+        builder.Services.AddSingleton<IComponentActivator, PluginComponentActivator>();
         builder.Services.AddInitializationStep(new PluginLifecycleInitializationStep());
 
         var nofApp = builder.BuildAsync().GetAwaiter().GetResult();
         return nofApp.MauiApp;
     }
 
-    private static PluginCatalog LoadPluginCatalog()
+    private static (PluginRuntimeOptions Options, IReadOnlyList<PluginLoadFailure> Failures)
+        ResolvePluginRuntimeOptions()
     {
         var configuredPath = Environment.GetEnvironmentVariable("QUANTUM_MODULES_PATH");
         var bundledPath = Path.Combine(AppContext.BaseDirectory, "Modules");
@@ -58,44 +63,36 @@ public static class MauiProgram
         try
         {
             Directory.CreateDirectory(preferredPath);
-            return new PluginCatalogBootstrapper().Bootstrap(preferredPath);
+            return (
+                new PluginRuntimeOptions(
+                    preferredPath,
+                    Path.Combine(FileSystem.CacheDirectory, "PluginShadow")),
+                []);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
         {
             if (string.Equals(preferredPath, applicationDataPath, StringComparison.Ordinal))
             {
-                return new PluginCatalog(
-                    [],
-                    [new PluginLoadFailure(null, $"Plugin directory '{preferredPath}' is not accessible.", exception)]);
+                return (
+                    new PluginRuntimeOptions(
+                        applicationDataPath,
+                        Path.Combine(FileSystem.CacheDirectory, "PluginShadow")),
+                    [new PluginLoadFailure(
+                        null,
+                        $"Plugin directory '{preferredPath}' is not accessible.",
+                        exception)]);
             }
 
             Directory.CreateDirectory(applicationDataPath);
-            var fallbackCatalog = new PluginCatalogBootstrapper().Bootstrap(applicationDataPath);
-            return new PluginCatalog(
-                fallbackCatalog.Plugins,
-                fallbackCatalog.Failures.Prepend(new PluginLoadFailure(
+            return (
+                new PluginRuntimeOptions(
+                    applicationDataPath,
+                    Path.Combine(FileSystem.CacheDirectory, "PluginShadow")),
+                [new PluginLoadFailure(
                     null,
                     $"Plugin directory '{preferredPath}' is not accessible; using application data instead.",
-                    exception)));
+                    exception)]);
         }
     }
 
-    private static void WritePluginDiagnostics(PluginCatalog catalog)
-    {
-        foreach (var plugin in catalog.Plugins)
-        {
-            Console.WriteLine($"[Quantum] Loaded plugin {plugin.Manifest.Id} {plugin.Manifest.Version}.");
-        }
-
-        foreach (var failure in catalog.Failures)
-        {
-            Console.Error.WriteLine($"[Quantum] Plugin load failure ({failure.PluginId?.Value ?? "unknown"}): {failure.Reason}");
-        }
-    }
-
-    internal static bool PluginDiagnosticsEnabled()
-        => string.Equals(
-            Environment.GetEnvironmentVariable("QUANTUM_PLUGIN_DIAGNOSTICS"),
-            "1",
-            StringComparison.Ordinal);
 }

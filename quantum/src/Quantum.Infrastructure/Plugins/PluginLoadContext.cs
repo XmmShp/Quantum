@@ -5,12 +5,14 @@ namespace Quantum.Infrastructure.Plugins;
 
 public sealed class PluginLoadContext : AssemblyLoadContext
 {
+    private readonly string _entryAssemblyPath;
     private readonly string _pluginDirectory;
     private readonly AssemblyDependencyResolver? _resolver;
 
     public PluginLoadContext(string entryAssemblyPath)
         : base($"Quantum.Plugin:{Path.GetFileNameWithoutExtension(entryAssemblyPath)}", isCollectible: true)
     {
+        _entryAssemblyPath = Path.GetFullPath(entryAssemblyPath);
         _pluginDirectory = Path.GetDirectoryName(entryAssemblyPath)
             ?? throw new ArgumentException("Plugin entry assembly must have a parent directory.", nameof(entryAssemblyPath));
 
@@ -18,6 +20,19 @@ public sealed class PluginLoadContext : AssemblyLoadContext
         {
             _resolver = new AssemblyDependencyResolver(entryAssemblyPath);
         }
+    }
+
+    public Assembly LoadEntryAssembly()
+    {
+        using var file = new FileStream(
+            _entryAssemblyPath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.ReadWrite | FileShare.Delete);
+        using var assemblyBytes = new MemoryStream(checked((int)file.Length));
+        file.CopyTo(assemblyBytes);
+        assemblyBytes.Position = 0;
+        return LoadFromStream(assemblyBytes);
     }
 
     protected override Assembly? Load(AssemblyName assemblyName)

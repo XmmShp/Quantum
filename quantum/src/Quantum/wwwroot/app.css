@@ -244,6 +244,42 @@ a {
   letter-spacing: -0.035em;
 }
 
+.secondary-button,
+.plugin-actions button {
+  border: 0;
+  border-radius: 10px;
+  padding: 9px 12px;
+  color: #5948d8;
+  background: #efedff;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 750;
+  cursor: pointer;
+}
+
+.secondary-button:disabled,
+.plugin-actions button:disabled {
+  cursor: wait;
+  opacity: 0.55;
+}
+
+.operation-message {
+  margin-bottom: 12px;
+  padding: 12px 15px;
+  border-radius: 12px;
+  font-size: 12px;
+}
+
+.operation-message.success {
+  color: #267b59;
+  background: #e6f7ef;
+}
+
+.operation-message.error {
+  color: #9b3e50;
+  background: #fff0f3;
+}
+
 .plugin-list,
 .empty-card,
 .failure-row {
@@ -305,6 +341,16 @@ a {
   background: #e6f7ef;
   font-size: 11px;
   font-weight: 750;
+}
+
+.plugin-actions {
+  display: flex;
+  gap: 7px;
+}
+
+.plugin-actions button.danger {
+  color: #9b3e50;
+  background: #fff0f3;
 }
 
 .failure-row {

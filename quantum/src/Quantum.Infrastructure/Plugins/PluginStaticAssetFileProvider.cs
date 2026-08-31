@@ -6,23 +6,15 @@ namespace Quantum.Infrastructure.Plugins;
 
 public sealed class PluginStaticAssetFileProvider : IFileProvider, IDisposable
 {
-    private readonly IReadOnlyDictionary<string, PhysicalFileProvider> _providers;
+    private readonly PluginCatalog _catalog;
+    private IReadOnlyDictionary<string, PhysicalFileProvider> _providers;
+    private bool _disposed;
 
     public PluginStaticAssetFileProvider(PluginCatalog catalog)
     {
-        ArgumentNullException.ThrowIfNull(catalog);
-
-        _providers = catalog.Plugins
-            .Select(plugin => new
-            {
-                PluginId = plugin.Manifest.Id.Value,
-                StaticRoot = Path.Combine(plugin.RootPath, "wwwroot")
-            })
-            .Where(static plugin => Directory.Exists(plugin.StaticRoot))
-            .ToDictionary(
-                static plugin => plugin.PluginId,
-                static plugin => new PhysicalFileProvider(plugin.StaticRoot),
-                StringComparer.OrdinalIgnoreCase);
+        _catalog = catalog ?? throw new ArgumentNullException(nameof(catalog));
+        _providers = CreateProviders(catalog);
+        _catalog.Changed += OnCatalogChanged;
     }
 
     public IFileInfo GetFileInfo(string subpath)
@@ -42,10 +34,49 @@ public sealed class PluginStaticAssetFileProvider : IFileProvider, IDisposable
 
     public void Dispose()
     {
-        foreach (var provider in _providers.Values)
+        if (_disposed)
+        {
+            return;
+        }
+
+        _disposed = true;
+        _catalog.Changed -= OnCatalogChanged;
+        DisposeProviders(Interlocked.Exchange(
+            ref _providers,
+            new Dictionary<string, PhysicalFileProvider>()));
+    }
+
+    private static IReadOnlyDictionary<string, PhysicalFileProvider> CreateProviders(PluginCatalog catalog)
+        => catalog.Plugins
+            .Select(plugin => new
+            {
+                PluginId = plugin.Manifest.Id.Value,
+                StaticRoot = Path.Combine(plugin.RootPath, "wwwroot")
+            })
+            .Where(static plugin => Directory.Exists(plugin.StaticRoot))
+            .ToDictionary(
+                static plugin => plugin.PluginId,
+                static plugin => new PhysicalFileProvider(plugin.StaticRoot),
+                StringComparer.OrdinalIgnoreCase);
+
+    private static void DisposeProviders(IReadOnlyDictionary<string, PhysicalFileProvider> providers)
+    {
+        foreach (var provider in providers.Values)
         {
             provider.Dispose();
         }
+    }
+
+    private void OnCatalogChanged(object? sender, EventArgs eventArgs)
+    {
+        if (_disposed)
+        {
+            return;
+        }
+
+        var next = CreateProviders(_catalog);
+        var previous = Interlocked.Exchange(ref _providers, next);
+        DisposeProviders(previous);
     }
 
     private bool TryResolve(
@@ -56,7 +87,7 @@ public sealed class PluginStaticAssetFileProvider : IFileProvider, IDisposable
         var parts = subpath.TrimStart('/').Split('/', 3, StringSplitOptions.RemoveEmptyEntries);
         if (parts.Length >= 2
             && string.Equals(parts[0], "_content", StringComparison.OrdinalIgnoreCase)
-            && _providers.TryGetValue(parts[1], out provider!))
+            && Volatile.Read(ref _providers).TryGetValue(parts[1], out provider!))
         {
             pluginSubpath = parts.Length == 3 ? parts[2] : string.Empty;
             return true;

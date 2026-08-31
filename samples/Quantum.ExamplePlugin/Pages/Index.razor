@@ -1,7 +1,6 @@
 @namespace Quantum.ExamplePlugin.Pages
 @using Quantum.ExamplePlugin
 @using Microsoft.AspNetCore.Components.Web
-@inject IExamplePluginState State
 
 <PageTitle>示例插件 · Quantum</PageTitle>
 
@@ -15,9 +14,9 @@
 
     <div class="example-grid">
         <article>
-            <span>APPLICATION PART</span>
-            <strong>NOF</strong>
-            <p>服务由插件程序集中的 AutoInject 元数据注册。</p>
+            <span>PLUGIN CONTAINER</span>
+            <strong>DI</strong>
+            <p>AutoInject 服务位于插件自己的可释放容器中。</p>
         </article>
         <article>
             <span>LOAD CONTEXT</span>
@@ -36,3 +35,12 @@
         </article>
     </div>
 </section>
+
+@code {
+    private readonly IExamplePluginState State;
+
+    public Index(IExamplePluginState state)
+    {
+        State = state;
+    }
+}

@@ -1,3 +1,4 @@
+using System.Diagnostics;
 using System.Reflection;
 using Microsoft.AspNetCore.Components;
 using Quantum.Domain.Plugins;
@@ -7,29 +8,35 @@ namespace Quantum.Application.Plugins;
 
 public sealed class PluginCatalog : IQuantumPluginEnvironment
 {
+    private PluginCatalogSnapshot _snapshot;
+
     public PluginCatalog(IEnumerable<LoadedPlugin> plugins, IEnumerable<PluginLoadFailure>? failures = null)
     {
-        Plugins = plugins.ToArray();
-        Failures = (failures ?? []).ToArray();
-        Routes = Plugins
-            .SelectMany(static plugin => plugin.Routes)
-            .OrderBy(static route => route.Definition.Order)
-            .ThenBy(static route => route.Definition.Path, StringComparer.Ordinal)
-            .ToArray();
-        LoadedPlugins = Plugins
-            .Select(static plugin => new QuantumPluginInfo(
-                plugin.Manifest.Id.Value,
-                plugin.Manifest.Version.ToString()))
-            .ToArray();
+        _snapshot = CreateSnapshot(plugins, failures ?? [], revision: 0);
     }
 
-    public IReadOnlyList<LoadedPlugin> Plugins { get; }
+    public event EventHandler? Changed;
 
-    public IReadOnlyList<PluginRouteRegistration> Routes { get; }
+    public IReadOnlyList<LoadedPlugin> Plugins => Snapshot.Plugins;
 
-    public IReadOnlyList<PluginLoadFailure> Failures { get; }
+    public IReadOnlyList<PluginRouteRegistration> Routes => Snapshot.Routes;
 
-    public IReadOnlyList<QuantumPluginInfo> LoadedPlugins { get; }
+    public IReadOnlyList<PluginLoadFailure> Failures => Snapshot.Failures;
+
+    public IReadOnlyList<QuantumPluginInfo> LoadedPlugins => Snapshot.LoadedPlugins;
+
+    public long Revision => Snapshot.Revision;
+
+    private PluginCatalogSnapshot Snapshot => Volatile.Read(ref _snapshot);
+
+    public void Replace(
+        IEnumerable<LoadedPlugin> plugins,
+        IEnumerable<PluginLoadFailure>? failures = null)
+    {
+        var next = CreateSnapshot(plugins, failures ?? [], checked(Revision + 1));
+        Volatile.Write(ref _snapshot, next);
+        RaiseChanged();
+    }
 
     public bool IsPluginLoaded(string pluginId)
         => FindPlugin(pluginId) is not null;
@@ -58,7 +65,7 @@ public sealed class PluginCatalog : IQuantumPluginEnvironment
             StringComparison.OrdinalIgnoreCase));
     }
 
-    private LoadedPlugin? FindPlugin(string pluginId)
+    public LoadedPlugin? FindPlugin(string pluginId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pluginId);
         var normalizedId = pluginId.Trim().ToLowerInvariant();
@@ -67,13 +74,93 @@ public sealed class PluginCatalog : IQuantumPluginEnvironment
             normalizedId,
             StringComparison.Ordinal));
     }
+
+    public LoadedPlugin? FindPlugin(Assembly assembly)
+    {
+        ArgumentNullException.ThrowIfNull(assembly);
+        return Plugins.FirstOrDefault(plugin => ReferenceEquals(plugin.EntryAssembly, assembly));
+    }
+
+    private void RaiseChanged()
+    {
+        foreach (EventHandler handler in Changed?.GetInvocationList() ?? [])
+        {
+            try
+            {
+                handler(this, EventArgs.Empty);
+            }
+            catch (Exception exception)
+            {
+                // A UI or file-provider observer must not invalidate an already published,
+                // internally consistent runtime snapshot or prevent later observers running.
+                Trace.TraceError($"Plugin catalog change observer failed: {exception}");
+            }
+        }
+    }
+
+    private static PluginCatalogSnapshot CreateSnapshot(
+        IEnumerable<LoadedPlugin> plugins,
+        IEnumerable<PluginLoadFailure> failures,
+        long revision)
+    {
+        var pluginArray = plugins.ToArray();
+        var routes = pluginArray
+            .SelectMany(static plugin => plugin.Routes)
+            .OrderBy(static route => route.Definition.Order)
+            .ThenBy(static route => route.Definition.Path, StringComparer.Ordinal)
+            .ToArray();
+        var loadedPlugins = pluginArray
+            .Select(static plugin => new QuantumPluginInfo(
+                plugin.Manifest.Id.Value,
+                plugin.Manifest.Version.ToString()))
+            .ToArray();
+        return new PluginCatalogSnapshot(
+            pluginArray,
+            routes,
+            failures.ToArray(),
+            loadedPlugins,
+            revision);
+    }
 }
 
-public sealed record LoadedPlugin(
-    PluginManifest Manifest,
-    string RootPath,
-    Assembly EntryAssembly,
-    IReadOnlyList<PluginRouteRegistration> Routes);
+internal sealed record PluginCatalogSnapshot(
+    IReadOnlyList<LoadedPlugin> Plugins,
+    IReadOnlyList<PluginRouteRegistration> Routes,
+    IReadOnlyList<PluginLoadFailure> Failures,
+    IReadOnlyList<QuantumPluginInfo> LoadedPlugins,
+    long Revision);
+
+public sealed class LoadedPlugin
+{
+    public LoadedPlugin(
+        PluginManifest manifest,
+        string rootPath,
+        Assembly entryAssembly,
+        IReadOnlyList<PluginRouteRegistration> routes,
+        Guid runtimeId = default,
+        IServiceProvider? services = null)
+    {
+        Manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
+        ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
+        RootPath = rootPath;
+        EntryAssembly = entryAssembly ?? throw new ArgumentNullException(nameof(entryAssembly));
+        Routes = routes ?? throw new ArgumentNullException(nameof(routes));
+        RuntimeId = runtimeId;
+        Services = services;
+    }
+
+    public PluginManifest Manifest { get; }
+
+    public string RootPath { get; }
+
+    public Assembly EntryAssembly { get; }
+
+    public IReadOnlyList<PluginRouteRegistration> Routes { get; }
+
+    public Guid RuntimeId { get; }
+
+    public IServiceProvider? Services { get; }
+}
 
 public sealed record PluginRouteRegistration(
     PluginId PluginId,

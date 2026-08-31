@@ -1,7 +1,14 @@
 window.quantum = window.quantum || {};
 
 window.quantum.plugins = {
-  applyContributions(contributions) {
+  nodes: [],
+
+  replaceContributions(contributions) {
+    for (const node of this.nodes) {
+      node.remove();
+    }
+    this.nodes = [];
+
     for (const contribution of contributions) {
       this.appendFragments(document.head, contribution.head, contribution.pluginId, "head");
       this.appendFragments(document.body, contribution.postBlazor, contribution.pluginId, "post-blazor");
@@ -22,6 +29,7 @@ window.quantum.plugins = {
           node.dataset.quantumLocation = location;
         }
         target.appendChild(node);
+        this.nodes.push(node);
       }
     }
   },

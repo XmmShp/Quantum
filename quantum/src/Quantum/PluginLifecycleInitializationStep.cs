@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NOF.Hosting;
-using Quantum.Plugin.Abstraction;
+using Quantum.Application.Plugins;
 
 namespace Quantum;
 
@@ -15,23 +15,16 @@ public sealed class PluginLifecycleInitializationStep : IApplicationInitializati
         ArgumentNullException.ThrowIfNull(app);
 
         var logger = app.Services.GetRequiredService<ILogger<PluginLifecycleInitializationStep>>();
-        foreach (var plugin in app.Services.GetServices<IQuantumPlugin>())
+        try
         {
-            try
-            {
-                await plugin.StartAsync(app.Services).ConfigureAwait(false);
-                if (MauiProgram.PluginDiagnosticsEnabled())
-                {
-                    Console.WriteLine($"[Quantum] Started plugin lifecycle {plugin.GetType().FullName}.");
-                }
-            }
-            catch (Exception exception)
-            {
-                logger.LogError(
-                    exception,
-                    "Plugin lifecycle hook {PluginType} failed. The host will continue starting.",
-                    plugin.GetType().FullName);
-            }
+            var manager = app.Services.GetRequiredService<IPluginRuntimeManager>();
+            await manager.InitializeAsync(app.Services).ConfigureAwait(false);
+        }
+        catch (Exception exception)
+        {
+            logger.LogError(
+                exception,
+                "Plugin runtime initialization failed. The host will continue without dynamic plugins.");
         }
     }
 }

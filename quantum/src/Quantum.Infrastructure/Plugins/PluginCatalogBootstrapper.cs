@@ -68,7 +68,7 @@ public sealed class PluginCatalogBootstrapper
             {
                 var entryAssemblyPath = Path.Combine(candidate.RootPath, candidate.Manifest.EntryAssembly);
                 var loadContext = new PluginLoadContext(entryAssemblyPath);
-                var assembly = loadContext.LoadFromAssemblyPath(entryAssemblyPath);
+                var assembly = loadContext.LoadEntryAssembly();
                 var routes = candidate.Manifest.Routes
                     .Select(route => PluginRouteRegistration.Create(candidate.Manifest.Id, route, assembly))
                     .ToArray();
