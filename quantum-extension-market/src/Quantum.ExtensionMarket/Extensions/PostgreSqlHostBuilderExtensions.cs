@@ -1,8 +1,9 @@
 using Microsoft.EntityFrameworkCore;
 using NOF.Hosting;
 using NOF.Infrastructure.EntityFrameworkCore;
+using Quantum.ExtensionMarket.Persistence;
 
-namespace Quantum.ExtensionMarket.Infrastructure;
+namespace Quantum.ExtensionMarket;
 
 public static class PostgreSqlHostBuilderExtensions
 {

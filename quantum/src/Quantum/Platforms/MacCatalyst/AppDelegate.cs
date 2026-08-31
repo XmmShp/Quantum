@@ -1,6 +1,6 @@
 using Foundation;
 
-namespace Quantum.Host;
+namespace Quantum;
 
 [Register("AppDelegate")]
 public sealed class AppDelegate : MauiUIApplicationDelegate

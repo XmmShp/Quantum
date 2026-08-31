@@ -5,7 +5,7 @@ using Microsoft.Extensions.Options;
 using Quantum.ExtensionMarket.Application;
 using Quantum.ExtensionMarket.Domain;
 
-namespace Quantum.ExtensionMarket.Infrastructure;
+namespace Quantum.ExtensionMarket;
 
 public sealed class PhysicalPluginPackageStore : IPluginPackageStore
 {

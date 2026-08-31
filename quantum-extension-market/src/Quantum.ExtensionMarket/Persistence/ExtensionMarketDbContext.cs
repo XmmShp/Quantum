@@ -3,7 +3,7 @@ using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using NOF.Infrastructure.EntityFrameworkCore;
 using Quantum.ExtensionMarket.Domain;
 
-namespace Quantum.ExtensionMarket.Infrastructure;
+namespace Quantum.ExtensionMarket.Persistence;
 
 public sealed class ExtensionMarketDbContext(DbContextOptions<ExtensionMarketDbContext> options)
     : NOFDbContext(options)

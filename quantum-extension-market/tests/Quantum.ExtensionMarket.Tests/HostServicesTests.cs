@@ -2,11 +2,10 @@ using System.IO.Compression;
 using System.Text;
 using Microsoft.Extensions.Options;
 using Quantum.ExtensionMarket.Application;
-using Quantum.ExtensionMarket.Infrastructure;
 
 namespace Quantum.ExtensionMarket.Tests;
 
-public sealed class InfrastructureTests : IDisposable
+public sealed class HostServicesTests : IDisposable
 {
     private readonly string rootPath = Path.Combine(
         Path.GetTempPath(),

@@ -3,7 +3,7 @@ using Microsoft.Extensions.Logging;
 using NOF.Hosting;
 using Quantum.Plugin.Abstraction;
 
-namespace Quantum.Host;
+namespace Quantum;
 
 public sealed class PluginLifecycleInitializationStep : IApplicationInitializationStep
 {

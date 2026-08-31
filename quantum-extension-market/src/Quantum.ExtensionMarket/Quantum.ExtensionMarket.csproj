@@ -9,7 +9,6 @@
     <ProjectReference Include="..\Quantum.ExtensionMarket.Application\Quantum.ExtensionMarket.Application.csproj" />
     <ProjectReference Include="..\Quantum.ExtensionMarket.Contract\Quantum.ExtensionMarket.Contract.csproj" />
     <ProjectReference Include="..\Quantum.ExtensionMarket.Domain\Quantum.ExtensionMarket.Domain.csproj" />
-    <ProjectReference Include="..\Quantum.ExtensionMarket.Infrastructure\Quantum.ExtensionMarket.Infrastructure.csproj" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />

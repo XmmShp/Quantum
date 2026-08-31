@@ -6,7 +6,6 @@ using Quantum.ExtensionMarket.Application;
 using Quantum.ExtensionMarket.Application.Handlers;
 using Quantum.ExtensionMarket.Authentication;
 using Quantum.ExtensionMarket.Contract;
-using Quantum.ExtensionMarket.Infrastructure;
 
 var builder = NOFWebApplicationBuilder.Create(args);
 
@@ -14,7 +13,7 @@ builder.AddApplicationPart(typeof(IExtensionMarketService).Assembly);
 builder.AddApplicationPart(typeof(RegisterUser).Assembly);
 builder.AddRpcServer<ExtensionMarketService>();
 builder.Services.AddExtensionMarketApplication();
-builder.Services.AddExtensionMarketInfrastructure(builder.Configuration);
+builder.Services.AddExtensionMarketServices(builder.Configuration);
 builder.AddExtensionMarketAuthentication();
 builder.AddExtensionMarketPostgreSql();
 builder.Services.Configure<BootstrapAdminOptions>(

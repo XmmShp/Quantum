@@ -2,7 +2,7 @@ using System.Globalization;
 using System.Security.Cryptography;
 using Quantum.ExtensionMarket.Application;
 
-namespace Quantum.ExtensionMarket.Infrastructure;
+namespace Quantum.ExtensionMarket;
 
 public sealed class Pbkdf2MarketPasswordHasher : IMarketPasswordHasher
 {

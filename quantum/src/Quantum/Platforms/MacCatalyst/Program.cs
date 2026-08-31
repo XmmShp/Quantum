@@ -1,6 +1,6 @@
 using UIKit;
 
-namespace Quantum.Host;
+namespace Quantum;
 
 public static class Program
 {

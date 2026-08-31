@@ -4,7 +4,7 @@ using NOF.Hosting.Maui;
 using Quantum.Application.Plugins;
 using Quantum.Infrastructure.Plugins;
 
-namespace Quantum.Host;
+namespace Quantum;
 
 public static class MauiProgram
 {

@@ -11,12 +11,11 @@
   <Project Path="quantum/src/Quantum.Contract/Quantum.Contract.csproj" />
   <Project Path="quantum/src/Quantum.Application/Quantum.Application.csproj" />
   <Project Path="quantum/src/Quantum.Infrastructure/Quantum.Infrastructure.csproj" />
-  <Project Path="quantum/src/Quantum.Host/Quantum.Host.csproj" />
+  <Project Path="quantum/src/Quantum/Quantum.csproj" />
   <Project Path="quantum/tests/Quantum.Tests/Quantum.Tests.csproj" />
   <Project Path="quantum-extension-market/src/Quantum.ExtensionMarket.Domain/Quantum.ExtensionMarket.Domain.csproj" />
   <Project Path="quantum-extension-market/src/Quantum.ExtensionMarket.Contract/Quantum.ExtensionMarket.Contract.csproj" />
   <Project Path="quantum-extension-market/src/Quantum.ExtensionMarket.Application/Quantum.ExtensionMarket.Application.csproj" />
-  <Project Path="quantum-extension-market/src/Quantum.ExtensionMarket.Infrastructure/Quantum.ExtensionMarket.Infrastructure.csproj" />
   <Project Path="quantum-extension-market/src/Quantum.ExtensionMarket/Quantum.ExtensionMarket.csproj" />
   <Project Path="quantum-extension-market/tests/Quantum.ExtensionMarket.Tests/Quantum.ExtensionMarket.Tests.csproj" />
   <Project Path="sdk/Quantum.Plugin.Abstraction/Quantum.Plugin.Abstraction.csproj" />

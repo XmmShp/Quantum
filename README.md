@@ -21,9 +21,9 @@ quantum/
 │   ├── Quantum.Contract/        对外契约
 │   ├── Quantum.Application/     依赖规划、运行目录与路由注册
 │   ├── Quantum.Infrastructure/  manifest、ALC、文件系统与静态资源实现
-│   └── Quantum.Host/            NOF MAUI Blazor Hybrid 桌面宿主
+│   └── Quantum/                 NOF MAUI Blazor Hybrid 桌面宿主
 └── tests/
-    └── Quantum.Tests/           领域和加载基础设施测试
+    └── Quantum.Tests/           领域和插件加载基础设施测试
 quantum-extension-market/
 ├── src/                         NOF 分层的插件市场与 JSON-RPC Host
 └── tests/                       市场领域与安全存储测试
@@ -52,23 +52,23 @@ dotnet test quantum-extension-market/tests/Quantum.ExtensionMarket.Tests/Quantum
 macOS 启动：
 
 ```bash
-dotnet build quantum/src/Quantum.Host/Quantum.Host.csproj \
+dotnet build quantum/src/Quantum/Quantum.csproj \
   -t:Run \
   -f net10.0-maccatalyst
 ```
 
-Debug 构建会把示例插件暂存到 Host 输出目录，便于本地调试与独立加载测试。也可以显式指定宿主有权访问的插件根目录：
+Debug 构建会把示例插件暂存到宿主输出目录，便于本地调试与独立加载测试。也可以显式指定宿主有权访问的插件根目录：
 
 ```bash
 QUANTUM_MODULES_PATH=/absolute/path/to/Modules \
-dotnet build quantum/src/Quantum.Host/Quantum.Host.csproj -t:Run -f net10.0-maccatalyst
+dotnet build quantum/src/Quantum/Quantum.csproj -t:Run -f net10.0-maccatalyst
 ```
 
 目录中的每个直接子目录代表一个插件，至少包含 `plugin.json` 与入口 DLL。
 
 Mac Catalyst 受应用沙箱限制，不能直接读取任意工作区路径；macOS 插件应安装到应用数据目录。不可访问的 `QUANTUM_MODULES_PATH` 会安全回退到该目录，并在首页显示一条加载异常。
 
-Catalyst Release 默认的 AOT-only 模式不能加载外部 IL，因此 Host 在该目标上显式启用 Mono interpreter 并关闭托管程序集裁剪。若发行渠道是 Mac App Store，还需要单独评估性能、包体与动态插件审核政策；Windows 的 CoreCLR 插件模式不受此约束。
+Catalyst Release 默认的 AOT-only 模式不能加载外部 IL，因此桌面宿主在该目标上显式启用 Mono interpreter 并关闭托管程序集裁剪。若发行渠道是 Mac App Store，还需要单独评估性能、包体与动态插件审核政策；Windows 的 CoreCLR 插件模式不受此约束。
 
 排查启动加载时可设置 `QUANTUM_PLUGIN_DIAGNOSTICS=1`，宿主会向标准输出写入插件加载与生命周期结果。
 
@@ -78,7 +78,7 @@ Catalyst Release 默认的 AOT-only 模式不能加载外部 IL，因此 Host �
 
 ## 插件市场
 
-[Quantum Extension Market](quantum-extension-market/README.md) 使用 .NET 10 + NOF 的 Domain/Contract/Application/Infrastructure/Host 分层。用户、插件、版本、审核、下载、兼容性和审计 Contract 统一通过 `/rpc` 的 JSON-RPC 2.0 暴露；PostgreSQL、JWT、ZIP 安全校验和 Docker 部署说明均在子项目文档中。
+[Quantum Extension Market](quantum-extension-market/README.md) 使用 .NET 10 + NOF 的 Domain/Contract/Application/Host 分层，基础设施实现在 Host 组合根内。用户、插件、版本、审核、下载、兼容性和审计 Contract 统一通过 `/rpc` 的 JSON-RPC 2.0 暴露；PostgreSQL、JWT、ZIP 安全校验和 Docker 部署说明均在子项目文档中。
 
 ## 许可证
 

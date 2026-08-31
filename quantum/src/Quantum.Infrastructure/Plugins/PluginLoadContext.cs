@@ -14,15 +14,9 @@ public sealed class PluginLoadContext : AssemblyLoadContext
         _pluginDirectory = Path.GetDirectoryName(entryAssemblyPath)
             ?? throw new ArgumentException("Plugin entry assembly must have a parent directory.", nameof(entryAssemblyPath));
 
-        try
+        if (!OperatingSystem.IsMacCatalyst())
         {
             _resolver = new AssemblyDependencyResolver(entryAssemblyPath);
-        }
-        catch (PlatformNotSupportedException)
-        {
-            // Apple mobile-derived runtimes, including Mac Catalyst, do not expose
-            // AssemblyDependencyResolver. The plugin directory remains a deterministic
-            // fallback because plugin packages are deployed as a flat dependency closure.
         }
     }
 
@@ -33,15 +27,19 @@ public sealed class PluginLoadContext : AssemblyLoadContext
             return LoadFromDefaultContext(assemblyName);
         }
 
-        var assemblyPath = _resolver?.ResolveAssemblyToPath(assemblyName)
-            ?? ResolveManagedAssemblyFromPluginDirectory(assemblyName);
+        var assemblyPath = OperatingSystem.IsMacCatalyst()
+            ? ResolveManagedAssemblyFromPluginDirectory(assemblyName)
+            : _resolver!.ResolveAssemblyToPath(assemblyName)
+                ?? ResolveManagedAssemblyFromPluginDirectory(assemblyName);
         return assemblyPath is null ? null : LoadFromAssemblyPath(assemblyPath);
     }
 
     protected override nint LoadUnmanagedDll(string unmanagedDllName)
     {
-        var libraryPath = _resolver?.ResolveUnmanagedDllToPath(unmanagedDllName)
-            ?? ResolveNativeLibraryFromPluginDirectory(unmanagedDllName);
+        var libraryPath = OperatingSystem.IsMacCatalyst()
+            ? ResolveNativeLibraryFromPluginDirectory(unmanagedDllName)
+            : _resolver!.ResolveUnmanagedDllToPath(unmanagedDllName)
+                ?? ResolveNativeLibraryFromPluginDirectory(unmanagedDllName);
         return libraryPath is null ? nint.Zero : LoadUnmanagedDllFromPath(libraryPath);
     }
 

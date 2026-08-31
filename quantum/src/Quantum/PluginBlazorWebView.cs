@@ -2,7 +2,7 @@ using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Extensions.FileProviders;
 using Quantum.Infrastructure.Plugins;
 
-namespace Quantum.Host;
+namespace Quantum;
 
 public sealed class PluginBlazorWebView(PluginStaticAssetFileProvider pluginAssets) : BlazorWebView
 {

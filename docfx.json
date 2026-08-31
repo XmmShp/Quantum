@@ -12,7 +12,7 @@
             "quantum-extension-market/src/Quantum.ExtensionMarket.Domain/**.csproj",
             "quantum-extension-market/src/Quantum.ExtensionMarket.Contract/**.csproj",
             "quantum-extension-market/src/Quantum.ExtensionMarket.Application/**.csproj",
-            "quantum-extension-market/src/Quantum.ExtensionMarket.Infrastructure/**.csproj"
+            "quantum-extension-market/src/Quantum.ExtensionMarket/**.csproj"
           ],
           "src": "."
         }

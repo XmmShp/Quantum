@@ -12,7 +12,6 @@
     <PackageVersion Include="Microsoft.Extensions.FileProviders.Physical" Version="10.0.7" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.7" />
-    <PackageVersion Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.7" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
     <PackageVersion Include="NOF.Abstraction" Version="$(NofVersion)" />
     <PackageVersion Include="NOF.Application" Version="$(NofVersion)" />

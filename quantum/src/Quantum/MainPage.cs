@@ -1,8 +1,8 @@
 using Microsoft.AspNetCore.Components.WebView.Maui;
-using Quantum.Host.Components;
+using Quantum.Components;
 using Quantum.Infrastructure.Plugins;
 
-namespace Quantum.Host;
+namespace Quantum;
 
 public sealed class MainPage : ContentPage
 {

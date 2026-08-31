@@ -1,4 +1,4 @@
-namespace Quantum.Host.WinUI;
+namespace Quantum.WinUI;
 
 public partial class App : MauiWinUIApplication
 {

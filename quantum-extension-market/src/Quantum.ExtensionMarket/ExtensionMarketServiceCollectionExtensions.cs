@@ -1,12 +1,10 @@
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
 using Quantum.ExtensionMarket.Application;
 
-namespace Quantum.ExtensionMarket.Infrastructure;
+namespace Quantum.ExtensionMarket;
 
-public static class DependencyInjection
+public static class ExtensionMarketServiceCollectionExtensions
 {
-    public static IServiceCollection AddExtensionMarketInfrastructure(
+    public static IServiceCollection AddExtensionMarketServices(
         this IServiceCollection services,
         IConfiguration configuration)
     {

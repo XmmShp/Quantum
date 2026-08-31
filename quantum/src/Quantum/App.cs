@@ -1,4 +1,4 @@
-namespace Quantum.Host;
+namespace Quantum;
 
 public sealed class App(MainPage mainPage) : Microsoft.Maui.Controls.Application
 {

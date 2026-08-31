@@ -9,8 +9,7 @@ src/
 ├── Quantum.ExtensionMarket.Domain/          用户、插件、版本与审计领域模型
 ├── Quantum.ExtensionMarket.Contract/        强类型 JSON-RPC Contract
 ├── Quantum.ExtensionMarket.Application/     NOF RpcServer、Handler 与业务策略
-├── Quantum.ExtensionMarket.Infrastructure/  密码哈希与安全文件存储
-└── Quantum.ExtensionMarket/                 ASP.NET Core Host、JWT、EF Core 与迁移
+└── Quantum.ExtensionMarket/                 Host、JWT、EF Core、密码哈希与文件存储
 tests/
 └── Quantum.ExtensionMarket.Tests/           领域、版本约束和 ZIP 安全测试
 ```

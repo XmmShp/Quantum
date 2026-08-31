@@ -10,7 +10,12 @@
     <ProjectReference Include="..\..\src\Quantum.ExtensionMarket.Application\Quantum.ExtensionMarket.Application.csproj" />
     <ProjectReference Include="..\..\src\Quantum.ExtensionMarket.Contract\Quantum.ExtensionMarket.Contract.csproj" />
     <ProjectReference Include="..\..\src\Quantum.ExtensionMarket.Domain\Quantum.ExtensionMarket.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Quantum.ExtensionMarket.Infrastructure\Quantum.ExtensionMarket.Infrastructure.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\src\Quantum.ExtensionMarket\Services\Pbkdf2MarketPasswordHasher.cs"
+             Link="Host\Services\Pbkdf2MarketPasswordHasher.cs" />
+    <Compile Include="..\..\src\Quantum.ExtensionMarket\Services\PhysicalPluginPackageStore.cs"
+             Link="Host\Services\PhysicalPluginPackageStore.cs" />
   </ItemGroup>
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />

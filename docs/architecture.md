@@ -3,21 +3,21 @@
 ## 组件结构
 
 ```text
-Quantum.Host (MAUI)
+Quantum (NOF MAUI Host)
     ├── Quantum.Infrastructure
     │       └── Quantum.Application
-    │               ├── Quantum.Domain
-    │               └── Quantum.Plugin.Abstraction
+    │               └── Quantum.Domain
+    ├── Quantum.Plugin.Abstraction
     └── plugin Application Parts (isolated ALC)
 ```
 
 - Domain 只表达插件标识、SemVer、依赖、权限、页面声明与安装状态。
 - Contract 放置市场、账号、版本和管理接口使用的传输模型。
 - Application 负责依赖计划、加载结果和运行目录，不依赖 MAUI 或文件系统实现。
-- Infrastructure 负责 JSON、目录扫描、程序集解析和 WebView 文件提供器。
-- Host 负责 NOF composition root、桌面生命周期和 Blazor UI。
-- `sdk/Quantum.Plugin.Abstraction` 是宿主与插件共享的唯一 .NET SDK 和稳定 ABI，独立于 Host 和 Infrastructure；程序集名、包名和命名空间均为单数形式 `Quantum.Plugin.Abstraction`，是插件兼容性边界。
-- `quantum-extension-market` 是独立部署的 NOF Web Host；其市场、账号、版本、审核和审计 Contract 统一通过 `/rpc` 的 JSON-RPC 2.0 暴露，不进入桌面插件的 ABI。
+- Infrastructure 是可独立测试的 `net10.0` 层，负责 JSON、目录扫描、程序集解析和 WebView 文件提供器，不依赖 MAUI。
+- `Quantum` 是 NOF MAUI 可执行宿主和组合根，负责桌面生命周期与 Blazor UI。
+- `sdk/Quantum.Plugin.Abstraction` 是宿主与插件共享的唯一 .NET SDK 和稳定 ABI，独立于宿主与 Infrastructure；程序集名、包名和命名空间均为单数形式 `Quantum.Plugin.Abstraction`，是插件兼容性边界。
+- `quantum-extension-market` 是独立部署的 NOF Web Host，密码哈希、文件存储、JWT 与 EF Core 持久化均由该宿主组合；其 Contract 通过 `/rpc` 的 JSON-RPC 2.0 暴露，不进入桌面插件 ABI。
 
 ## 启动顺序
 
@@ -43,7 +43,7 @@ Quantum.Host (MAUI)
 
 虽然 ALC 设为 collectible，当前不会在进程运行期间调用 `Unload`。Blazor 组件类型、DI descriptor、事件和 JS 引用都可能持有程序集，因此插件更新和卸载需要重启应用。
 
-Mac Catalyst 默认 Release 为 AOT-only，外部 IL 程序集无法动态加载。`Quantum.Host` 因此在 Catalyst 目标上强制 `UseInterpreter=true`，并以 `MtouchLink=None` 保留动态 Application Part 依赖的程序集与元数据；移除这些约束会导致原生运行时终止或裁剪后的无效程序。该选择会影响性能、包体和发行政策，面向 Mac App Store 前必须单独评审动态插件模式。Windows 目标继续使用常规 CoreCLR。
+Mac Catalyst 默认 Release 为 AOT-only，外部 IL 程序集无法动态加载。`Quantum` 因此在 Catalyst 目标上强制 `UseInterpreter=true`，并以 `MtouchLink=None` 保留动态 Application Part 依赖的程序集与元数据；移除这些约束会导致原生运行时终止或裁剪后的无效程序。该选择会影响性能、包体和发行政策，面向 Mac App Store 前必须单独评审动态插件模式。Windows 目标继续使用常规 CoreCLR。
 
 ## WebView 静态文件
 

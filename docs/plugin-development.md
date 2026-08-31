@@ -134,7 +134,7 @@ public sealed class ExampleState : IQuantumPlugin, IExampleState
 dotnet build MyPlugin.csproj
 
 QUANTUM_MODULES_PATH=/absolute/path/to/Modules \
-dotnet build quantum/src/Quantum.Host/Quantum.Host.csproj -t:Run -f net10.0-maccatalyst
+dotnet build quantum/src/Quantum/Quantum.csproj -t:Run -f net10.0-maccatalyst
 ```
 
 示例目录：
