@@ -4,107 +4,81 @@ on:
   workflow_dispatch:
     inputs:
       version:
-        description: "Version number (e.g. 1.0.0)"
+        description: "Version number (for example 2.0.0)"
         required: true
         type: string
 
 env:
-  DOTNET_VERSION: "9.0.x"
+  DOTNET_VERSION: "10.0.x"
   CONFIGURATION: "Release"
 
 jobs:
   publish:
-    name: Publish ${{ matrix.os }}
+    name: Publish ${{ matrix.name }}
     runs-on: ${{ matrix.runner }}
     strategy:
       matrix:
         include:
-          - os: Windows
+          - name: Windows-x64
             runner: windows-latest
-            target: win
-            path-separator: '\'
-            dotnet-tools: '%USERPROFILE%\.dotnet\tools'
-          - os: Linux
-            runner: ubuntu-latest
-            target: linux
-            path-separator: "/"
-            dotnet-tools: "$HOME/.dotnet/tools"
-          - os: macOS
+            framework: net10.0-windows10.0.19041.0
+            runtime: win-x64
+          - name: macOS-arm64
             runner: macos-latest
-            target: osx
-            path-separator: "/"
-            dotnet-tools: "$HOME/.dotnet/tools"
+            framework: net10.0-maccatalyst
+            runtime: maccatalyst-arm64
+
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 1
 
       - name: Setup .NET
-        uses: actions/setup-dotnet@v3
+        uses: actions/setup-dotnet@v5
         with:
-          dotnet-version: |
-            6.0.x
-            ${{ env.DOTNET_VERSION }}
+          dotnet-version: ${{ env.DOTNET_VERSION }}
 
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
+      - name: Install MAUI workload
+        run: dotnet workload install maui --skip-manifest-update
 
-      - name: Install ElectronNET.CLI
-        run: |
-          dotnet tool install ElectronNET.CLI -g
-          echo "${{ matrix.dotnet-tools }}" >> $GITHUB_PATH
+      - name: Publish host
+        run: >-
+          dotnet publish Src/Quantum.Host/Quantum.Host.csproj
+          -c ${{ env.CONFIGURATION }}
+          -f ${{ matrix.framework }}
+          -r ${{ matrix.runtime }}
+          -p:ApplicationDisplayVersion=${{ inputs.version }}
+          -p:WindowsPackageType=None
+          -o artifacts/${{ matrix.name }}
 
-      - name: Update Version (Windows)
-        if: matrix.os == 'Windows'
-        run: |
-          $manifestPath = "Runtime${{ matrix.path-separator }}electron.manifest.json"
-          $manifest = Get-Content $manifestPath -Raw | ConvertFrom-Json
-          $manifest.build.buildVersion = "${{ github.event.inputs.version }}"
-          $manifest | ConvertTo-Json -Depth 32 | Set-Content $manifestPath
-
-      - name: Update Version (Unix)
-        if: matrix.os != 'Windows'
-        run: |
-          manifestPath="Runtime${{ matrix.path-separator }}electron.manifest.json"
-          manifest=$(cat $manifestPath)
-          echo "$manifest" | jq --arg version "${{ github.event.inputs.version }}" '.build.buildVersion = $version' > $manifestPath
-
-      - name: Build and Package Runtime
-        run: electronize build /PublishSingleFile false /target ${{ matrix.target }} /dotnet-configuration ${{ env.CONFIGURATION }}
-        working-directory: ./Runtime
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
-      - name: Upload Artifacts
+      - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.os }}-artifacts
-          path: ./Runtime/bin/Desktop
+          name: Quantum-${{ inputs.version }}-${{ matrix.name }}
+          path: artifacts/${{ matrix.name }}
 
   create-release:
-    name: Create Release
-    needs: [publish]
+    name: Create draft release
+    needs: publish
     runs-on: ubuntu-latest
     permissions:
       contents: write
+
     steps:
-      - name: Download all artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v4
         with:
           path: artifacts
 
-      - name: Create Release and Upload Assets
-        uses: softprops/action-gh-release@v1
+      - name: Archive artifacts
+        run: |
+          for directory in artifacts/*; do
+            tar -czf "${directory}.tar.gz" -C "$directory" .
+          done
+
+      - name: Create release
+        uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ github.event.inputs.version }}
-          name: Release v${{ github.event.inputs.version }}
+          tag_name: v${{ inputs.version }}
+          name: Quantum ${{ inputs.version }}
           draft: true
           prerelease: false
-          files: |
-            artifacts/**/*Setup*.exe
-            artifacts/**/*.AppImage
-            artifacts/**/*.deb
-            artifacts/**/*.dmg
-          fail_on_unmatched_files: true
+          files: artifacts/*.tar.gz

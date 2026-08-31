@@ -1,0 +1,24 @@
+@inject PluginCatalog PluginCatalog
+@inject IJSRuntime JavaScript
+
+@code {
+    private bool _injected;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!firstRender || _injected)
+        {
+            return;
+        }
+
+        _injected = true;
+        var contributions = PluginCatalog.Plugins.Select(plugin => new
+        {
+            PluginId = plugin.Manifest.Id.Value,
+            plugin.Manifest.Web.Head,
+            plugin.Manifest.Web.PostBlazor
+        });
+
+        await JavaScript.InvokeVoidAsync("quantum.plugins.applyContributions", contributions);
+    }
+}

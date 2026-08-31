@@ -1,0 +1,33 @@
+@namespace Quantum.ExamplePlugin.Pages
+@using Quantum.ExamplePlugin
+@using Microsoft.AspNetCore.Components.Web
+@inject IExamplePluginState State
+
+<PageTitle>示例插件 · Quantum</PageTitle>
+
+<section class="example-plugin">
+    <p class="example-kicker">FIRST-CLASS PLUGIN</p>
+    <h1>页面来自独立 DLL。</h1>
+    <p class="example-lead">
+        这个组件、服务、样式和脚本都由 <code>quantum.plugin.example</code> 提供，
+        宿主只负责组合与受控加载。
+    </p>
+
+    <div class="example-grid">
+        <article>
+            <span>APPLICATION PART</span>
+            <strong>NOF</strong>
+            <p>服务由插件程序集中的 AutoInject 元数据注册。</p>
+        </article>
+        <article>
+            <span>LOAD CONTEXT</span>
+            <strong>ALC</strong>
+            <p>第三方依赖在插件自己的可回收上下文中解析。</p>
+        </article>
+        <article>
+            <span>STARTED AT</span>
+            <strong>@(State.StartedAt?.ToString("HH:mm:ss") ?? "等待中")</strong>
+            <p>初始化通过 NOF Initialization Step 驱动。</p>
+        </article>
+    </div>
+</section>

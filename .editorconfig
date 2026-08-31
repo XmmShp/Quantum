@@ -15,6 +15,9 @@ charset = utf-8
 indent_style = space
 indent_size = 4
 
+[*.cs]
+dotnet_diagnostic.IDE0005.severity = warning
+
 # XML project files
 [*.{csproj,vbproj,vcxproj,vcxproj.filters,proj,projitems,shproj}]
 indent_size = 2

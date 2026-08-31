@@ -1,0 +1,23 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <NofVersion>11.0.0-nightly.1376901.73dcff26</NofVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.20" />
+    <PackageVersion Include="Microsoft.Extensions.FileProviders.Physical" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Debug" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageVersion Include="NOF.Abstraction" Version="$(NofVersion)" />
+    <PackageVersion Include="NOF.Application" Version="$(NofVersion)" />
+    <PackageVersion Include="NOF.Contract" Version="$(NofVersion)" />
+    <PackageVersion Include="NOF.Domain" Version="$(NofVersion)" />
+    <PackageVersion Include="NOF.Hosting.Maui" Version="$(NofVersion)" />
+    <PackageVersion Include="NOF.Infrastructure" Version="$(NofVersion)" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+</Project>

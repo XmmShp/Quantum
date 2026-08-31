@@ -1,0 +1,33 @@
+@page "/{**PluginPath}"
+@inject PluginCatalog PluginCatalog
+@inject NavigationManager NavigationManager
+
+@if (_route is null)
+{
+    <div class="empty-state">
+        <p class="eyebrow">PLUGIN ROUTE</p>
+        <h1>插件页面不存在</h1>
+        <p>没有插件为 <code>@CurrentPath</code> 注册页面。</p>
+        <a class="primary-button" href="/">返回首页</a>
+    </div>
+}
+else
+{
+    <DynamicComponent Type="_route.ComponentType" />
+}
+
+@code {
+    [Parameter]
+    public string? PluginPath { get; set; }
+
+    private PluginRouteRegistration? _route;
+
+    private string CurrentPath => $"/{PluginPath ?? string.Empty}".TrimEnd('/');
+
+    protected override void OnParametersSet()
+    {
+        var relativePath = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
+        var path = $"/{relativePath.Split('?', '#')[0]}";
+        _route = PluginCatalog.FindRoute(path);
+    }
+}

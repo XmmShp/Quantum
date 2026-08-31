@@ -1,0 +1,74 @@
+.example-plugin {
+  --plugin-accent: #ff6b55;
+  max-width: 920px;
+}
+
+.example-kicker {
+  margin: 0;
+  color: var(--plugin-accent);
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.16em;
+}
+
+.example-plugin h1 {
+  max-width: 720px;
+  margin: 12px 0 18px;
+  color: #252039;
+  font-size: clamp(44px, 6vw, 70px);
+  line-height: 1.04;
+  letter-spacing: -0.06em;
+}
+
+.example-lead {
+  max-width: 700px;
+  color: #746f80;
+  font-size: 17px;
+  line-height: 1.75;
+}
+
+.example-lead code {
+  padding: 3px 7px;
+  border-radius: 7px;
+  color: #b73f30;
+  background: #fff0ed;
+}
+
+.example-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 16px;
+  margin-top: 42px;
+}
+
+.example-grid article {
+  min-height: 210px;
+  padding: 24px;
+  border: 1px solid rgba(66, 53, 93, 0.09);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.88);
+  box-shadow: 0 18px 48px rgba(47, 40, 76, 0.06);
+}
+
+.example-grid span,
+.example-grid p {
+  color: #8a8494;
+  font-size: 11px;
+}
+
+.example-grid span {
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.example-grid strong {
+  display: block;
+  margin: 30px 0 18px;
+  color: #332b45;
+  font-size: 28px;
+  letter-spacing: -0.04em;
+}
+
+.example-grid p {
+  line-height: 1.65;
+}

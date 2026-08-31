@@ -4,7 +4,11 @@
       "src": [
         {
           "files": [
-            "SDK/Quantum.Sdk/**.csproj"
+            "Src/Quantum.Domain/**.csproj",
+            "Src/Quantum.Contract/**.csproj",
+            "SDK/Quantum.Plugin.Abstractions/**.csproj",
+            "Src/Quantum.Application/**.csproj",
+            "Src/Quantum.Infrastructure/**.csproj"
           ],
           "src": "."
         }
