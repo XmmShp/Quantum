@@ -57,6 +57,15 @@ dotnet build quantum/src/Quantum/Quantum.csproj \
   -f net10.0-maccatalyst
 ```
 
+Windows 启动（PowerShell）：
+
+```powershell
+dotnet run --project quantum/src/Quantum/Quantum.csproj `
+  --framework net10.0-windows10.0.19041.0
+```
+
+Windows Debug 构建使用未打包、自包含的 Windows App SDK 模式，可直接从工作区启动，无需预先安装对应版本的 Windows App Runtime。
+
 Debug 构建会把示例插件暂存到宿主输出目录，便于本地调试与独立加载测试。也可以显式指定宿主有权访问的插件根目录：
 
 ```bash
