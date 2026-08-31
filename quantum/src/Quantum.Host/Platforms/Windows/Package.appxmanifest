@@ -5,7 +5,7 @@
   xmlns:uap="http://schemas.microsoft.com/appx/manifest/uap/windows10"
   xmlns:rescap="http://schemas.microsoft.com/appx/manifest/foundation/windows10/restrictedcapabilities"
   IgnorableNamespaces="uap rescap">
-  <Identity Name="io.quantum.desktop" Publisher="CN=Quantum" Version="2.0.0.0" />
+  <Identity Name="io.quantum.desktop" Publisher="CN=Quantum" Version="0.1.0.0" />
   <mp:PhoneIdentity PhoneProductId="3d832e07-356d-442f-9d45-c89343285d91" PhonePublisherId="00000000-0000-0000-0000-000000000000" />
   <Properties>
     <DisplayName>Quantum</DisplayName>

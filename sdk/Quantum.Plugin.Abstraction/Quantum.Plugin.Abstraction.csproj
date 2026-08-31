@@ -6,7 +6,7 @@
     <AssemblyName>Quantum.Plugin.Abstraction</AssemblyName>
     <PackageId>Quantum.Plugin.Abstraction</PackageId>
     <Description>The stable .NET plugin ABI for Quantum.</Description>
-    <Version>2.0.0-alpha.1</Version>
+    <Version>0.1.0-alpha.1</Version>
     <Authors>Quantum contributors</Authors>
     <PackageReadmeFile>README.md</PackageReadmeFile>
     <RepositoryUrl>https://github.com/XmmShp/Quantum</RepositoryUrl>

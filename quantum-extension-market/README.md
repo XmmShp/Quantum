@@ -1,8 +1,6 @@
 # Quantum Extension Market
 
-Quantum Extension Market 是 Quantum 的插件发布、审核、检索与下载服务。项目基于 .NET 10 和 NOF 重构，使用 Clean Architecture 分层，所有业务 Contract 通过 `POST /rpc` 暴露为 JSON-RPC 2.0。
-
-本目录完整承接了 [XmmShp/Quantum-ExtensionMarket](https://github.com/XmmShp/Quantum-ExtensionMarket) 的实际功能范围，并以其提交 `2c5c4b1fdeaadf75f2057be57594f67467f4de8d` 为迁移基线。旧仓库的 Controller/Service 单体实现没有原样保留；用户、插件、版本、审核、下载、兼容性与审计能力均已映射为 NOF Domain 与 Handler。详细映射见 [UPSTREAM.md](UPSTREAM.md)。
+Quantum Extension Market 是 Quantum 的插件发布、审核、检索与下载服务。项目基于 .NET 10 和 NOF，使用 Clean Architecture 分层，所有业务 Contract 通过 `POST /rpc` 暴露为 JSON-RPC 2.0。
 
 ## 目录
 
@@ -103,4 +101,4 @@ dotnet test quantum-extension-market/tests/Quantum.ExtensionMarket.Tests/Quantum
 
 ## 许可证
 
-上游代码为 MIT，版权声明与许可文本保留在 [LICENSE](LICENSE)。
+项目采用 MIT 许可证，详见 [LICENSE](LICENSE)。

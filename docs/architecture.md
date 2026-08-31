@@ -1,6 +1,6 @@
-# Quantum 2.0 架构基线
+# Quantum 架构
 
-## 目标结构
+## 组件结构
 
 ```text
 Quantum.Host (MAUI)
@@ -41,7 +41,7 @@ Quantum.Host (MAUI)
 
 共享 ABI 是类型一致性的必要条件。若插件私载一份 `IQuantumPlugin` 所在程序集，即使命名空间与类型名相同，宿主仍无法把它识别为同一接口。
 
-虽然 ALC 设为 collectible，V1 不调用 `Unload`。Blazor 组件类型、DI descriptor、事件和 JS 引用都可能持有程序集；真正热卸载需要完整的引用追踪与回收验证。
+虽然 ALC 设为 collectible，当前不会在进程运行期间调用 `Unload`。Blazor 组件类型、DI descriptor、事件和 JS 引用都可能持有程序集，因此插件更新和卸载需要重启应用。
 
 Mac Catalyst 默认 Release 为 AOT-only，外部 IL 程序集无法动态加载。`Quantum.Host` 因此在 Catalyst 目标上强制 `UseInterpreter=true`，并以 `MtouchLink=None` 保留动态 Application Part 依赖的程序集与元数据；移除这些约束会导致原生运行时终止或裁剪后的无效程序。该选择会影响性能、包体和发行政策，面向 Mac App Store 前必须单独评审动态插件模式。Windows 目标继续使用常规 CoreCLR。
 
@@ -49,10 +49,10 @@ Mac Catalyst 默认 Release 为 AOT-only，外部 IL 程序集无法动态加载
 
 MAUI Blazor Hybrid 没有 ASP.NET Core 的 `UseStaticFiles`。Quantum 通过继承 `BlazorWebView.CreateFileProvider`，把宿主资源与插件物理目录组合为 `CompositeFileProvider`。插件资源的虚拟前缀固定为 `_content/{pluginId}`，避免将文件复制到宿主 `wwwroot`。
 
-## 已知边界
+## 运行边界
 
-- 只有桌面端加载插件；移动端若加入产品，只消费桌面端产生的结果。
+- 只有桌面端加载 DLL 插件；移动端不执行插件程序集。
 - 插件更新和卸载需要重启。
-- 当前启动扫描只读取本地目录，不包含市场下载、压缩包事务、原子替换和签名验证。
-- HTML/JS 注入当前假定插件已受信任。生产发行前必须把签名、审核结果和权限授权接入安装管线。
-- MAUI 官方桌面目标是 Windows 与 macOS；Quantum 2.0 不再承诺 Electron 时代的 Linux 桌面外壳。
+- 桌面宿主从本地 `Modules` 目录加载插件，不直接执行市场下载和安装事务。
+- HTML/JS 注入属于受信任代码边界，只应加载来源可信且经过审核的插件。
+- 桌面宿主支持 Windows 与 macOS。

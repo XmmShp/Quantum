@@ -1,6 +1,6 @@
-# 如何开发 Quantum 2.0 插件
+# Quantum 插件开发指南
 
-Quantum 2.0 插件是一个 `net10.0` DLL，加上一份 `plugin.json` 和可选的 `wwwroot`。宿主不会再反射查找 Quantum 1.0 的 `IModule`；服务注册由 NOF Application Part 和 `AutoInject` 完成。
+Quantum 插件由一个 `net10.0` DLL、一份 `plugin.json` 和可选的 `wwwroot` 组成。服务注册由 NOF Application Part 和 `AutoInject` 完成。
 
 ## 1. 创建项目
 
@@ -33,10 +33,10 @@ Quantum 2.0 插件是一个 `net10.0` DLL，加上一份 `plugin.json` 和可选
 ```json
 {
   "id": "quantum.plugin.example",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "entryAssembly": "Quantum.ExamplePlugin.dll",
   "dependencies": [
-    { "id": "quantum.plugin.core", "minVersion": "1.0.0" }
+    { "id": "quantum.plugin.core", "minVersion": "0.1.0" }
   ],
   "permissions": [
     { "name": "files.read", "required": true }
@@ -124,7 +124,7 @@ public sealed class ExampleState : IQuantumPlugin, IExampleState
     -> _content/<plugin-id>/site.css
 ```
 
-`head` 和 `postBlazor` 接受 HTML 片段。当前能力等同于宿主内执行代码，只应向已审核、已签名的插件开放；签名验证会在 M4 安装事务中补齐。
+`head` 和 `postBlazor` 接受 HTML 片段。该能力等同于在宿主内执行代码，只应安装来源可信且经过审核的插件。
 
 ## 6. 调试
 
@@ -150,6 +150,6 @@ Modules/
         └── main.js
 ```
 
-插件依赖优先从自身目录解析；`System.*`、`Microsoft.*`、`NOF.*` 与 Quantum 插件 ABI 始终与宿主共享。V1 更新、卸载后需要重启应用。
+插件依赖优先从自身目录解析；`System.*`、`Microsoft.*`、`NOF.*` 与 Quantum 插件 ABI 始终与宿主共享。插件更新或卸载后需要重启应用。
 
-Mac Catalyst 应用运行在沙箱中，不能直接扫描普通工作区目录。macOS 调试时请把插件复制到应用数据的 `Modules` 目录，或通过后续插件管理器完成安装；环境变量指定的目录不可访问时，宿主会回退到应用数据目录。
+Mac Catalyst 应用运行在沙箱中，不能直接扫描普通工作区目录。macOS 调试时请把插件复制到应用数据的 `Modules` 目录；环境变量指定的目录不可访问时，宿主会回退到应用数据目录。

@@ -1,61 +1,23 @@
-# Auto detect text files and perform LF normalization
-* text=auto
+* text=auto eol=lf
 
-# Custom for Visual Studio
-*.cs     diff=csharp
-*.sln    merge=union
-*.csproj merge=union
-*.vbproj merge=union
-*.fsproj merge=union
-*.dbproj merge=union
+# Windows command files
+*.bat text eol=crlf
+*.cmd text eol=crlf
+*.ps1 text eol=crlf
 
-# Standard to msysgit
-*.doc  diff=astextplain
-*.DOC  diff=astextplain
-*.docx diff=astextplain
-*.DOCX diff=astextplain
-*.dot  diff=astextplain
-*.DOT  diff=astextplain
-*.pdf  diff=astextplain
-*.PDF  diff=astextplain
-*.rtf  diff=astextplain
-*.RTF  diff=astextplain
+# Diff hints
+*.cs diff=csharp
+*.md diff=markdown
 
-# Images
-*.jpg  binary
-*.png  binary
-*.gif  binary
-*.ico  binary
-*.svg  text
-
-# Fonts
-*.ttf   binary
-*.eot   binary
-*.woff  binary
+# Binary assets
+*.doc binary
+*.docx binary
+*.eot binary
+*.gif binary
+*.ico binary
+*.jpg binary
+*.pdf binary
+*.png binary
+*.ttf binary
+*.woff binary
 *.woff2 binary
-
-# RC files and VS code files
-*.rc    text
-*.sln   text eol=crlf
-*.bat   text eol=crlf
-*.cmd   text eol=crlf
-*.ps1   text eol=crlf
-
-# Web
-*.css   text
-*.html  text
-*.js    text
-*.json  text
-*.ts    text
-*.tsx   text
-*.xml   text
-*.yaml  text
-*.yml   text
-
-# Documentation
-*.md         text diff=markdown
-*.txt        text
-*.sql        text
-CHANGELOG    text
-LICENSE      text
-README       text

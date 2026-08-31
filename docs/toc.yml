@@ -1,4 +1,4 @@
-- name: 如何开发插件
-  href: 如何开发模块.md
-- name: Quantum 2.0 架构
-  href: architecture-2.0.md
+- name: 插件开发指南
+  href: plugin-development.md
+- name: 架构说明
+  href: architecture.md

@@ -13,7 +13,7 @@ body:
     attributes:
       label: 版本
       description: 您使用的是哪个版本？
-      placeholder: "例如：v1.0.0"
+      placeholder: "例如：提交哈希、发布标签或构建编号"
     validations:
       required: true
 
@@ -55,7 +55,8 @@ body:
       description: |
         例如：
          - 操作系统: Windows 11
-         - Node.js 版本: 20.0.0
+         - .NET SDK: 10.0.x
+         - MAUI workload: 已安装/未安装
       render: shell
     validations:
       required: true
