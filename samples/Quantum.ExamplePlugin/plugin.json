@@ -3,6 +3,12 @@
   "version": "0.1.0",
   "entryAssembly": "Quantum.ExamplePlugin.dll",
   "dependencies": [],
+  "integrations": [
+    {
+      "id": "quantum.plugin.theme",
+      "minVersion": "0.1.0"
+    }
+  ],
   "permissions": [
     {
       "name": "ui.navigation",

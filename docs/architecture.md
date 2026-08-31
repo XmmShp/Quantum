@@ -23,13 +23,14 @@ Quantum (NOF MAUI Host)
 
 1. `NOFMauiAppBuilder.Create()` 创建 NOF/MAUI composition root。
 2. 扫描 `Modules/*/plugin.json`，执行 schema 与文件预校验。
-3. 删除缺失依赖、版本不满足和重复 ID 的候选；对剩余候选拓扑排序。
-4. 每个候选创建独立的 collectible `PluginLoadContext`，加载入口 DLL 并解析页面类型。
-5. 每个成功程序集调用 `AddApplicationPart`，由 NOF 注册 `AutoInject` 服务和 Handler。
-6. `BuildAsync` 执行 NOF 服务注册与 Initialization Step。
-7. MAUI 创建 `BlazorWebView`；Router、菜单、静态文件提供器和 Web 注入读取同一份只读 `PluginCatalog`。
+3. 按 `dependencies` 删除强前置缺失、版本不满足和硬循环的候选及其下游。
+4. 对剩余插件拓扑排序；兼容且已安装的 `integrations` 形成软排序偏好，但不形成加载门槛。
+5. 每个候选创建独立的 collectible `PluginLoadContext`，加载入口 DLL 并解析页面类型。
+6. 每个成功程序集调用 `AddApplicationPart`，由 NOF 注册 `AutoInject` 服务和 Handler。
+7. `BuildAsync` 执行 NOF 服务注册与 Initialization Step。
+8. MAUI 创建 `BlazorWebView`；Router、菜单、静态文件提供器和 Web 注入读取同一份只读 `PluginCatalog`。
 
-加载失败按插件隔离；依赖失败的下游插件不会继续加载。相互依赖的插件会被标记为循环依赖。
+加载失败按插件隔离；强前置失败的下游插件不会继续加载。弱联动缺失、版本不兼容或形成软循环时，插件仍然加载，规划器只放弃无法满足的顺序偏好。最终状态通过 SDK 的 `IQuantumPluginEnvironment` 暴露，插件可在启动时选择独立模式或联动模式。
 
 ## ALC 边界
 

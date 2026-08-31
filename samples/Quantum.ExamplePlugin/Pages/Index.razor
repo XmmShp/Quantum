@@ -29,5 +29,10 @@
             <strong>@(State.StartedAt?.ToString("HH:mm:ss") ?? "等待中")</strong>
             <p>初始化通过 NOF Initialization Step 驱动。</p>
         </article>
+        <article>
+            <span>OPTIONAL INTEGRATION</span>
+            <strong>@(State.ThemeIntegrationActive ? "ACTIVE" : "STANDALONE")</strong>
+            <p>弱联动缺失时插件仍可独立运行。</p>
+        </article>
     </div>
 </section>

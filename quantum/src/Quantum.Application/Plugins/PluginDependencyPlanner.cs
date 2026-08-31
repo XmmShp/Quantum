@@ -43,41 +43,57 @@ public sealed class PluginDependencyPlanner
             }
         }
 
-        var dependencyCount = active.ToDictionary(
+        var requiredDependencyCount = active.ToDictionary(
             static pair => pair.Key,
             static pair => pair.Value.Manifest.Dependencies.Count);
-        var dependents = active.Keys.ToDictionary(static id => id, static _ => new List<PluginId>());
+        var requiredDependents = active.Keys.ToDictionary(static id => id, static _ => new List<PluginId>());
         foreach (var candidate in active.Values)
         {
             foreach (var dependency in candidate.Manifest.Dependencies)
             {
-                dependents[dependency.Id].Add(candidate.Manifest.Id);
+                requiredDependents[dependency.Id].Add(candidate.Manifest.Id);
             }
         }
 
-        var ready = new PriorityQueue<PluginId, string>(StringComparer.Ordinal);
-        foreach (var pair in dependencyCount.Where(static pair => pair.Value == 0))
-        {
-            ready.Enqueue(pair.Key, pair.Key.Value);
-        }
+        var integrationPrerequisites = active.ToDictionary(
+            static pair => pair.Key,
+            pair => pair.Value.Manifest.Integrations
+                .Where(integration => IsCompatibleIntegration(integration, active))
+                .Select(static integration => integration.Id)
+                .ToHashSet());
 
         var ordered = new List<PluginCandidate>(active.Count);
-        while (ready.TryDequeue(out var pluginId, out _))
+        var remaining = active.Keys.ToHashSet();
+        while (remaining.Count > 0)
         {
-            ordered.Add(active[pluginId]);
-            foreach (var dependent in dependents[pluginId])
+            var ready = remaining
+                .Where(pluginId => requiredDependencyCount[pluginId] == 0)
+                .OrderBy(static pluginId => pluginId.Value, StringComparer.Ordinal)
+                .ToArray();
+            if (ready.Length == 0)
             {
-                dependencyCount[dependent]--;
-                if (dependencyCount[dependent] == 0)
-                {
-                    ready.Enqueue(dependent, dependent.Value);
-                }
+                break;
+            }
+
+            var preferred = ready
+                .Where(pluginId => integrationPrerequisites[pluginId].All(
+                    integrationId => !remaining.Contains(integrationId)))
+                .ToArray();
+            var pluginId = preferred.Length > 0 ? preferred[0] : ready[0];
+
+            ordered.Add(active[pluginId]);
+            remaining.Remove(pluginId);
+            foreach (var dependent in requiredDependents[pluginId])
+            {
+                requiredDependencyCount[dependent]--;
             }
         }
 
-        foreach (var pluginId in active.Keys.Except(ordered.Select(static candidate => candidate.Manifest.Id)))
+        foreach (var pluginId in remaining.OrderBy(static pluginId => pluginId.Value, StringComparer.Ordinal))
         {
-            failures.Add(new PluginLoadFailure(pluginId, "Plugin dependencies contain a cycle."));
+            failures.Add(new PluginLoadFailure(
+                pluginId,
+                "Required plugin dependencies contain a cycle or depend on one."));
         }
 
         return new PluginLoadPlan(ordered, failures);
@@ -102,6 +118,12 @@ public sealed class PluginDependencyPlanner
 
         return null;
     }
+
+    private static bool IsCompatibleIntegration(
+        PluginIntegration integration,
+        IReadOnlyDictionary<PluginId, PluginCandidate> active)
+        => active.TryGetValue(integration.Id, out var candidate)
+            && candidate.Manifest.Version.CompareTo(integration.MinimumVersion) >= 0;
 }
 
 public sealed record PluginLoadPlan(

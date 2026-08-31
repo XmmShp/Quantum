@@ -38,6 +38,9 @@ Quantum 插件由一个 `net10.0` DLL、一份 `plugin.json` 和可选的 `wwwro
   "dependencies": [
     { "id": "quantum.plugin.core", "minVersion": "0.1.0" }
   ],
+  "integrations": [
+    { "id": "quantum.plugin.theme", "minVersion": "0.1.0" }
+  ],
   "permissions": [
     { "name": "files.read", "required": true }
   ],
@@ -63,13 +66,20 @@ Quantum 插件由一个 `net10.0` DLL、一份 `plugin.json` 和可选的 `wwwro
 }
 ```
 
+插件关系分为两类：
+
+| 字段 | 语义 | 缺失或版本不足 | 排序 |
+| --- | --- | --- | --- |
+| `dependencies` | 强前置 | 当前插件加载失败，依赖它的插件继续级联失败 | 前置必须先加载；硬循环失败 |
+| `integrations` | 弱联动 | 当前插件继续以独立模式加载 | 兼容目标尽量先加载；软循环按稳定顺序打破 |
+
 约束：
 
 - `id` 使用小写字母、数字、点、下划线或连字符。
 - `version` 与 `minVersion` 使用 SemVer；预发布版本参与正确的先后比较。
 - `entryAssembly` 只能是当前插件目录下的 DLL 文件名，不能包含路径。
 - `component` 必须是入口程序集内实现 `IComponent` 的完整类型名。
-- 路由、依赖和权限不能重复；未知 manifest 字段会被拒绝，避免拼写错误静默失效。
+- 同一目标不能同时出现在 `dependencies` 和 `integrations`，各类关系、路由和权限不能重复；未知 manifest 字段会被拒绝，避免拼写错误静默失效。
 
 ## 3. 注册服务和启动逻辑
 
@@ -94,12 +104,18 @@ public sealed class ExampleState : IQuantumPlugin, IExampleState
     public Task StartAsync(IServiceProvider services, CancellationToken cancellationToken = default)
     {
         StartedAt = DateTimeOffset.Now;
+        var environment = services.GetRequiredService<IQuantumPluginEnvironment>();
+        if (environment.IsIntegrationActive("quantum.plugin.example", "quantum.plugin.theme"))
+        {
+            // 注册或启动只在联动目标可用时才需要的适配逻辑。
+        }
+
         return Task.CompletedTask;
     }
 }
 ```
 
-`IQuantumPlugin.StartAsync` 由宿主的 NOF Initialization Step 调用。单个插件的启动异常会被记录，但不会阻止桌面宿主启动。插件也可以直接提供 NOF 支持的 Handler 和 Initialization Step。
+`IQuantumPlugin.StartAsync` 由宿主的 NOF Initialization Step 调用。`IQuantumPluginEnvironment` 同时提供只读的 `LoadedPlugins` 和 `IsPluginLoaded`，但只有 manifest 中声明且版本兼容的关系才会被 `IsIntegrationActive` 认可。单个插件的启动异常会被记录，但不会阻止桌面宿主启动。插件也可以直接提供 NOF 支持的 Handler 和 Initialization Step。
 
 ## 4. 提供页面
 
@@ -150,6 +166,6 @@ Modules/
         └── main.js
 ```
 
-插件依赖优先从自身目录解析；`System.*`、`Microsoft.*`、`NOF.*` 与 Quantum 插件 ABI 始终与宿主共享。插件更新或卸载后需要重启应用。
+插件程序集依赖优先从自身目录解析；`System.*`、`Microsoft.*`、`NOF.*` 与 Quantum 插件 ABI 始终与宿主共享。跨插件接口应放在双方共同引用的稳定 Contract/SDK 程序集中，不能依赖两个 ALC 中恰好同名的私有类型。插件更新或卸载后需要重启应用。
 
 Mac Catalyst 应用运行在沙箱中，不能直接扫描普通工作区目录。macOS 调试时请把插件复制到应用数据的 `Modules` 目录；环境变量指定的目录不可访问时，宿主会回退到应用数据目录。
