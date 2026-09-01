@@ -397,6 +397,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                     var runtime = await PluginRuntime.CreateAsync(
                             candidate,
                             SessionShadowRoot,
+                            _options.DatabasePath,
                             _catalog,
                             _hostServices!,
                             _logger)

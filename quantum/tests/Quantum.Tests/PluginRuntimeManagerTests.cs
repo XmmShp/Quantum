@@ -378,7 +378,10 @@ public sealed class PluginRuntimeManagerTests
         public PluginRuntimeManager CreateManager(ILogger<PluginRuntimeManager>? logger = null)
             => new(
                 Catalog,
-                new PluginRuntimeOptions(ModulesRoot, ShadowRoot),
+                new PluginRuntimeOptions(
+                    ModulesRoot,
+                    ShadowRoot,
+                    Path.Combine(_root, "quantum.db")),
                 logger: logger ?? NullLogger<PluginRuntimeManager>.Instance);
 
         public void WriteManifest(string version)

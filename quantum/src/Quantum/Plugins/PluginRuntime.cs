@@ -1,7 +1,9 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using NOF.Infrastructure;
 using Quantum.Plugin.Abstraction;
+using Quantum.Plugins.Persistence;
 
 namespace Quantum.Plugins;
 
@@ -186,11 +188,13 @@ internal sealed class PluginRuntime
     public static async Task<PluginRuntime> CreateAsync(
         PluginCandidate candidate,
         string sessionShadowRoot,
+        string databasePath,
         PluginCatalog catalog,
         IServiceProvider hostServices,
         ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(candidate);
+        ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
         ArgumentNullException.ThrowIfNull(catalog);
         ArgumentNullException.ThrowIfNull(hostServices);
 
@@ -265,6 +269,12 @@ internal sealed class PluginRuntime
             CopyHostService<ILoggerFactory>(hostServices, serviceCollection);
             serviceCollection.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
             InitializePluginServices(assembly, serviceCollection);
+            var usesDatabase = serviceCollection.Any(static descriptor =>
+                descriptor.ServiceType == typeof(IDbContextModelCreatingContributor));
+            if (usesDatabase)
+            {
+                serviceCollection.AddQuantumPluginPersistence(databasePath);
+            }
             services = serviceCollection.BuildServiceProvider(new ServiceProviderOptions
             {
                 ValidateOnBuild = true,
@@ -275,6 +285,13 @@ internal sealed class PluginRuntime
             var ownedScope = services.CreateAsyncScope();
             ownedScope.ServiceProvider.ResolveDaemonServices();
             lifecycleScope = ownedScope;
+            if (usesDatabase)
+            {
+                await ownedScope.ServiceProvider
+                    .GetRequiredService<PluginDatabaseInitializer>()
+                    .InitializeAsync(CancellationToken.None)
+                    .ConfigureAwait(false);
+            }
             var loadedPlugin = new LoadedPlugin(
                 candidate.Manifest,
                 shadowRoot,
@@ -366,7 +383,7 @@ internal sealed class PluginRuntime
             catch (TargetInvocationException exception) when (exception.InnerException is not null)
             {
                 throw new InvalidOperationException(
-                    $"Plugin initializer '{type.FullName}' failed.",
+                    $"Plugin initializer '{type.FullName}' failed: {exception.InnerException.Message}",
                     exception.InnerException);
             }
         }

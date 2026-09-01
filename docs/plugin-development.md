@@ -256,6 +256,46 @@ var subscription = events.Subscribe(
 
 `head` 和 `postBlazor` 接受 HTML 片段。该能力等同于在宿主内执行代码，只应安装来源可信且经过审核的插件。
 
+动态插件不会在宿主编译期作为 Razor 项目引用，因此 CSS isolation 生成的 project bundle 需要由插件项目复制到输出目录的
+`wwwroot`，再通过 manifest 的 `web.head` 引用。`samples/Quantum.ExampleCalendarPlugin` 展示了完整做法：
+`Calendar.razor.css` 构建为 `Quantum.ExampleCalendarPlugin.bundle.scp.css`，组件的 scope attribute 与 bundle
+选择器仍由 Razor SDK 自动生成。
+
+同一个日历示例也演示了宿主托管的共享持久化。`Application/CalendarItemApplicationService` 只依赖
+`NOF.Domain.IRepository<CalendarItem>` 与 `NOF.Application.IDbContext`；插件自身最多引用 `NOF.Infrastructure`，
+不引用 EF Core、SQLite provider 或宿主持久化项目。插件通过纯 NOF 抽象贡献模型：
+
+```csharp
+internal sealed class CalendarDbContextModelCreatingContributor
+    : IDbContextModelCreatingContributor
+{
+    public void Configure(IDbModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<CalendarItem>(entity =>
+        {
+            entity.ToTable("CalendarPluginItems");
+            entity.IsHostOnly();
+            entity.HasKey(item => item.Id);
+            entity.Property(item => item.Title).HasMaxLength(120).IsRequired();
+        });
+    }
+}
+```
+
+插件初始化器将 contributor 注册为 `IDbContextModelCreatingContributor`。Quantum 宿主检测到该注册后，才向该插件的
+私有 DI 容器加入 NOF EF adapter，并在调用 `IQuantumPlugin.StartAsync` 前创建缺失的表；页面通过构造注入的应用服务
+读写事项，`StartAsync` 只负责首次示例数据。所有插件连接同一个宿主数据库：
+
+```text
+<ApplicationData>/quantum.db
+```
+
+每个插件仍使用自己的 DbContext/DI 生命周期和只包含本插件实体的 EF 模型，以免宿主根容器持有可卸载程序集；它们共享的是
+物理 SQLite 文件。表名位于全局命名空间，插件应使用稳定且包含插件标识的表名，避免与其他插件冲突。宿主关闭 SQLite
+连接池和 EF provider cache，确保 DbContext、contributor 与 collectible ALC 能一起释放。
+
+不要把数据库写入 `IQuantumPluginRuntimeContext.RootPath`；该路径属于当前运行代的只读影子副本，热升级或卸载后会被清理。
+
 目录热切换时，宿主会移除旧 DOM 节点并应用新片段；已经执行的脚本副作用不会因删除 `<script>` 自动撤销。插件若注册了全局事件、定时器或 JS/.NET 引用，必须通过 `StopAsync` 调用自己的清理逻辑。
 
 ## 7. 调试

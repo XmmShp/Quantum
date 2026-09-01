@@ -1,0 +1,24 @@
+{
+  "id": "quantum.plugin.example-calendar",
+  "version": "0.3.0",
+  "entryAssembly": "Quantum.ExampleCalendarPlugin.dll",
+  "dependencies": [],
+  "integrations": [],
+  "ui": {
+    "routes": [
+      {
+        "path": "/plugins/calendar",
+        "component": "Quantum.ExampleCalendarPlugin.Pages.Calendar",
+        "title": "日历",
+        "icon": "日",
+        "order": 105
+      }
+    ]
+  },
+  "web": {
+    "head": [
+      "<link rel=\"stylesheet\" href=\"_content/quantum.plugin.example-calendar/Quantum.ExampleCalendarPlugin.bundle.scp.css\">"
+    ],
+    "postBlazor": []
+  }
+}

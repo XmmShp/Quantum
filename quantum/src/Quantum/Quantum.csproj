@@ -31,11 +31,16 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="NOF.Abstraction" />
+    <PackageReference Include="NOF.Application" />
     <PackageReference Include="NOF.Contract" />
+    <PackageReference Include="NOF.Domain" />
     <PackageReference Include="NOF.Infrastructure" />
+    <PackageReference Include="NOF.Infrastructure.EntityFrameworkCore" />
   </ItemGroup>
 
   <ItemGroup Condition="'$(TargetFramework)' != 'net10.0'">
@@ -52,10 +57,10 @@
     <InternalsVisibleTo Include="Quantum.Tests" />
   </ItemGroup>
 
-  <Target Name="BuildExamplePlugin"
+  <Target Name="BuildExamplePlugins"
           BeforeTargets="Build"
           Condition="'$(Configuration)' == 'Debug' And '$(TargetFramework)' != '' And '$(TargetFramework)' != 'net10.0'">
-    <MSBuild Projects="$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExamplePlugin\Quantum.ExamplePlugin.csproj"
+    <MSBuild Projects="$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExamplePlugin\Quantum.ExamplePlugin.csproj;$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExampleCalendarPlugin\Quantum.ExampleCalendarPlugin.csproj"
              Targets="Restore;Build"
              Properties="Configuration=$(Configuration);TargetFramework=net10.0"
              RemoveProperties="RuntimeIdentifier;TargetFrameworks" />
@@ -78,6 +83,26 @@
     <Copy SourceFiles="@(ExamplePluginBinary)" DestinationFolder="$(ExamplePluginTarget)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(ExamplePluginAsset)"
           DestinationFolder="$(ExamplePluginTarget)\wwwroot\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="StageExampleCalendarPlugin"
+          AfterTargets="Build"
+          Condition="'$(Configuration)' == 'Debug' And '$(TargetFramework)' != '' And '$(TargetFramework)' != 'net10.0'">
+    <PropertyGroup>
+      <ExampleCalendarPluginOutput>$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExampleCalendarPlugin\bin\$(Configuration)\net10.0</ExampleCalendarPluginOutput>
+      <ExampleCalendarPluginTarget>$(TargetDir)Modules\quantum.plugin.example-calendar</ExampleCalendarPluginTarget>
+    </PropertyGroup>
+    <ItemGroup>
+      <ExampleCalendarPluginBinary Include="$(ExampleCalendarPluginOutput)\Quantum.ExampleCalendarPlugin.dll" />
+      <ExampleCalendarPluginBinary Include="$(ExampleCalendarPluginOutput)\Quantum.ExampleCalendarPlugin.pdb" Condition="Exists('$(ExampleCalendarPluginOutput)\Quantum.ExampleCalendarPlugin.pdb')" />
+      <ExampleCalendarPluginBinary Include="$(ExampleCalendarPluginOutput)\plugin.json" />
+      <ExampleCalendarPluginAsset Include="$(ExampleCalendarPluginOutput)\wwwroot\**\*" />
+    </ItemGroup>
+    <MakeDir Directories="$(ExampleCalendarPluginTarget)\wwwroot" />
+    <Copy SourceFiles="@(ExampleCalendarPluginBinary)" DestinationFolder="$(ExampleCalendarPluginTarget)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(ExampleCalendarPluginAsset)"
+          DestinationFolder="$(ExampleCalendarPluginTarget)\wwwroot\%(RecursiveDir)"
           SkipUnchangedFiles="true" />
   </Target>
 

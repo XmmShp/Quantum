@@ -35,8 +35,9 @@ sdk/
 │   └── test/                    .NET SDK 独立测试
 └── typescript/                  Web 插件生命周期与互操作类型
 samples/
-├── Quantum.ExamplePlugin/       .NET、Blazor、DI 与静态资源示例
-└── Quantum.ExampleWebPlugin/    纯 TypeScript iframe 插件示例
+├── Quantum.ExamplePlugin/          .NET、Blazor、DI 与静态资源示例
+├── Quantum.ExampleCalendarPlugin/  bundled CSS + 宿主共享 SQLite 的 NOF CRUD 示例
+└── Quantum.ExampleWebPlugin/       纯 TypeScript iframe 插件示例
 docs/                            架构与插件开发文档
 ```
 

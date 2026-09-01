@@ -56,6 +56,7 @@ public static class MauiProgram
         var configuredPath = Environment.GetEnvironmentVariable("QUANTUM_MODULES_PATH");
         var bundledPath = Path.Combine(AppContext.BaseDirectory, "Modules");
         var applicationDataPath = Path.Combine(FileSystem.AppDataDirectory, "Modules");
+        var databasePath = Path.Combine(FileSystem.AppDataDirectory, "quantum.db");
         var preferredPath = !string.IsNullOrWhiteSpace(configuredPath)
             ? Path.GetFullPath(configuredPath)
             : Directory.Exists(bundledPath)
@@ -68,7 +69,8 @@ public static class MauiProgram
             return (
                 new PluginRuntimeOptions(
                     preferredPath,
-                    Path.Combine(FileSystem.CacheDirectory, "PluginShadow")),
+                    Path.Combine(FileSystem.CacheDirectory, "PluginShadow"),
+                    databasePath),
                 []);
         }
         catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
@@ -78,7 +80,8 @@ public static class MauiProgram
                 return (
                     new PluginRuntimeOptions(
                         applicationDataPath,
-                        Path.Combine(FileSystem.CacheDirectory, "PluginShadow")),
+                        Path.Combine(FileSystem.CacheDirectory, "PluginShadow"),
+                        databasePath),
                     [new PluginLoadFailure(
                         null,
                         $"Plugin directory '{preferredPath}' is not accessible.",
@@ -87,9 +90,10 @@ public static class MauiProgram
 
             Directory.CreateDirectory(applicationDataPath);
             return (
-                new PluginRuntimeOptions(
-                    applicationDataPath,
-                    Path.Combine(FileSystem.CacheDirectory, "PluginShadow")),
+                    new PluginRuntimeOptions(
+                        applicationDataPath,
+                        Path.Combine(FileSystem.CacheDirectory, "PluginShadow"),
+                        databasePath),
                 [new PluginLoadFailure(
                     null,
                     $"Plugin directory '{preferredPath}' is not accessible; using application data instead.",
