@@ -75,9 +75,13 @@
                                 @onclick="() => ReloadAsync(plugin.Manifest.Id.Value)">
                             热升级
                         </button>
+                        <button disabled="@IsBusy"
+                                @onclick="() => PrepareDisable(plugin.Manifest.Id.Value)">
+                            禁用
+                        </button>
                         <button class="danger"
                                 disabled="@IsBusy"
-                                @onclick="() => PrepareUnload(plugin.Manifest.Id.Value)">
+                                @onclick="() => PrepareUninstall(plugin.Manifest.Id.Value)">
                             卸载
                         </button>
                     </div>
@@ -87,36 +91,120 @@
     }
 </section>
 
-@if (_pendingUnloadImpact is { } unloadImpact)
+<section class="section-block">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">DISABLED</p>
+            <h2>已禁用插件</h2>
+        </div>
+        <span class="package-limit">文件保存在 Modules/disabled</span>
+    </div>
+
+    @if (_disabledPlugins.Count == 0)
+    {
+        <div class="empty-card compact">
+            <span class="empty-symbol">—</span>
+            <div>
+                <strong>没有已禁用插件</strong>
+                <p>禁用插件后可随时在这里重新启用。</p>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="plugin-list">
+            @foreach (var plugin in _disabledPlugins)
+            {
+                <article class="plugin-row">
+                    <span class="plugin-avatar">@plugin.PluginId[0].ToString().ToUpperInvariant()</span>
+                    <div class="plugin-meta">
+                        <strong>@plugin.PluginId</strong>
+                        <span>v@plugin.Version</span>
+                    </div>
+                    <span class="disabled-pill">已禁用</span>
+                    <div class="plugin-actions">
+                        <button disabled="@IsBusy"
+                                @onclick="() => EnableAsync(plugin.PluginId)">
+                            重新启用
+                        </button>
+                        <button class="danger"
+                                disabled="@IsBusy"
+                                @onclick="() => PrepareUninstall(plugin.PluginId)">
+                            卸载
+                        </button>
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</section>
+
+@if (_pendingDisableImpact is { } disableImpact)
 {
     <div class="dialog-backdrop">
         <section class="unload-dialog"
                  role="alertdialog"
                  aria-modal="true"
-                 aria-labelledby="unload-dialog-title">
-            <p class="eyebrow">UNLOAD PLUGIN</p>
-            <h2 id="unload-dialog-title">确认卸载 @unloadImpact.PluginId？</h2>
-            @if (unloadImpact.DependentPluginIds.Count == 0)
+                 aria-labelledby="disable-dialog-title">
+            <p class="eyebrow">DISABLE PLUGIN</p>
+            <h2 id="disable-dialog-title">确认禁用 @disableImpact.PluginId？</h2>
+            @if (disableImpact.DependentPluginIds.Count == 0)
             {
                 <p>该插件没有下游强依赖插件。</p>
             }
             else
             {
-                <p>以下直接或传递依赖插件会被一起卸载：</p>
+                <p>以下直接或传递强依赖插件会被一起禁用：</p>
                 <ul>
-                    @foreach (var dependentPluginId in unloadImpact.DependentPluginIds)
+                    @foreach (var dependentPluginId in disableImpact.DependentPluginIds)
                     {
                         <li>@dependentPluginId</li>
                     }
                 </ul>
             }
-            <p class="dialog-note">Modules 中的源文件不会被删除，可通过重新扫描恢复。</p>
+            <p class="dialog-note">插件目录会移动到 Modules/disabled，可稍后重新启用。</p>
             <div class="dialog-actions">
-                <button type="button" class="secondary-button" @onclick="CancelUnload">
+                <button type="button" class="secondary-button" @onclick="CancelDisable">
                     取消
                 </button>
-                <button type="button" class="danger-button" @onclick="ConfirmUnloadAsync">
-                    确认卸载
+                <button type="button" class="primary-button" @onclick="ConfirmDisableAsync">
+                    确认禁用
+                </button>
+            </div>
+        </section>
+    </div>
+}
+
+@if (_pendingUninstallImpact is { } uninstallImpact)
+{
+    <div class="dialog-backdrop">
+        <section class="unload-dialog"
+                 role="alertdialog"
+                 aria-modal="true"
+                 aria-labelledby="uninstall-dialog-title">
+            <p class="eyebrow">UNINSTALL PLUGIN</p>
+            <h2 id="uninstall-dialog-title">永久卸载 @uninstallImpact.PluginId？</h2>
+            @if (uninstallImpact.DependentPluginIds.Count == 0)
+            {
+                <p>该插件没有下游强依赖插件。</p>
+            }
+            else
+            {
+                <p>以下直接或传递强依赖插件也会被永久卸载：</p>
+                <ul>
+                    @foreach (var dependentPluginId in uninstallImpact.DependentPluginIds)
+                    {
+                        <li>@dependentPluginId</li>
+                    }
+                </ul>
+            }
+            <p class="dialog-note danger-note">此操作会直接删除物理文件，无法通过重新扫描恢复。</p>
+            <div class="dialog-actions">
+                <button type="button" class="secondary-button" @onclick="CancelUninstall">
+                    取消
+                </button>
+                <button type="button" class="danger-button" @onclick="ConfirmUninstallAsync">
+                    永久卸载
                 </button>
             </div>
         </section>
@@ -146,13 +234,18 @@
     private string? _busyPluginId;
     private string? _operationMessage;
     private bool _operationSucceeded;
-    private PluginUnloadImpact? _pendingUnloadImpact;
+    private IReadOnlyList<DisabledPluginInfo> _disabledPlugins = [];
+    private PluginOperationImpact? _pendingDisableImpact;
+    private PluginOperationImpact? _pendingUninstallImpact;
 
-    private bool IsBusy => _busyPluginId is not null || _pendingUnloadImpact is not null;
+    private bool IsBusy => _busyPluginId is not null
+        || _pendingDisableImpact is not null
+        || _pendingUninstallImpact is not null;
 
     protected override void OnInitialized()
     {
         PluginCatalog.Changed += OnCatalogChanged;
+        RefreshDisabledPlugins();
     }
 
     public void Dispose()
@@ -163,7 +256,10 @@
     private Task ReloadAsync(string pluginId)
         => RunOperationAsync(pluginId, () => PluginRuntimeManager.ReloadAsync(pluginId));
 
-    private void PrepareUnload(string pluginId)
+    private Task EnableAsync(string pluginId)
+        => RunOperationAsync(pluginId, () => PluginRuntimeManager.EnableAsync(pluginId));
+
+    private void PrepareDisable(string pluginId)
     {
         if (IsBusy)
         {
@@ -172,7 +268,43 @@
 
         try
         {
-            _pendingUnloadImpact = PluginRuntimeManager.GetUnloadImpact(pluginId);
+            _pendingDisableImpact = PluginRuntimeManager.GetDisableImpact(pluginId);
+            _operationMessage = null;
+        }
+        catch (Exception exception)
+        {
+            _operationSucceeded = false;
+            _operationMessage = $"无法准备禁用：{exception.Message}";
+        }
+    }
+
+    private void CancelDisable()
+        => _pendingDisableImpact = null;
+
+    private async Task ConfirmDisableAsync()
+    {
+        var impact = _pendingDisableImpact;
+        if (impact is null || _busyPluginId is not null)
+        {
+            return;
+        }
+
+        _pendingDisableImpact = null;
+        await RunOperationAsync(
+            impact.PluginId,
+            () => PluginRuntimeManager.DisableAsync(impact.PluginId, impact.CatalogRevision));
+    }
+
+    private void PrepareUninstall(string pluginId)
+    {
+        if (IsBusy)
+        {
+            return;
+        }
+
+        try
+        {
+            _pendingUninstallImpact = PluginRuntimeManager.GetUninstallImpact(pluginId);
             _operationMessage = null;
         }
         catch (Exception exception)
@@ -182,21 +314,21 @@
         }
     }
 
-    private void CancelUnload()
-        => _pendingUnloadImpact = null;
+    private void CancelUninstall()
+        => _pendingUninstallImpact = null;
 
-    private async Task ConfirmUnloadAsync()
+    private async Task ConfirmUninstallAsync()
     {
-        var impact = _pendingUnloadImpact;
+        var impact = _pendingUninstallImpact;
         if (impact is null || _busyPluginId is not null)
         {
             return;
         }
 
-        _pendingUnloadImpact = null;
+        _pendingUninstallImpact = null;
         await RunOperationAsync(
             impact.PluginId,
-            () => PluginRuntimeManager.UnloadAsync(impact.PluginId, impact.CatalogRevision));
+            () => PluginRuntimeManager.UninstallAsync(impact.PluginId, impact.CatalogRevision));
     }
 
     private Task RefreshAsync()
@@ -227,11 +359,19 @@
         finally
         {
             _busyPluginId = null;
+            RefreshDisabledPlugins();
         }
     }
 
+    private void RefreshDisabledPlugins()
+        => _disabledPlugins = PluginRuntimeManager.GetDisabledPlugins();
+
     private void OnCatalogChanged(object? sender, EventArgs eventArgs)
     {
-        _ = InvokeAsync(StateHasChanged);
+        _ = InvokeAsync(() =>
+        {
+            RefreshDisabledPlugins();
+            StateHasChanged();
+        });
     }
 }

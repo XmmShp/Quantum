@@ -18,6 +18,8 @@ MyPlugin/
         └── plugin.js
 ```
 
+Web 插件与 .NET 插件使用相同的 id 规则；`disabled` 是宿主保留 id，不能用于插件 manifest。
+
 安装 SDK 和 bundler：
 
 ```bash

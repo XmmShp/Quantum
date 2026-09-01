@@ -10,11 +10,22 @@ public interface IPluginRuntimeManager
 
     Task<PluginOperationResult> ReloadAsync(string pluginId, CancellationToken cancellationToken = default);
 
-    PluginUnloadImpact GetUnloadImpact(string pluginId);
+    PluginOperationImpact GetDisableImpact(string pluginId);
 
-    Task<PluginOperationResult> UnloadAsync(string pluginId, CancellationToken cancellationToken = default);
+    Task<PluginOperationResult> DisableAsync(
+        string pluginId,
+        long confirmedCatalogRevision,
+        CancellationToken cancellationToken = default);
 
-    Task<PluginOperationResult> UnloadAsync(
+    IReadOnlyList<DisabledPluginInfo> GetDisabledPlugins();
+
+    Task<PluginOperationResult> EnableAsync(
+        string pluginId,
+        CancellationToken cancellationToken = default);
+
+    PluginOperationImpact GetUninstallImpact(string pluginId);
+
+    Task<PluginOperationResult> UninstallAsync(
         string pluginId,
         long confirmedCatalogRevision,
         CancellationToken cancellationToken = default);
@@ -37,10 +48,12 @@ public interface IPluginRuntimeManager
     IServiceProvider? GetPluginServices(Assembly assembly);
 }
 
-public sealed record PluginUnloadImpact(
+public sealed record PluginOperationImpact(
     string PluginId,
     IReadOnlyList<string> DependentPluginIds,
     long CatalogRevision);
+
+public sealed record DisabledPluginInfo(string PluginId, string Version);
 
 public sealed record PluginOperationResult(bool Succeeded, string Message)
 {

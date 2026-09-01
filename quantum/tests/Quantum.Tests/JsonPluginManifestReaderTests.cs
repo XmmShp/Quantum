@@ -5,6 +5,14 @@ namespace Quantum.Tests;
 public sealed class JsonPluginManifestReaderTests
 {
     [Fact]
+    public void PluginId_RejectsReservedDisabledName()
+    {
+        var exception = Assert.Throws<ArgumentException>(() => new PluginId("disabled"));
+
+        Assert.Contains("reserved", exception.Message, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void Read_MapsManifestAndUiContributions()
     {
         using var directory = TemporaryDirectory.Create();

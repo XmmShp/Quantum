@@ -523,6 +523,19 @@ a {
   font-weight: 750;
 }
 
+.disabled-pill {
+  padding: 6px 10px;
+  border-radius: 999px;
+  color: #777184;
+  background: #f1f0f4;
+  font-size: 11px;
+  font-weight: 750;
+}
+
+.empty-card.compact {
+  padding-block: 14px;
+}
+
 .plugin-actions {
   display: flex;
   gap: 7px;
@@ -673,6 +686,11 @@ a {
 .unload-dialog .dialog-note {
   color: #918ca1;
   font-size: 11px;
+}
+
+.unload-dialog .dialog-note.danger-note {
+  color: #9b3e50;
+  font-weight: 700;
 }
 
 .dialog-actions {

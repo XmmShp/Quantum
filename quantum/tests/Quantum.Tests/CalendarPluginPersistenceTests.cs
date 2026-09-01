@@ -212,7 +212,10 @@ public sealed class CalendarPluginPersistenceTests
         Assert.NotNull(loadContext);
         var weakReference = new WeakReference(loadContext, trackResurrection: false);
 
-        var result = await manager.UnloadAsync("quantum.plugin.example-calendar");
+        var impact = manager.GetUninstallImpact("quantum.plugin.example-calendar");
+        var result = await manager.UninstallAsync(
+            "quantum.plugin.example-calendar",
+            impact.CatalogRevision);
         Assert.True(result.Succeeded, result.Message);
         return weakReference;
     }

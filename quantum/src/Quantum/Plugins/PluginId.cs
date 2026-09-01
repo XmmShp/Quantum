@@ -16,6 +16,11 @@ public readonly partial record struct PluginId
                 nameof(value));
         }
 
+        if (string.Equals(normalized, "disabled", StringComparison.Ordinal))
+        {
+            throw new ArgumentException("Plugin id 'disabled' is reserved by the host.", nameof(value));
+        }
+
         Value = normalized;
     }
 

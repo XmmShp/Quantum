@@ -86,9 +86,10 @@ dotnet build quantum/src/Quantum/Quantum.csproj -t:Run -f net10.0-maccatalyst
 ```
 
 目录中的每个直接子目录代表一个插件，至少包含 `plugin.json`，以及 manifest 指定的 .NET 入口 DLL 或
-`wwwroot` 下的 Web 入口 ESM bundle；声明数据库能力时还必须包含完整的 SQL migration artifact。
+`wwwroot` 下的 Web 入口 ESM bundle；声明数据库能力时还必须包含完整的 SQL migration artifact。`disabled`
+是宿主保留的插件 id 和目录名，用于保存已禁用插件。
 
-运行时可在设置页对单个插件执行“热升级”或“卸载”，也可重新扫描整个 `Modules`。卸载会释放 .NET 生命周期、私有 DI 容器和 ALC，或销毁 Web iframe，但不删除插件源目录；热升级先从源目录创建未激活的候选影子副本，切换时按依赖逆序停用所有下游强依赖插件，成功后按正序恢复，.NET 启动失败会自动回滚旧版本。Web 入口在快照提交后由 WebView 激活，失败时会隔离并报告，但当前不能反向回滚已经提交的 .NET 快照。卸载有下游强依赖的插件时，界面会列出所有直接和传递依赖插件并要求确认，确认后将它们一并卸载。
+运行时可在设置页对插件执行“热升级”“禁用”“重新启用”或“卸载”，也可重新扫描整个 `Modules`。禁用前界面会列出所有直接和传递强依赖插件；确认后按依赖顺序停用，并把整组物理目录移动到 `Modules/disabled`。重新启用会先恢复目录并重新执行完整依赖与兼容性检查，失败时移回禁用区。卸载是不可恢复操作：运行时释放 .NET 生命周期、私有 DI 容器和 ALC（或销毁 Web iframe）后，插件及级联强依赖的物理目录会被直接删除。热升级先从源目录创建未激活的候选影子副本，切换失败时自动回滚旧版本。
 
 Mac Catalyst 受应用沙箱限制，不能直接读取任意工作区路径；macOS 插件应安装到应用数据目录。不可访问的 `QUANTUM_MODULES_PATH` 会安全回退到该目录，并在设置页显示一条加载异常。
 

@@ -193,7 +193,7 @@ public sealed class PluginRuntimeManagerTests
     }
 
     [Fact]
-    public async Task UnloadAsync_StopsLifecycleAndReleasesSourceFiles()
+    public async Task UninstallAsync_StopsLifecycleAndDeletesSourceFiles()
     {
         using var fixture = new RuntimeFixture();
         await using var manager = fixture.CreateManager();
@@ -204,19 +204,19 @@ public sealed class PluginRuntimeManagerTests
         Assert.NotNull(state);
         Assert.True((bool)state.GetType().GetProperty("IsRunning")!.GetValue(state)!);
 
-        var result = await manager.UnloadAsync("quantum.plugin.example");
+        var impact = manager.GetUninstallImpact("quantum.plugin.example");
+        var result = await manager.UninstallAsync(
+            "quantum.plugin.example",
+            impact.CatalogRevision);
 
         Assert.True(result.Succeeded, result.Message);
         Assert.Empty(fixture.Catalog.Plugins);
         Assert.False((bool)state.GetType().GetProperty("IsRunning")!.GetValue(state)!);
-        File.Copy(
-            fixture.SourceAssemblyPath,
-            Path.Combine(fixture.PluginRoot, "replacement.dll"),
-            overwrite: true);
+        Assert.False(Directory.Exists(fixture.PluginRoot));
     }
 
     [Fact]
-    public async Task UnloadAsync_RemovesRuntimeEventBusSubscriptions()
+    public async Task UninstallAsync_RemovesRuntimeEventBusSubscriptions()
     {
         using var fixture = new RuntimeFixture();
         await using var manager = fixture.CreateManager();
@@ -239,7 +239,10 @@ public sealed class PluginRuntimeManagerTests
             QuantumTopic.Of("runtime.status"));
         await publisher.PublishAsync(new RuntimeEvent("before-unload"));
 
-        var result = await manager.UnloadAsync("quantum.plugin.example");
+        var impact = manager.GetUninstallImpact("quantum.plugin.example");
+        var result = await manager.UninstallAsync(
+            "quantum.plugin.example",
+            impact.CatalogRevision);
         await publisher.PublishAsync(new RuntimeEvent("after-unload"));
         await subscription.DisposeAsync();
 
@@ -280,7 +283,7 @@ public sealed class PluginRuntimeManagerTests
     }
 
     [Fact]
-    public async Task UnloadAsync_CascadesThroughStrongDependents()
+    public async Task DisableAsync_CascadesThroughStrongDependentsAndCanReenable()
     {
         using var fixture = new RuntimeFixture();
         fixture.AddDependentPlugin();
@@ -288,13 +291,8 @@ public sealed class PluginRuntimeManagerTests
         await using var manager = fixture.CreateManager();
         await manager.InitializeAsync(fixture.HostServices);
 
-        var impact = manager.GetUnloadImpact("quantum.plugin.example");
-        var unconfirmed = await manager.UnloadAsync("quantum.plugin.example");
-        Assert.False(unconfirmed.Succeeded);
-        Assert.Contains("quantum.plugin.transitive", unconfirmed.Message, StringComparison.Ordinal);
-        Assert.Equal(3, fixture.Catalog.Plugins.Count);
-
-        var result = await manager.UnloadAsync(
+        var impact = manager.GetDisableImpact("quantum.plugin.example");
+        var result = await manager.DisableAsync(
             "quantum.plugin.example",
             impact.CatalogRevision);
 
@@ -305,6 +303,86 @@ public sealed class PluginRuntimeManagerTests
         Assert.Contains("quantum.plugin.dependent", result.Message, StringComparison.Ordinal);
         Assert.Contains("quantum.plugin.transitive", result.Message, StringComparison.Ordinal);
         Assert.Empty(fixture.Catalog.Plugins);
+        Assert.False(Directory.Exists(fixture.PluginRoot));
+        Assert.True(Directory.Exists(Path.Combine(
+            fixture.ModulesRoot,
+            "disabled",
+            "quantum.plugin.example")));
+        Assert.True(Directory.Exists(Path.Combine(
+            fixture.ModulesRoot,
+            "disabled",
+            "quantum.plugin.dependent")));
+        Assert.True(Directory.Exists(Path.Combine(
+            fixture.ModulesRoot,
+            "disabled",
+            "quantum.plugin.transitive")));
+        Assert.Equal(
+            ["quantum.plugin.dependent", "quantum.plugin.example", "quantum.plugin.transitive"],
+            manager.GetDisabledPlugins().Select(static plugin => plugin.PluginId));
+
+        var incompatibleEnable = await manager.EnableAsync("quantum.plugin.transitive");
+        Assert.False(incompatibleEnable.Succeeded);
+        Assert.Empty(fixture.Catalog.Plugins);
+
+        var enableBase = await manager.EnableAsync("quantum.plugin.example");
+        var enableDependent = await manager.EnableAsync("quantum.plugin.dependent");
+        var enableTransitive = await manager.EnableAsync("quantum.plugin.transitive");
+
+        Assert.True(enableBase.Succeeded, enableBase.Message);
+        Assert.True(enableDependent.Succeeded, enableDependent.Message);
+        Assert.True(enableTransitive.Succeeded, enableTransitive.Message);
+        Assert.Equal(3, fixture.Catalog.Plugins.Count);
+        Assert.Empty(manager.GetDisabledPlugins());
+    }
+
+    [Fact]
+    public async Task UninstallAsync_DeletesStrongDependentDirectories()
+    {
+        using var fixture = new RuntimeFixture();
+        fixture.AddDependentPlugin();
+        fixture.AddTransitiveDependentPlugin();
+        await using var manager = fixture.CreateManager();
+        await manager.InitializeAsync(fixture.HostServices);
+
+        var impact = manager.GetUninstallImpact("quantum.plugin.example");
+        var result = await manager.UninstallAsync(
+            "quantum.plugin.example",
+            impact.CatalogRevision);
+
+        Assert.True(result.Succeeded, result.Message);
+        Assert.Empty(fixture.Catalog.Plugins);
+        Assert.False(Directory.Exists(fixture.PluginRoot));
+        Assert.False(Directory.Exists(Path.Combine(fixture.ModulesRoot, "quantum.plugin.dependent")));
+        Assert.False(Directory.Exists(Path.Combine(fixture.ModulesRoot, "quantum.plugin.transitive")));
+        Assert.Empty(Directory.EnumerateDirectories(fixture.ModulesRoot));
+    }
+
+    [Fact]
+    public async Task UninstallAsync_DeletesDisabledPluginDirectory()
+    {
+        using var fixture = new RuntimeFixture();
+        await using var manager = fixture.CreateManager();
+        await manager.InitializeAsync(fixture.HostServices);
+
+        var disableImpact = manager.GetDisableImpact("quantum.plugin.example");
+        var disable = await manager.DisableAsync(
+            "quantum.plugin.example",
+            disableImpact.CatalogRevision);
+        Assert.True(disable.Succeeded, disable.Message);
+        var disabledPath = Path.Combine(
+            fixture.ModulesRoot,
+            "disabled",
+            "quantum.plugin.example");
+        Assert.True(Directory.Exists(disabledPath));
+
+        var uninstallImpact = manager.GetUninstallImpact("quantum.plugin.example");
+        var uninstall = await manager.UninstallAsync(
+            "quantum.plugin.example",
+            uninstallImpact.CatalogRevision);
+
+        Assert.True(uninstall.Succeeded, uninstall.Message);
+        Assert.False(Directory.Exists(disabledPath));
+        Assert.Empty(manager.GetDisabledPlugins());
     }
 
     [Fact]
@@ -369,18 +447,18 @@ public sealed class PluginRuntimeManagerTests
     }
 
     [Fact]
-    public async Task UnloadAsync_RejectsStaleCascadeConfirmation()
+    public async Task DisableAsync_RejectsStaleCascadeConfirmation()
     {
         using var fixture = new RuntimeFixture();
         fixture.AddDependentPlugin();
         await using var manager = fixture.CreateManager();
         await manager.InitializeAsync(fixture.HostServices);
-        var staleImpact = manager.GetUnloadImpact("quantum.plugin.example");
+        var staleImpact = manager.GetDisableImpact("quantum.plugin.example");
 
         fixture.WriteManifest("1.1.0");
         var reload = await manager.ReloadAsync("quantum.plugin.example");
         Assert.True(reload.Succeeded, reload.Message);
-        var result = await manager.UnloadAsync(
+        var result = await manager.DisableAsync(
             "quantum.plugin.example",
             staleImpact.CatalogRevision);
 
@@ -503,6 +581,31 @@ public sealed class PluginRuntimeManagerTests
             && issue.Reason.Contains("missing", StringComparison.OrdinalIgnoreCase));
         Assert.Single(fixture.Catalog.Plugins);
         Assert.False(Directory.Exists(Path.Combine(fixture.ModulesRoot, "quantum.plugin.broken")));
+    }
+
+    [Fact]
+    public async Task PrepareInstall_RejectsPluginThatAlreadyExistsInDisabledDirectory()
+    {
+        using var fixture = new RuntimeFixture();
+        await using var manager = fixture.CreateManager();
+        await manager.InitializeAsync(fixture.HostServices);
+        var disableImpact = manager.GetDisableImpact("quantum.plugin.example");
+        var disable = await manager.DisableAsync(
+            "quantum.plugin.example",
+            disableImpact.CatalogRevision);
+        Assert.True(disable.Succeeded, disable.Message);
+        using var archive = CreateArchive(
+            new ArchiveFile("example/plugin.json", DotNetManifest("quantum.plugin.example", "1.2.0")),
+            new ArchiveFile("example/Quantum.ExamplePlugin.dll", File.ReadAllBytes(fixture.SourceAssemblyPath)));
+
+        var preview = await manager.PrepareInstallAsync(archive, "disabled-upgrade.zip");
+
+        Assert.False(preview.CanInstall);
+        Assert.Contains(preview.Issues, issue =>
+            issue.PluginId == "quantum.plugin.example"
+            && issue.Reason.Contains("已禁用", StringComparison.Ordinal));
+        Assert.Single(manager.GetDisabledPlugins());
+        Assert.Empty(fixture.Catalog.Plugins);
     }
 
     [Fact]
