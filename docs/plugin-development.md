@@ -15,7 +15,7 @@ Quantum 插件由一个 `net10.0` DLL、一份 `plugin.json` 和可选的 `wwwro
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../sdk/Quantum.Plugin.Abstraction/Quantum.Plugin.Abstraction.csproj" />
+    <ProjectReference Include="../../sdk/dotnet/src/Quantum.Plugin.Abstraction/Quantum.Plugin.Abstraction.csproj" />
     <PackageReference Include="NOF.Abstraction" />
   </ItemGroup>
 

@@ -29,7 +29,9 @@ quantum-extension-market/
 ├── src/                         NOF 分层的插件市场与 JSON-RPC Host
 └── tests/                       市场领域与安全存储测试
 sdk/
-└── Quantum.Plugin.Abstraction/  插件与宿主共享的 .NET ABI/SDK
+└── dotnet/
+    ├── src/                     插件与宿主共享的 .NET ABI/SDK
+    └── test/                    .NET SDK 独立测试
 samples/
 └── Quantum.ExamplePlugin/       页面、DI、CSS 与 JS 的完整示例插件
 docs/                            架构与插件开发文档
@@ -48,6 +50,7 @@ dotnet restore Quantum.slnx
 dotnet build Quantum.slnx
 dotnet test quantum/tests/Quantum.Tests/Quantum.Tests.csproj
 dotnet test quantum-extension-market/tests/Quantum.ExtensionMarket.Tests/Quantum.ExtensionMarket.Tests.csproj
+dotnet test sdk/dotnet/test/Quantum.Plugin.Abstraction.Tests/Quantum.Plugin.Abstraction.Tests.csproj
 ```
 
 macOS 启动：

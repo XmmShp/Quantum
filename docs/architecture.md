@@ -16,7 +16,7 @@ Quantum (NOF MAUI Host)
 - Application 负责依赖计划、加载结果和运行目录，不依赖 MAUI 或文件系统实现。
 - Infrastructure 是可独立测试的 `net10.0` 层，负责 JSON、目录扫描、程序集解析和 WebView 文件提供器，不依赖 MAUI。
 - `Quantum` 是 NOF MAUI 可执行宿主和组合根，负责桌面生命周期与 Blazor UI。
-- `sdk/Quantum.Plugin.Abstraction` 是宿主与插件共享的唯一 .NET SDK 和稳定 ABI，独立于宿主与 Infrastructure；程序集名、包名和命名空间均为单数形式 `Quantum.Plugin.Abstraction`，是插件兼容性边界。
+- `sdk/dotnet/src/Quantum.Plugin.Abstraction` 是宿主与插件共享的唯一 .NET SDK 和稳定 ABI，独立于宿主与 Infrastructure；程序集名、包名和命名空间均为单数形式 `Quantum.Plugin.Abstraction`，是插件兼容性边界。
 - `quantum-extension-market` 是独立部署的 NOF Web Host，密码哈希、文件存储、JWT 与 EF Core 持久化均由该宿主组合；其 Contract 通过 `/rpc` 的 JSON-RPC 2.0 暴露，不进入桌面插件 ABI。
 
 ## 启动顺序

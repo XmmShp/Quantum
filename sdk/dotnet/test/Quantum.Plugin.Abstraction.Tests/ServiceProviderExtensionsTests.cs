@@ -1,9 +1,10 @@
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
-using Quantum.Plugin.Abstraction;
+using Xunit;
 
-namespace Quantum.Tests;
+namespace Quantum.Plugin.Abstraction.Tests;
 
 public sealed class ServiceProviderExtensionsTests
 {
@@ -24,15 +25,15 @@ public sealed class ServiceProviderExtensionsTests
     {
         using var services = new ServiceCollection().BuildServiceProvider();
 
-        Assert.Null(services.GetService("Quantum.Tests.TypeThatDoesNotExist"));
+        Assert.Null(services.GetService("Quantum.Plugin.Abstraction.Tests.TypeThatDoesNotExist"));
         Assert.Null(services.GetService(typeof(StringResolvedService).FullName!));
     }
 
     [Fact]
     public void GetService_UsesRegistrationToDisambiguateTypesWithSameFullName()
     {
-        var serviceTypeName = $"Quantum.Tests.RuntimeContracts.Service{Guid.NewGuid():N}";
-        _ = CreateRuntimeType(serviceTypeName);
+        var serviceTypeName = $"Quantum.Plugin.Abstraction.Tests.RuntimeContracts.Service{Guid.NewGuid():N}";
+        var duplicateType = CreateRuntimeType(serviceTypeName);
         var registeredType = CreateRuntimeType(serviceTypeName);
         using var services = new ServiceCollection()
             .AddSingleton(registeredType, registeredType)
@@ -42,6 +43,7 @@ public sealed class ServiceProviderExtensionsTests
 
         Assert.NotNull(service);
         Assert.Equal(registeredType, service.GetType());
+        GC.KeepAlive(duplicateType);
     }
 
     [Fact]
@@ -80,9 +82,9 @@ public sealed class ServiceProviderExtensionsTests
     [Theory]
     [InlineData("")]
     [InlineData("   ")]
-    [InlineData("global::Quantum.Tests.StringResolvedService")]
-    [InlineData("Quantum.Tests.StringResolvedService, Quantum.Tests")]
-    [InlineData(" Quantum.Tests.StringResolvedService")]
+    [InlineData("global::Quantum.Plugin.Abstraction.Tests.StringResolvedService")]
+    [InlineData("Quantum.Plugin.Abstraction.Tests.StringResolvedService, Quantum.Plugin.Abstraction.Tests")]
+    [InlineData(" Quantum.Plugin.Abstraction.Tests.StringResolvedService")]
     public void GetService_RejectsNamesThatAreNotExactTypeFullNames(string serviceTypeName)
     {
         using var services = new ServiceCollection().BuildServiceProvider();
@@ -90,16 +92,50 @@ public sealed class ServiceProviderExtensionsTests
         Assert.Throws<ArgumentException>(() => services.GetService(serviceTypeName));
     }
 
+    [Fact]
+    public void GetService_DoesNotKeepCollectibleServiceTypeAlive()
+    {
+        var assemblyReference = ResolveCollectibleService();
+
+        for (var attempt = 0; attempt < 10 && assemblyReference.IsAlive; attempt++)
+        {
+            GC.Collect();
+            GC.WaitForPendingFinalizers();
+            GC.Collect();
+        }
+
+        Assert.False(assemblyReference.IsAlive);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static WeakReference ResolveCollectibleService()
+    {
+        var serviceTypeName = $"Quantum.Plugin.Abstraction.Tests.RuntimeContracts.Service{Guid.NewGuid():N}";
+        var serviceType = CreateRuntimeType(serviceTypeName);
+        var service = Activator.CreateInstance(serviceType)!;
+        var services = new SingleServiceProvider(serviceType, service);
+
+        Assert.Same(service, services.GetService(serviceTypeName));
+
+        return new WeakReference(serviceType.Assembly, trackResurrection: false);
+    }
+
     private static Type CreateRuntimeType(string fullName)
     {
         var assembly = AssemblyBuilder.DefineDynamicAssembly(
-            new AssemblyName($"Quantum.Tests.RuntimeContracts.{Guid.NewGuid():N}"),
+            new AssemblyName($"Quantum.Plugin.Abstraction.Tests.RuntimeContracts.{Guid.NewGuid():N}"),
             AssemblyBuilderAccess.RunAndCollect);
         var type = assembly
             .DefineDynamicModule("Main")
             .DefineType(fullName, TypeAttributes.Public | TypeAttributes.Class | TypeAttributes.Sealed);
         type.DefineDefaultConstructor(MethodAttributes.Public);
         return type.CreateType()!;
+    }
+
+    private sealed class SingleServiceProvider(Type serviceType, object service) : IServiceProvider
+    {
+        public object? GetService(Type requestedType)
+            => requestedType == serviceType ? service : null;
     }
 }
 

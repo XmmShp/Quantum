@@ -18,6 +18,7 @@
   <Project Path="quantum-extension-market/src/Quantum.ExtensionMarket.Application/Quantum.ExtensionMarket.Application.csproj" />
   <Project Path="quantum-extension-market/src/Quantum.ExtensionMarket/Quantum.ExtensionMarket.csproj" />
   <Project Path="quantum-extension-market/tests/Quantum.ExtensionMarket.Tests/Quantum.ExtensionMarket.Tests.csproj" />
-  <Project Path="sdk/Quantum.Plugin.Abstraction/Quantum.Plugin.Abstraction.csproj" />
+  <Project Path="sdk/dotnet/src/Quantum.Plugin.Abstraction/Quantum.Plugin.Abstraction.csproj" />
+  <Project Path="sdk/dotnet/test/Quantum.Plugin.Abstraction.Tests/Quantum.Plugin.Abstraction.Tests.csproj" />
   <Project Path="samples/Quantum.ExamplePlugin/Quantum.ExamplePlugin.csproj" />
 </Solution>

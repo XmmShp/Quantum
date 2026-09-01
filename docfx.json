@@ -6,7 +6,7 @@
           "files": [
             "quantum/src/Quantum.Domain/**.csproj",
             "quantum/src/Quantum.Contract/**.csproj",
-            "sdk/Quantum.Plugin.Abstraction/**.csproj",
+            "sdk/dotnet/src/Quantum.Plugin.Abstraction/**.csproj",
             "quantum/src/Quantum.Application/**.csproj",
             "quantum/src/Quantum.Infrastructure/**.csproj",
             "quantum-extension-market/src/Quantum.ExtensionMarket.Domain/**.csproj",

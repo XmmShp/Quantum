@@ -6,7 +6,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\sdk\Quantum.Plugin.Abstraction\Quantum.Plugin.Abstraction.csproj" />
+    <ProjectReference Include="..\..\sdk\dotnet\src\Quantum.Plugin.Abstraction\Quantum.Plugin.Abstraction.csproj" />
   </ItemGroup>
 
   <ItemGroup>
