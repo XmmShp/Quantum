@@ -306,6 +306,33 @@ public sealed class PluginRuntimeManagerTests
     }
 
     [Fact]
+    public async Task InitializeAsync_LogsCriticalPluginLoadingStages()
+    {
+        using var fixture = new RuntimeFixture();
+        var logger = new RecordingLogger();
+        await using var manager = fixture.CreateManager(logger);
+
+        await manager.InitializeAsync(fixture.HostServices);
+
+        Assert.Contains(logger.Messages, static message =>
+            message.StartsWith("Initializing plugin runtime", StringComparison.Ordinal));
+        Assert.Contains(logger.Messages, static message =>
+            message.StartsWith("Scanning plugin directory", StringComparison.Ordinal));
+        Assert.Contains(logger.Messages, static message =>
+            message.StartsWith("Discovered plugin quantum.plugin.example", StringComparison.Ordinal));
+        Assert.Contains(logger.Messages, static message =>
+            message.StartsWith("Copying plugin quantum.plugin.example", StringComparison.Ordinal));
+        Assert.Contains(logger.Messages, static message =>
+            message.StartsWith("Prepared .NET plugin quantum.plugin.example", StringComparison.Ordinal));
+        Assert.Contains(logger.Messages, static message =>
+            message.StartsWith("Staged plugin quantum.plugin.example", StringComparison.Ordinal));
+        Assert.Contains(logger.Messages, static message =>
+            message.StartsWith("Loaded plugin quantum.plugin.example", StringComparison.Ordinal));
+        Assert.Contains(logger.Messages, static message =>
+            message.StartsWith("Plugin runtime initialization finished", StringComparison.Ordinal));
+    }
+
+    [Fact]
     public async Task ReloadAsync_RestartsStrongDependentsAfterDependencyUpdate()
     {
         using var fixture = new RuntimeFixture();

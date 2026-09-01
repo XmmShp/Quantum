@@ -66,7 +66,10 @@
                 "quantum.plugins.reconcileWebPlugins",
                 (object)webPlugins,
                 _bridgeReference);
-            WriteDiagnostics($"Reconciled {webPlugins.Length} Web plugin runtime(s).");
+            Logger.LogInformation(
+                "Reconciled {WebPluginCount} Web plugin runtime(s): {PluginIds}.",
+                webPlugins.Length,
+                webPlugins.Select(static plugin => plugin.PluginId).ToArray());
             _failureMessage = null;
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
@@ -76,7 +79,6 @@
                 exception,
                 "Could not apply plugin Web contributions for catalog revision {Revision}.",
                 revision);
-            WriteDiagnostics($"Web plugin reconciliation failed: {exception.Message}");
         }
 
         _appliedRevision = revision;
@@ -109,14 +111,4 @@
     private static string EncodePath(string path)
         => string.Join('/', path.Split('/').Select(Uri.EscapeDataString));
 
-    private static void WriteDiagnostics(string message)
-    {
-        if (string.Equals(
-                Environment.GetEnvironmentVariable("QUANTUM_PLUGIN_DIAGNOSTICS"),
-                "1",
-                StringComparison.Ordinal))
-        {
-            Console.WriteLine($"[Quantum] {message}");
-        }
-    }
 }

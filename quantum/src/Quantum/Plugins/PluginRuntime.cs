@@ -73,8 +73,15 @@ internal sealed class PluginRuntime
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        _logger.LogDebug(
+            "Starting plugin {PluginId} runtime {RuntimeId}.",
+            Candidate.Manifest.Id,
+            LoadedPlugin.RuntimeId);
         if (!_migrationsApplied)
         {
+            _logger.LogDebug(
+                "Checking database migrations for plugin {PluginId}.",
+                Candidate.Manifest.Id);
             await PluginDatabaseMigrator.ApplyAsync(
                     Candidate.Manifest,
                     ShadowRootPath,
@@ -82,16 +89,28 @@ internal sealed class PluginRuntime
                     cancellationToken)
                 .ConfigureAwait(false);
             _migrationsApplied = true;
+            _logger.LogDebug(
+                "Database migrations are ready for plugin {PluginId}.",
+                Candidate.Manifest.Id);
         }
 
         var services = _lifecycleScope?.ServiceProvider;
         if (services is null)
         {
+            _logger.LogDebug(
+                "Plugin {PluginId} runtime {RuntimeId} has no .NET lifecycle; activation is delegated "
+                + "to the Web plugin host.",
+                Candidate.Manifest.Id,
+                LoadedPlugin.RuntimeId);
             return;
         }
 
         if (!_servicesInitialized)
         {
+            _logger.LogDebug(
+                "Initializing services for plugin {PluginId} runtime {RuntimeId}.",
+                Candidate.Manifest.Id,
+                LoadedPlugin.RuntimeId);
             services.ResolveDaemonServices();
             if (_usesDatabase && Candidate.Manifest.Database is null)
             {
@@ -102,6 +121,10 @@ internal sealed class PluginRuntime
             }
 
             _servicesInitialized = true;
+            _logger.LogDebug(
+                "Initialized services for plugin {PluginId} runtime {RuntimeId}.",
+                Candidate.Manifest.Id,
+                LoadedPlugin.RuntimeId);
         }
 
         _eventBus?.Resume();
@@ -123,6 +146,12 @@ internal sealed class PluginRuntime
                     _bootstraps[index].Type.FullName,
                     Candidate.Manifest.Id);
             }
+
+            _logger.LogInformation(
+                "Plugin {PluginId} runtime {RuntimeId} started with {BootstrapCount} lifecycle bootstrap(s).",
+                Candidate.Manifest.Id,
+                LoadedPlugin.RuntimeId,
+                _bootstraps.Count);
         }
         catch
         {
@@ -194,6 +223,10 @@ internal sealed class PluginRuntime
         }
 
         _disposed = true;
+        _logger.LogDebug(
+            "Disposing plugin {PluginId} runtime {RuntimeId}.",
+            Candidate.Manifest.Id,
+            LoadedPlugin.RuntimeId);
         await StopAsync(CancellationToken.None).ConfigureAwait(false);
         try
         {
@@ -236,7 +269,19 @@ internal sealed class PluginRuntime
             sessionShadowRoot,
             candidate.Manifest.Id.Value,
             runtimeId.ToString("N"));
+        logger.LogDebug(
+            "Copying plugin {PluginId} {PluginVersion} from {PluginSourcePath} to shadow directory "
+            + "{ShadowRootPath} for runtime {RuntimeId}.",
+            candidate.Manifest.Id,
+            candidate.Manifest.Version,
+            candidate.RootPath,
+            shadowRoot,
+            runtimeId);
         PluginShadowCopy.Copy(candidate.RootPath, shadowRoot);
+        logger.LogDebug(
+            "Copied plugin {PluginId} to shadow directory {ShadowRootPath}.",
+            candidate.Manifest.Id,
+            shadowRoot);
 
         PluginLoadContext? loadContext = null;
         ServiceProvider? services = null;
@@ -266,6 +311,13 @@ internal sealed class PluginRuntime
                     routes: webRoutes,
                     runtimeId: runtimeId,
                     services: null);
+                logger.LogInformation(
+                    "Prepared Web plugin {PluginId} runtime {RuntimeId}; entry module: {EntryModule}; "
+                    + "route count: {RouteCount}.",
+                    candidate.Manifest.Id,
+                    runtimeId,
+                    candidate.Manifest.Runtime.Entry,
+                    webRoutes.Length);
                 return new PluginRuntime(
                     candidate,
                     shadowRoot,
@@ -282,6 +334,11 @@ internal sealed class PluginRuntime
             }
 
             var entryAssemblyPath = Path.Combine(shadowRoot, candidate.Manifest.Runtime.Entry);
+            logger.LogDebug(
+                "Loading entry assembly {EntryAssemblyPath} for plugin {PluginId} runtime {RuntimeId}.",
+                entryAssemblyPath,
+                candidate.Manifest.Id,
+                runtimeId);
             loadContext = new PluginLoadContext(entryAssemblyPath);
             var assembly = loadContext.LoadEntryAssembly();
             var bootstraps = DiscoverPluginBootstraps(assembly);
@@ -326,6 +383,15 @@ internal sealed class PluginRuntime
                 routes,
                 runtimeId,
                 ownedScope.ServiceProvider);
+            logger.LogInformation(
+                "Prepared .NET plugin {PluginId} runtime {RuntimeId}; assembly: {EntryAssembly}; "
+                + "routes: {RouteCount}; bootstraps: {BootstrapCount}; database services: {UsesDatabase}.",
+                candidate.Manifest.Id,
+                runtimeId,
+                assembly.GetName().Name,
+                routes.Length,
+                bootstraps.Count,
+                usesDatabase);
             return new PluginRuntime(
                 candidate,
                 shadowRoot,

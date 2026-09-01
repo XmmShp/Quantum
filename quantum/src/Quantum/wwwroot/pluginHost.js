@@ -323,7 +323,9 @@ window.quantum.plugins = {
         await deactivated;
       }
     } catch (error) {
-      console.warn(`Could not gracefully dispose Web plugin '${record.pluginId}'.`, error);
+      await this.logWarning(
+        `Could not gracefully dispose Web plugin '${record.pluginId}'.`,
+        error);
     } finally {
       for (const signal of record.signals.values()) {
         clearTimeout(signal.timer);
@@ -341,7 +343,9 @@ window.quantum.plugins = {
           record.pluginId,
           record.runtimeId);
       } catch (error) {
-        console.warn(`Could not release EventBus for Web plugin '${record.pluginId}'.`, error);
+        await this.logWarning(
+          `Could not release EventBus for Web plugin '${record.pluginId}'.`,
+          error);
       }
       this.framesByWindow.delete(record.frame.contentWindow);
       if (record.bootstrapUrl) {
@@ -366,6 +370,21 @@ window.quantum.plugins = {
       if (record.lifecycleOperation === operation) {
         record.lifecycleOperation = null;
       }
+    }
+  },
+
+  async logWarning(message, error) {
+    if (!this.dotNetReference) {
+      return;
+    }
+
+    const detail = this.errorMessage(error);
+    try {
+      await this.dotNetReference.invokeMethodAsync(
+        "LogHostWarning",
+        detail ? `${message} ${detail}` : message);
+    } catch {
+      // Logging must never interfere with Web plugin cleanup.
     }
   },
 

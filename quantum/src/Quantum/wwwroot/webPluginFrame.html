@@ -7,7 +7,8 @@
         content="default-src 'none'; script-src 'unsafe-inline' blob:; style-src 'unsafe-inline' https: http:; img-src data: blob: https: http:; font-src data: https: http:" />
   <style>
     html, body, #quantum-root { width: 100%; min-height: 100%; margin: 0; }
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; scrollbar-width: none; -ms-overflow-style: none; }
+    *::-webkit-scrollbar { display: none; width: 0; height: 0; }
   </style>
 </head>
 <body>

@@ -51,14 +51,25 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             ObjectDisposedException.ThrowIf(_disposed, this);
             if (IsInitialized)
             {
+                _logger.LogDebug("Plugin runtime initialization was skipped because it is already initialized.");
                 return;
             }
 
             _hostServices = hostServices;
+            _logger.LogInformation(
+                "Initializing plugin runtime from {ModulesRootPath}; session shadow root: {SessionShadowRoot}.",
+                _options.ModulesRootPath,
+                SessionShadowRoot);
             Directory.CreateDirectory(SessionShadowRoot);
             var discovery = Discover(excludedPluginIds: null);
             var staged = await StageAsync(discovery.Plan, tolerateFailures: true, cancellationToken)
                 .ConfigureAwait(false);
+            _logger.LogInformation(
+                "Initial plugin discovery and staging completed: {PlannedPluginCount} planned, "
+                + "{StagedPluginCount} staged, {FailureCount} failure(s).",
+                discovery.Plan.OrderedCandidates.Count,
+                staged.Runtimes.Count,
+                discovery.Failures.Count + staged.Failures.Count);
             if (cancellationToken.IsCancellationRequested)
             {
                 await DisposeRuntimesAsync(staged.Runtimes).ConfigureAwait(false);
@@ -82,6 +93,10 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                     failures.Add(new PluginLoadFailure(
                         runtime.Candidate.Manifest.Id,
                         $"Dependency '{unavailableDependency.Id}' did not start successfully."));
+                    _logger.LogWarning(
+                        "Skipping plugin {PluginId} because dependency {DependencyId} did not start successfully.",
+                        runtime.Candidate.Manifest.Id,
+                        unavailableDependency.Id);
                     continue;
                 }
 
@@ -92,8 +107,12 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                     await runtime.StartAsync(CancellationToken.None).ConfigureAwait(false);
                     activeRuntimes.Add(runtime);
                     activeIds.Add(runtime.Candidate.Manifest.Id);
-                    WriteDiagnostics(
-                        $"Loaded plugin {runtime.Candidate.Manifest.Id} {runtime.Candidate.Manifest.Version}.");
+                    _logger.LogInformation(
+                        "Loaded plugin {PluginId} {PluginVersion} as {RuntimeKind} runtime {RuntimeId}.",
+                        runtime.Candidate.Manifest.Id,
+                        runtime.Candidate.Manifest.Version,
+                        runtime.Candidate.Manifest.Runtime.Kind,
+                        runtime.LoadedPlugin.RuntimeId);
                 }
                 catch (Exception exception)
                 {
@@ -115,6 +134,11 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             _catalog.Replace(_runtimes.Select(static runtime => runtime.LoadedPlugin), failures);
             await DisposeRuntimesAsync(rejectedRuntimes).ConfigureAwait(false);
             IsInitialized = true;
+            _logger.LogInformation(
+                "Plugin runtime initialization finished with {ActivePluginCount} active plugin(s) "
+                + "and {FailureCount} failure(s).",
+                _runtimes.Count,
+                failures.Count);
         }
         finally
         {
@@ -131,9 +155,11 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         try
         {
             EnsureReady();
+            _logger.LogInformation("Reload requested for plugin {PluginId}.", normalized);
             var current = _runtimes.FirstOrDefault(runtime => runtime.Candidate.Manifest.Id == normalized);
             if (current is null)
             {
+                _logger.LogWarning("Cannot reload plugin {PluginId} because it is not loaded.", normalized);
                 return PluginOperationResult.Failure($"插件 '{normalized}' 当前未加载，请使用重新扫描。");
             }
 
@@ -144,6 +170,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             var candidate = discovery.Plan.OrderedCandidates.FirstOrDefault(item => item.Manifest.Id == normalized);
             if (candidate is null)
             {
+                _logger.LogWarning(
+                    "Cannot reload plugin {PluginId} because no valid on-disk candidate was discovered.",
+                    normalized);
                 return PluginOperationResult.Failure(
                     $"插件 '{normalized}' 的磁盘版本无效或已不存在，当前版本继续运行。");
             }
@@ -151,6 +180,11 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             var missingCurrent = FindMissingCurrentPlugins(discovery.Plan, excludedPluginIds: null);
             if (missingCurrent.Length > 0)
             {
+                _logger.LogWarning(
+                    "Reload of plugin {PluginId} was cancelled because the new plan would remove "
+                    + "currently loaded plugins: {MissingPluginIds}.",
+                    normalized,
+                    missingCurrent);
                 return PluginOperationResult.Failure(
                     $"新快照会使已加载插件失效，热升级已取消：{string.Join(", ", missingCurrent)}。");
             }
@@ -213,9 +247,11 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         try
         {
             EnsureReady();
+            _logger.LogInformation("Unload requested for plugin {PluginId}.", normalized);
             var current = _runtimes.FirstOrDefault(runtime => runtime.Candidate.Manifest.Id == normalized);
             if (current is null)
             {
+                _logger.LogWarning("Cannot unload plugin {PluginId} because it is not loaded.", normalized);
                 return PluginOperationResult.Failure($"插件 '{normalized}' 当前未加载。");
             }
 
@@ -225,6 +261,12 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             if (dependentPluginIds.Count > 0
                 && confirmedCatalogRevision != _catalog.Revision)
             {
+                _logger.LogWarning(
+                    "Unload of plugin {PluginId} requires confirmation for dependent plugins "
+                    + "{DependentPluginIds} at catalog revision {CatalogRevision}.",
+                    normalized,
+                    dependentPluginIds,
+                    _catalog.Revision);
                 return PluginOperationResult.Failure(
                     $"卸载插件 '{normalized}' 会同时卸载以下下游强依赖插件，请按最新清单确认后重试："
                     + $"{string.Join(", ", dependentPluginIds)}。");
@@ -235,6 +277,11 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             var missingCurrent = FindMissingCurrentPlugins(discovery.Plan, excludedPluginIds);
             if (missingCurrent.Length > 0)
             {
+                _logger.LogWarning(
+                    "Unload of plugin {PluginId} was cancelled because the new plan would remove "
+                    + "other currently loaded plugins: {MissingPluginIds}.",
+                    normalized,
+                    missingCurrent);
                 return PluginOperationResult.Failure(
                     $"新快照会使其他已加载插件失效，卸载已取消：{string.Join(", ", missingCurrent)}。");
             }
@@ -260,6 +307,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         try
         {
             EnsureReady();
+            _logger.LogInformation("A full plugin directory refresh was requested.");
             var discovery = Discover(excludedPluginIds: null);
             var result = await ReplaceAllAsync(discovery, cancellationToken).ConfigureAwait(false);
             return result.Succeeded
@@ -292,12 +340,24 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
 
             _disposed = true;
             var runtimes = _runtimes;
+            _logger.LogInformation(
+                "Disposing plugin runtime manager with {PluginCount} active plugin(s).",
+                runtimes.Count);
             _runtimes = [];
             _catalog.Replace([]);
             await ReleaseReferencesAsync(CancellationToken.None).ConfigureAwait(false);
             await DisposeRuntimesAsync(runtimes).ConfigureAwait(false);
             CleanupStaleShadowRoots();
-            PluginShadowCopy.TryDelete(SessionShadowRoot);
+            if (!PluginShadowCopy.TryDelete(SessionShadowRoot))
+            {
+                _logger.LogWarning(
+                    "Could not delete plugin session shadow root {SessionShadowRoot} during shutdown.",
+                    SessionShadowRoot);
+            }
+            else
+            {
+                _logger.LogDebug("Deleted plugin session shadow root {SessionShadowRoot}.", SessionShadowRoot);
+            }
         }
         finally
         {
@@ -310,10 +370,19 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         CancellationToken cancellationToken)
     {
         CleanupStaleShadowRoots();
+        _logger.LogInformation(
+            "Preparing plugin snapshot replacement: {CurrentPluginCount} current, "
+            + "{PlannedPluginCount} planned, {DiscoveryFailureCount} discovery failure(s).",
+            _runtimes.Count,
+            discovery.Plan.OrderedCandidates.Count,
+            discovery.Failures.Count);
         var staged = await StageAsync(discovery.Plan, tolerateFailures: false, cancellationToken)
             .ConfigureAwait(false);
         if (staged.Failures.Count > 0)
         {
+            _logger.LogWarning(
+                "Plugin snapshot replacement was rejected during staging: {FailureReason}",
+                staged.Failures[0].Reason);
             await DisposeRuntimesAsync(staged.Runtimes).ConfigureAwait(false);
             return PluginOperationResult.Failure(
                 $"新插件快照加载失败，已保留当前版本：{staged.Failures[0].Reason}");
@@ -328,9 +397,15 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         var oldRuntimes = _runtimes;
         SetRuntimeEnvironment(staged.Runtimes, discovery.Failures);
         // Once commit begins it must finish or roll back even if the caller cancels.
+        _logger.LogDebug(
+            "Stopping {PluginCount} runtime(s) before committing the new plugin snapshot.",
+            oldRuntimes.Count);
         var stopFailures = await StopRuntimesAsync(oldRuntimes, CancellationToken.None).ConfigureAwait(false);
         if (stopFailures.Count > 0)
         {
+            _logger.LogError(
+                stopFailures[0],
+                "Plugin snapshot replacement was cancelled because an existing runtime failed to stop.");
             await RestartRuntimesAsync(oldRuntimes, CancellationToken.None).ConfigureAwait(false);
             await DisposeRuntimesAsync(staged.Runtimes).ConfigureAwait(false);
             return PluginOperationResult.Failure(
@@ -341,6 +416,10 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         {
             foreach (var runtime in staged.Runtimes)
             {
+                _logger.LogDebug(
+                    "Starting staged plugin {PluginId} runtime {RuntimeId} for snapshot replacement.",
+                    runtime.Candidate.Manifest.Id,
+                    runtime.LoadedPlugin.RuntimeId);
                 await runtime.StartAsync(CancellationToken.None).ConfigureAwait(false);
             }
         }
@@ -360,7 +439,12 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             discovery.Failures);
         await ReleaseReferencesAsync(CancellationToken.None).ConfigureAwait(false);
         await DisposeRuntimesAsync(oldRuntimes).ConfigureAwait(false);
-        WriteDiagnostics("Plugin runtime snapshot switched successfully.");
+        _logger.LogInformation(
+            "Plugin runtime snapshot switched successfully: revision {CatalogRevision}, "
+            + "{PluginCount} active plugin(s): {PluginIds}.",
+            _catalog.Revision,
+            _runtimes.Count,
+            _runtimes.Select(static runtime => runtime.Candidate.Manifest.Id.Value).ToArray());
         return PluginOperationResult.Success("插件运行时快照已更新。");
     }
 
@@ -372,6 +456,10 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         var runtimes = new List<PluginRuntime>();
         var failures = new List<PluginLoadFailure>();
         var loadedIds = new HashSet<PluginId>();
+        _logger.LogDebug(
+            "Staging {PluginCount} plugin candidate(s); tolerate failures: {TolerateFailures}.",
+            plan.OrderedCandidates.Count,
+            tolerateFailures);
         try
         {
             foreach (var candidate in plan.OrderedCandidates)
@@ -384,6 +472,11 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                     failures.Add(new PluginLoadFailure(
                         candidate.Manifest.Id,
                         $"Dependency '{unavailableDependency.Id}' could not be staged."));
+                    _logger.LogWarning(
+                        "Plugin {PluginId} cannot be staged because dependency {DependencyId} "
+                        + "was not staged.",
+                        candidate.Manifest.Id,
+                        unavailableDependency.Id);
                     if (!tolerateFailures)
                     {
                         break;
@@ -394,6 +487,11 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
 
                 try
                 {
+                    _logger.LogDebug(
+                        "Staging plugin {PluginId} {PluginVersion} from {PluginDirectory}.",
+                        candidate.Manifest.Id,
+                        candidate.Manifest.Version,
+                        candidate.RootPath);
                     var runtime = await PluginRuntime.CreateAsync(
                             candidate,
                             SessionShadowRoot,
@@ -404,6 +502,12 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                         .ConfigureAwait(false);
                     runtimes.Add(runtime);
                     loadedIds.Add(candidate.Manifest.Id);
+                    _logger.LogInformation(
+                        "Staged plugin {PluginId} {PluginVersion} as {RuntimeKind} runtime {RuntimeId}.",
+                        candidate.Manifest.Id,
+                        candidate.Manifest.Version,
+                        candidate.Manifest.Runtime.Kind,
+                        runtime.LoadedPlugin.RuntimeId);
                 }
                 catch (Exception exception)
                 {
@@ -424,6 +528,10 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             throw;
         }
 
+        _logger.LogDebug(
+            "Plugin staging finished: {StagedPluginCount} staged, {FailureCount} failure(s).",
+            runtimes.Count,
+            failures.Count);
         return new PluginStageResult(runtimes, failures);
     }
 
@@ -470,13 +578,14 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             .ToArray();
     }
 
-    private static void SetRuntimeEnvironment(
+    private void SetRuntimeEnvironment(
         IReadOnlyList<PluginRuntime> runtimes,
         IEnumerable<PluginLoadFailure> failures)
     {
         var environment = new PluginCatalog(
             runtimes.Select(static runtime => runtime.LoadedPlugin),
-            failures);
+            failures,
+            _logger);
         foreach (var runtime in runtimes)
         {
             runtime.UseEnvironment(environment);
@@ -487,8 +596,12 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
     {
         var candidates = new List<PluginCandidate>();
         var failures = new List<PluginLoadFailure>();
+        _logger.LogInformation("Scanning plugin directory {ModulesRootPath}.", _options.ModulesRootPath);
         if (!Directory.Exists(_options.ModulesRootPath))
         {
+            _logger.LogWarning(
+                "Plugin directory {ModulesRootPath} does not exist; no plugins will be loaded.",
+                _options.ModulesRootPath);
             return new PluginDiscovery(_dependencyPlanner.CreatePlan([]), failures);
         }
 
@@ -502,6 +615,18 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                 if (excludedPluginIds is null || !excludedPluginIds.Contains(candidate.Manifest.Id))
                 {
                     candidates.Add(candidate);
+                    _logger.LogInformation(
+                        "Discovered plugin {PluginId} {PluginVersion} ({RuntimeKind}) in {PluginDirectory}.",
+                        candidate.Manifest.Id,
+                        candidate.Manifest.Version,
+                        candidate.Manifest.Runtime.Kind,
+                        directory);
+                }
+                else
+                {
+                    _logger.LogDebug(
+                        "Excluded plugin {PluginId} from the new runtime plan.",
+                        candidate.Manifest.Id);
                 }
             }
             catch (Exception exception) when (exception is IOException
@@ -518,6 +643,21 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
 
         var plan = _dependencyPlanner.CreatePlan(candidates);
         failures.AddRange(plan.Failures);
+        foreach (var failure in plan.Failures)
+        {
+            _logger.LogWarning(
+                "Plugin dependency planning rejected {PluginId}: {FailureReason}",
+                failure.PluginId?.Value ?? "<unknown>",
+                failure.Reason);
+        }
+
+        _logger.LogInformation(
+            "Plugin scan completed: {CandidateCount} candidate(s), {PlannedPluginCount} loadable, "
+            + "{FailureCount} failure(s); load order: {PluginLoadOrder}.",
+            candidates.Count,
+            plan.OrderedCandidates.Count,
+            failures.Count,
+            plan.OrderedCandidates.Select(static candidate => candidate.Manifest.Id.Value).ToArray());
         return new PluginDiscovery(plan, failures);
     }
 
@@ -573,6 +713,19 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             if (!PluginShadowCopy.TryDelete(runtime.ShadowRootPath))
             {
                 _staleShadowRoots.Add(runtime.ShadowRootPath);
+                _logger.LogWarning(
+                    "Plugin {PluginId} shadow directory {ShadowRootPath} could not be deleted; "
+                    + "cleanup will be retried.",
+                    runtime.Candidate.Manifest.Id,
+                    runtime.ShadowRootPath);
+            }
+            else
+            {
+                _logger.LogDebug(
+                    "Disposed plugin {PluginId} runtime {RuntimeId} and deleted shadow directory {ShadowRootPath}.",
+                    runtime.Candidate.Manifest.Id,
+                    runtime.LoadedPlugin.RuntimeId,
+                    runtime.ShadowRootPath);
             }
         }
     }
@@ -604,6 +757,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         {
             if (PluginShadowCopy.TryDelete(_staleShadowRoots[index]))
             {
+                _logger.LogDebug(
+                    "Deleted stale plugin shadow directory {ShadowRootPath}.",
+                    _staleShadowRoots[index]);
                 _staleShadowRoots.RemoveAt(index);
             }
         }
@@ -622,17 +778,6 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pluginId);
         return new PluginId(pluginId.Trim().ToLowerInvariant());
-    }
-
-    private static void WriteDiagnostics(string message)
-    {
-        if (string.Equals(
-                Environment.GetEnvironmentVariable("QUANTUM_PLUGIN_DIAGNOSTICS"),
-                "1",
-                StringComparison.Ordinal))
-        {
-            Console.WriteLine($"[Quantum] {message}");
-        }
     }
 
     private sealed record PluginDiscovery(

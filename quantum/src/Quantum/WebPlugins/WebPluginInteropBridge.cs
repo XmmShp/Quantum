@@ -58,7 +58,11 @@ public sealed class WebPluginInteropBridge(
         }
 
         var startedAt = Stopwatch.GetTimestamp();
-        WriteDiagnostics($"Web RPC {capability}.{method} started for {pluginId}.");
+        logger.LogDebug(
+            "Web RPC {Capability}.{Method} started for {PluginId}.",
+            capability,
+            method,
+            pluginId);
         try
         {
             var result = capability switch
@@ -79,15 +83,22 @@ public sealed class WebPluginInteropBridge(
                     .ConfigureAwait(false),
                 _ => throw new InvalidOperationException($"Unknown Web plugin capability '{capability}'.")
             };
-            WriteDiagnostics(
-                $"Web RPC {capability}.{method} completed for {pluginId} "
-                + $"in {Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds:F0} ms.");
+            logger.LogDebug(
+                "Web RPC {Capability}.{Method} completed for {PluginId} in {ElapsedMilliseconds:F0} ms.",
+                capability,
+                method,
+                pluginId,
+                Stopwatch.GetElapsedTime(startedAt).TotalMilliseconds);
             return result;
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
-            WriteDiagnostics(
-                $"Web RPC {capability}.{method} failed for {pluginId}: {exception.Message}");
+            logger.LogDebug(
+                exception,
+                "Web RPC {Capability}.{Method} failed for {PluginId}.",
+                capability,
+                method,
+                pluginId);
             throw;
         }
         finally
@@ -115,6 +126,13 @@ public sealed class WebPluginInteropBridge(
         {
             await runtime.Value.DisposeAsync().ConfigureAwait(false);
         }
+    }
+
+    [JSInvokable]
+    public void LogHostWarning(string message)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(message);
+        logger.LogWarning("Web plugin host: {HostMessage}", message);
     }
 
     public void Dispose()
@@ -305,9 +323,6 @@ public sealed class WebPluginInteropBridge(
                 "Ignored EventBus delivery failure from stale Web plugin runtime {PluginId}@{RuntimeId}.",
                 pluginId,
                 runtimeId);
-            WriteDiagnostics(
-                $"Ignored EventBus delivery failure from stale Web plugin runtime "
-                + $"{pluginId}@{runtimeId}: {exception.Message}");
         }
     }
 
@@ -670,17 +685,6 @@ public sealed class WebPluginInteropBridge(
         }
         catch (ObjectDisposedException)
         {
-        }
-    }
-
-    private static void WriteDiagnostics(string message)
-    {
-        if (string.Equals(
-                Environment.GetEnvironmentVariable("QUANTUM_PLUGIN_DIAGNOSTICS"),
-                "1",
-                StringComparison.Ordinal))
-        {
-            Console.WriteLine($"[Quantum] {message}");
         }
     }
 

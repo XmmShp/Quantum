@@ -17,8 +17,10 @@ public sealed class PluginLifecycleInitializationStep : IApplicationInitializati
         var logger = app.Services.GetRequiredService<ILogger<PluginLifecycleInitializationStep>>();
         try
         {
+            logger.LogInformation("Starting plugin runtime initialization step.");
             var manager = app.Services.GetRequiredService<IPluginRuntimeManager>();
             await manager.InitializeAsync(app.Services).ConfigureAwait(false);
+            logger.LogInformation("Plugin runtime initialization step completed.");
         }
         catch (Exception exception)
         {

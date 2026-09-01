@@ -1,16 +1,22 @@
-using System.Diagnostics;
 using System.Reflection;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Logging.Abstractions;
 using Quantum.Plugin.Abstraction;
 
 namespace Quantum.Plugins;
 
 public sealed class PluginCatalog : IQuantumPluginEnvironment
 {
+    private readonly ILogger _logger;
     private PluginCatalogSnapshot _snapshot;
 
-    public PluginCatalog(IEnumerable<LoadedPlugin> plugins, IEnumerable<PluginLoadFailure>? failures = null)
+    public PluginCatalog(
+        IEnumerable<LoadedPlugin> plugins,
+        IEnumerable<PluginLoadFailure>? failures = null,
+        ILogger? logger = null)
     {
+        _logger = logger ?? NullLogger.Instance;
         _snapshot = CreateSnapshot(plugins, failures ?? [], revision: 0);
     }
 
@@ -34,6 +40,13 @@ public sealed class PluginCatalog : IQuantumPluginEnvironment
     {
         var next = CreateSnapshot(plugins, failures ?? [], checked(Revision + 1));
         Volatile.Write(ref _snapshot, next);
+        _logger.LogInformation(
+            "Published plugin catalog revision {CatalogRevision} with {PluginCount} plugin(s), "
+            + "{RouteCount} route(s), and {FailureCount} failure(s).",
+            next.Revision,
+            next.Plugins.Count,
+            next.Routes.Count,
+            next.Failures.Count);
         RaiseChanged();
     }
 
@@ -93,7 +106,7 @@ public sealed class PluginCatalog : IQuantumPluginEnvironment
             {
                 // A UI or file-provider observer must not invalidate an already published,
                 // internally consistent runtime snapshot or prevent later observers running.
-                Trace.TraceError($"Plugin catalog change observer failed: {exception}");
+                _logger.LogError(exception, "Plugin catalog change observer failed.");
             }
         }
     }

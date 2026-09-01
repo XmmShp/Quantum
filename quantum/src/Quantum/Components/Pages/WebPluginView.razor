@@ -1,5 +1,7 @@
 @implements IAsyncDisposable
+@using Microsoft.Extensions.Logging
 @inject IJSRuntime JavaScript
+@inject ILogger<WebPluginView> Logger
 
 <div class="web-plugin-view" @ref="_hostElement">
     @if (!string.IsNullOrWhiteSpace(_failureMessage))
@@ -53,15 +55,22 @@
                     Route.Definition.Path,
                     Route.Definition.View,
                     Route.Definition.Title
-                });
+            });
             _attachedKey = key;
             _failureMessage = null;
+            Logger.LogInformation(
+                "Mounted Web plugin {PluginId} runtime {RuntimeId} at route {PluginRoute}.",
+                Plugin.Manifest.Id.Value,
+                Plugin.RuntimeId,
+                Route.Definition.Path);
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             _failureMessage = exception.Message;
-            WriteDiagnostics(
-                $"Web plugin view mount failed for {Plugin.Manifest.Id.Value}: {exception.Message}");
+            Logger.LogError(
+                exception,
+                "Could not mount Web plugin view for {PluginId}.",
+                Plugin.Manifest.Id.Value);
             await InvokeAsync(StateHasChanged);
         }
     }
@@ -82,17 +91,10 @@
         }
         catch (Exception exception) when (exception is JSException or TaskCanceledException)
         {
-        }
-    }
-
-    private static void WriteDiagnostics(string message)
-    {
-        if (string.Equals(
-                Environment.GetEnvironmentVariable("QUANTUM_PLUGIN_DIAGNOSTICS"),
-                "1",
-                StringComparison.Ordinal))
-        {
-            Console.WriteLine($"[Quantum] {message}");
+            Logger.LogDebug(
+                exception,
+                "Could not detach Web plugin view for {PluginId} during disposal.",
+                Plugin.Manifest.Id.Value);
         }
     }
 }

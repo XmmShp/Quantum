@@ -29,7 +29,7 @@ public sealed class PluginCatalogBootstrapper
         if (!Directory.Exists(modulesRootPath))
         {
             _logger.LogInformation("Plugin directory {PluginDirectory} does not exist; starting with an empty catalog.", modulesRootPath);
-            return new PluginCatalog([], failures);
+            return new PluginCatalog([], failures, _logger);
         }
 
         foreach (var pluginDirectory in Directory.EnumerateDirectories(modulesRootPath).Order(StringComparer.Ordinal))
@@ -109,6 +109,6 @@ public sealed class PluginCatalogBootstrapper
             }
         }
 
-        return new PluginCatalog(loaded, failures);
+        return new PluginCatalog(loaded, failures, _logger);
     }
 }

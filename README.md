@@ -93,7 +93,18 @@ Mac Catalyst 受应用沙箱限制，不能直接读取任意工作区路径；m
 
 Catalyst Release 默认的 AOT-only 模式不能加载外部 IL，因此桌面宿主在该目标上显式启用 Mono interpreter 并关闭托管程序集裁剪。若发行渠道是 Mac App Store，还需要单独评估性能、包体与动态插件审核政策；Windows 的 CoreCLR 插件模式不受此约束。
 
-排查启动加载时可设置 `QUANTUM_PLUGIN_DIAGNOSTICS=1`，宿主会向标准输出写入插件加载与生命周期结果。
+宿主默认将 Debug 及以上级别的结构化日志写入应用数据目录的
+`Logs/quantum-YYYYMMDD.log`，每天滚动并保留最近 31 个日志文件。插件加载、生命周期、
+Web RPC 与 iframe Host 的诊断信息均使用同一日志管线。
+
+需要在终端同步查看日志时，传入 `--console`。使用 `dotnet run` 时，参数需要放在第二个
+`--` 之后。Windows GUI 宿主会在启动时附着到当前终端；如果没有父终端，则创建一个
+控制台窗口：
+
+```powershell
+dotnet run --project quantum/src/Quantum/Quantum.csproj `
+  --framework net10.0-windows10.0.19041.0 -- --console
+```
 
 ## 插件开发
 

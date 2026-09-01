@@ -2,6 +2,7 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Components;
 using NOF.Hosting;
 using NOF.Hosting.Maui;
+using Quantum.Logging;
 using Quantum.Plugin.Abstraction;
 using Quantum.Plugins;
 using Quantum.WebPlugins;
@@ -12,9 +13,19 @@ public static class MauiProgram
 {
     public static MauiApp CreateMauiApp()
     {
+        var loggingOptions = QuantumLoggingOptions.Parse(
+            Environment.GetCommandLineArgs(),
+            FileSystem.AppDataDirectory);
+        var consoleOutputRequested = loggingOptions.WriteToConsole;
+#if WINDOWS
+        if (consoleOutputRequested && !WindowsConsole.TryEnable())
+        {
+            loggingOptions = loggingOptions with { WriteToConsole = false };
+        }
+#endif
         var builder = NOFMauiAppBuilder.Create();
+        QuantumLogging.Configure(builder.Logging, loggingOptions);
         var (runtimeOptions, locationFailures) = ResolvePluginRuntimeOptions();
-        var catalog = new PluginCatalog([], locationFailures);
 
         builder
             .AddApplicationPart(typeof(PluginCatalog).Assembly)
@@ -26,15 +37,18 @@ public static class MauiProgram
         builder.Services.AddMauiBlazorWebView();
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
-        builder.Logging.AddDebug();
 #endif
-        builder.Services.AddSingleton(catalog);
-        builder.Services.AddSingleton<IQuantumPluginEnvironment>(catalog);
+        builder.Services.AddSingleton<PluginCatalog>(services => new PluginCatalog(
+            [],
+            locationFailures,
+            services.GetRequiredService<ILogger<PluginCatalog>>()));
+        builder.Services.AddSingleton<IQuantumPluginEnvironment>(services =>
+            services.GetRequiredService<PluginCatalog>());
         builder.Services.AddQuantumPluginEventBus();
         builder.Services.AddSingleton(runtimeOptions);
         builder.Services.AddSingleton<IPluginReferenceRelease, BlazorPluginReferenceRelease>();
         builder.Services.AddSingleton<PluginRuntimeManager>(services => new PluginRuntimeManager(
-            catalog,
+            services.GetRequiredService<PluginCatalog>(),
             runtimeOptions,
             services.GetRequiredService<IPluginReferenceRelease>(),
             logger: services.GetRequiredService<ILogger<PluginRuntimeManager>>()));
@@ -47,6 +61,15 @@ public static class MauiProgram
         builder.Services.AddInitializationStep(new PluginLifecycleInitializationStep());
 
         var nofApp = builder.BuildAsync().GetAwaiter().GetResult();
+        nofApp.Services
+            .GetRequiredService<ILoggerFactory>()
+            .CreateLogger("Quantum.Startup")
+            .LogInformation(
+                "Logging initialized. Daily log file pattern: {LogFilePath}; "
+                + "console requested: {ConsoleOutputRequested}; console enabled: {ConsoleOutputEnabled}.",
+                loggingOptions.FilePath,
+                consoleOutputRequested,
+                loggingOptions.WriteToConsole);
         return nofApp.MauiApp;
     }
 
