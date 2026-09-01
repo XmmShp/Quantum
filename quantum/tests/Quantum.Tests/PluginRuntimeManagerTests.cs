@@ -1,4 +1,6 @@
+using System.IO.Compression;
 using System.Runtime.Loader;
+using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -423,6 +425,129 @@ public sealed class PluginRuntimeManagerTests
         Assert.Empty(fixture.Catalog.Plugins);
     }
 
+    [Fact]
+    public async Task InstallPackage_SelectsNewestDuplicateAndInstallsCompatibleBundle()
+    {
+        using var fixture = new RuntimeFixture();
+        await using var manager = fixture.CreateManager();
+        await manager.InitializeAsync(fixture.HostServices);
+        using var archive = CreateArchive(
+            new ArchiveFile("example-old/plugin.json", DotNetManifest("quantum.plugin.example", "0.9.0")),
+            new ArchiveFile("example-old/Quantum.ExamplePlugin.dll", File.ReadAllBytes(fixture.SourceAssemblyPath)),
+            new ArchiveFile("example-new/plugin.json", DotNetManifest("quantum.plugin.example", "1.2.0")),
+            new ArchiveFile("example-new/Quantum.ExamplePlugin.dll", File.ReadAllBytes(fixture.SourceAssemblyPath)),
+            new ArchiveFile(
+                "addon/plugin.json",
+                WebManifest(
+                    "quantum.plugin.addon",
+                    "2.0.0",
+                    """
+                    ,"dependencies":[{"id":"quantum.plugin.example","minVersion":"1.1.0"}]
+                    """)),
+            new ArchiveFile("addon/wwwroot/dist/plugin.js", "export default { mount() {} };"));
+
+        var preview = await manager.PrepareInstallAsync(archive, "community-bundle.zip");
+
+        Assert.True(preview.CanInstall, string.Join(Environment.NewLine, preview.Issues));
+        Assert.Equal(2, preview.InstallCount);
+        Assert.Collection(
+            preview.Plugins,
+            plugin =>
+            {
+                Assert.Equal("quantum.plugin.addon", plugin.PluginId);
+                Assert.Equal(PluginInstallAction.Install, plugin.Action);
+                Assert.Null(plugin.InstalledVersion);
+            },
+            plugin =>
+            {
+                Assert.Equal("quantum.plugin.example", plugin.PluginId);
+                Assert.Equal("1.2.0", plugin.PackageVersion);
+                Assert.Equal("1.0.0", plugin.InstalledVersion);
+                Assert.Equal(PluginInstallAction.Upgrade, plugin.Action);
+            });
+
+        var result = await manager.InstallAsync(preview.PreviewId!);
+
+        Assert.True(result.Succeeded, result.Message);
+        Assert.Equal("1.2.0", fixture.Catalog.FindPlugin("quantum.plugin.example")?.Manifest.Version.ToString());
+        Assert.Equal("2.0.0", fixture.Catalog.FindPlugin("quantum.plugin.addon")?.Manifest.Version.ToString());
+        Assert.Equal(
+            "1.2.0",
+            JsonDocument.Parse(File.ReadAllText(Path.Combine(fixture.PluginRoot, "plugin.json")))
+                .RootElement.GetProperty("version").GetString());
+    }
+
+    [Fact]
+    public async Task PrepareInstall_RejectsEntireBundleWhenDependencyIsIncompatible()
+    {
+        using var fixture = new RuntimeFixture();
+        await using var manager = fixture.CreateManager();
+        await manager.InitializeAsync(fixture.HostServices);
+        using var archive = CreateArchive(
+            new ArchiveFile(
+                "broken/plugin.json",
+                WebManifest(
+                    "quantum.plugin.broken",
+                    "1.0.0",
+                    """
+                    ,"dependencies":[{"id":"quantum.plugin.missing","minVersion":"3.0.0"}]
+                    """)),
+            new ArchiveFile("broken/wwwroot/dist/plugin.js", "export default { mount() {} };"));
+
+        var preview = await manager.PrepareInstallAsync(archive, "incompatible.zip");
+
+        Assert.False(preview.CanInstall);
+        Assert.Null(preview.PreviewId);
+        Assert.Contains(preview.Issues, issue =>
+            issue.PluginId == "quantum.plugin.broken"
+            && issue.Reason.Contains("missing", StringComparison.OrdinalIgnoreCase));
+        Assert.Single(fixture.Catalog.Plugins);
+        Assert.False(Directory.Exists(Path.Combine(fixture.ModulesRoot, "quantum.plugin.broken")));
+    }
+
+    [Fact]
+    public async Task PrepareInstall_RejectsArchivePathTraversal()
+    {
+        using var fixture = new RuntimeFixture();
+        await using var manager = fixture.CreateManager();
+        await manager.InitializeAsync(fixture.HostServices);
+        using var archive = CreateArchive(new ArchiveFile("../escaped.txt", "unsafe"));
+
+        var preview = await manager.PrepareInstallAsync(archive, "unsafe.zip");
+
+        Assert.False(preview.CanInstall);
+        Assert.Contains(preview.Issues, issue =>
+            issue.Reason.Contains("不安全路径", StringComparison.Ordinal));
+        Assert.False(File.Exists(Path.Combine(manager.SessionShadowRoot, "escaped.txt")));
+    }
+
+    [Fact]
+    public async Task InstallPackage_RestoresModulesWhenNewLifecycleFails()
+    {
+        using var fixture = new RuntimeFixture();
+        await using var manager = fixture.CreateManager();
+        await manager.InitializeAsync(fixture.HostServices);
+        var originalRuntimeId = Assert.Single(fixture.Catalog.Plugins).RuntimeId;
+        using var archive = CreateArchive(
+            new ArchiveFile("example/plugin.json", DotNetManifest("quantum.plugin.example", "1.1.0")),
+            new ArchiveFile("example/Quantum.ExamplePlugin.dll", File.ReadAllBytes(fixture.SourceAssemblyPath)),
+            new ArchiveFile("example/fail-start", string.Empty));
+        var preview = await manager.PrepareInstallAsync(archive, "failing-upgrade.zip");
+        Assert.True(preview.CanInstall, string.Join(Environment.NewLine, preview.Issues));
+
+        var result = await manager.InstallAsync(preview.PreviewId!);
+
+        Assert.False(result.Succeeded);
+        var current = Assert.Single(fixture.Catalog.Plugins);
+        Assert.Equal(originalRuntimeId, current.RuntimeId);
+        Assert.Equal("1.0.0", current.Manifest.Version.ToString());
+        Assert.Equal(
+            "1.0.0",
+            JsonDocument.Parse(File.ReadAllText(Path.Combine(fixture.PluginRoot, "plugin.json")))
+                .RootElement.GetProperty("version").GetString());
+        Assert.False(File.Exists(Path.Combine(fixture.PluginRoot, "fail-start")));
+    }
+
     private static async Task<WeakReference> LoadReloadAndDisposeAsync(RuntimeFixture fixture)
     {
         await using var manager = fixture.CreateManager();
@@ -451,6 +576,42 @@ public sealed class PluginRuntimeManagerTests
         }
     }
 
+    private static MemoryStream CreateArchive(params ArchiveFile[] files)
+    {
+        var stream = new MemoryStream();
+        using (var archive = new ZipArchive(stream, ZipArchiveMode.Create, leaveOpen: true))
+        {
+            foreach (var file in files)
+            {
+                var entry = archive.CreateEntry(file.Path);
+                using var destination = entry.Open();
+                destination.Write(file.Content);
+            }
+        }
+
+        stream.Position = 0;
+        return stream;
+    }
+
+    private static string DotNetManifest(string pluginId, string version)
+        => $$"""
+           {
+             "id": "{{pluginId}}",
+             "version": "{{version}}",
+             "entryAssembly": "Quantum.ExamplePlugin.dll"
+           }
+           """;
+
+    private static string WebManifest(string pluginId, string version, string extraProperties = "")
+        => $$"""
+           {
+             "id": "{{pluginId}}",
+             "version": "{{version}}",
+             "runtime": { "kind": "web", "entry": "dist/plugin.js" }
+             {{extraProperties}}
+           }
+           """;
+
     private static async Task<long> ExecuteScalarInt64Async(string databasePath, string sql)
     {
         await using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
@@ -465,6 +626,24 @@ public sealed class PluginRuntimeManagerTests
     }
 
     private sealed record RuntimeEvent(string State);
+
+    private sealed record ArchiveFile
+    {
+        public ArchiveFile(string path, string content)
+            : this(path, System.Text.Encoding.UTF8.GetBytes(content))
+        {
+        }
+
+        public ArchiveFile(string path, byte[] content)
+        {
+            Path = path;
+            Content = content;
+        }
+
+        public string Path { get; }
+
+        public byte[] Content { get; }
+    }
 
     private sealed class RuntimeFixture : IDisposable
     {

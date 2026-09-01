@@ -1,5 +1,88 @@
 window.quantum = window.quantum || {};
 
+window.quantum.pluginInstallerDropTarget = {
+  registrations: new Map(),
+
+  initialize(id, element) {
+    this.dispose(id);
+    const containsFiles = event => Array.from(event.dataTransfer?.types ?? [])
+      .some(type => String(type).toLowerCase() === "files");
+    const show = event => {
+      if (!containsFiles(event)) {
+        return;
+      }
+      event.preventDefault();
+      element.classList.add("visible");
+      element.setAttribute("aria-hidden", "false");
+    };
+    const allowDrop = event => {
+      if (containsFiles(event)) {
+        event.preventDefault();
+      }
+    };
+    const hide = () => this.hide(id);
+    const drop = event => {
+      if (containsFiles(event) && !element.contains(event.target)) {
+        event.preventDefault();
+      }
+      hide();
+    };
+    const leaveWindow = event => {
+      if (event.relatedTarget === null
+          && (event.clientX <= 0
+            || event.clientY <= 0
+            || event.clientX >= window.innerWidth
+            || event.clientY >= window.innerHeight)) {
+        hide();
+      }
+    };
+    window.addEventListener("dragenter", show, true);
+    window.addEventListener("dragover", allowDrop, true);
+    window.addEventListener("dragleave", leaveWindow, true);
+    window.addEventListener("drop", drop, true);
+    window.addEventListener("blur", hide);
+    this.registrations.set(id, {
+      element,
+      show,
+      allowDrop,
+      leaveWindow,
+      drop,
+      hide
+    });
+  },
+
+  hide(id) {
+    const registration = this.registrations.get(id);
+    registration?.element.classList.remove("visible");
+    registration?.element.setAttribute("aria-hidden", "true");
+  },
+
+  show(id) {
+    const registration = this.registrations.get(id);
+    registration?.element.classList.add("visible");
+    registration?.element.setAttribute("aria-hidden", "false");
+  },
+
+  showAll() {
+    for (const id of this.registrations.keys()) {
+      this.show(id);
+    }
+  },
+
+  dispose(id) {
+    const registration = this.registrations.get(id);
+    if (!registration) {
+      return;
+    }
+    window.removeEventListener("dragenter", registration.show, true);
+    window.removeEventListener("dragover", registration.allowDrop, true);
+    window.removeEventListener("dragleave", registration.leaveWindow, true);
+    window.removeEventListener("drop", registration.drop, true);
+    window.removeEventListener("blur", registration.hide);
+    this.registrations.delete(id);
+  }
+};
+
 window.quantum.plugins = {
   nodes: [],
   records: new Map(),
@@ -434,6 +517,11 @@ window.quantum.plugins = {
 
     if (message.type === "rpc") {
       void this.handleRpc(record, message);
+      return;
+    }
+
+    if (message.type === "host-file-drag-enter") {
+      window.quantum.pluginInstallerDropTarget.showAll();
       return;
     }
 

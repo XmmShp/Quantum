@@ -1,0 +1,11 @@
+@page "/"
+@inject NavigationManager NavigationManager
+@inject PluginCatalog PluginCatalog
+
+@code {
+    protected override void OnInitialized()
+    {
+        var destination = PluginCatalog.Routes.FirstOrDefault()?.Definition.Path ?? "/settings";
+        NavigationManager.NavigateTo(destination, replace: true);
+    }
+}

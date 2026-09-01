@@ -1,32 +1,31 @@
-@page "/"
+@page "/settings"
 @implements IDisposable
 @inject PluginCatalog PluginCatalog
 @inject IPluginRuntimeManager PluginRuntimeManager
 
-<PageTitle>Quantum</PageTitle>
+<PageTitle>设置 · Quantum</PageTitle>
 
-<section class="hero">
-    <p class="eyebrow">QUANTUM</p>
-    <h1>你的本地能力，<br />都在一个工作台里。</h1>
-    <p class="hero-copy">基于 .NET 10、NOF 与 MAUI Blazor Hybrid 的本地优先插件平台。</p>
-</section>
+<header class="settings-header">
+    <p class="eyebrow">SETTINGS</p>
+    <h1>设置</h1>
+    <p>管理插件安装、运行时版本与加载异常。</p>
+</header>
 
-<section class="metric-grid" aria-label="运行概览">
-    <article class="metric-card accent-card">
-        <span>已加载插件</span>
-        <strong>@PluginCatalog.Plugins.Count</strong>
-        <small>独立 ALC 或 iframe runtime</small>
-    </article>
-    <article class="metric-card">
-        <span>注册页面</span>
-        <strong>@PluginCatalog.Routes.Count</strong>
-        <small>由 manifest 动态注入</small>
-    </article>
-    <article class="metric-card">
-        <span>启动异常</span>
-        <strong>@PluginCatalog.Failures.Count</strong>
-        <small>单个插件失败不阻塞宿主</small>
-    </article>
+<section class="section-block">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">INSTALL</p>
+            <h2>安装插件整合包</h2>
+        </div>
+        <span class="package-limit">单包最多 512 MiB · 256 个插件</span>
+    </div>
+    <div class="global-drop-hint">
+        <span class="drop-symbol">⇩</span>
+        <div>
+            <strong>将 ZIP 拖到窗口中的任意位置</strong>
+            <p>松开后会扫描包内插件、选择最新版本并执行整份兼容性预检；只有一个插件时流程完全相同。</p>
+        </div>
+    </div>
 </section>
 
 <section class="section-block">
@@ -55,7 +54,7 @@
             <span class="empty-symbol">＋</span>
             <div>
                 <strong>尚未发现插件</strong>
-                <p>将插件目录放入 Modules，或通过 QUANTUM_MODULES_PATH 指定开发目录。</p>
+                <p>将插件 ZIP 拖到窗口中，或通过 QUANTUM_MODULES_PATH 指定开发目录。</p>
             </div>
         </div>
     }

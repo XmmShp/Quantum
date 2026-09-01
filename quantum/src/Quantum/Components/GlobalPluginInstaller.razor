@@ -1,0 +1,238 @@
+@using Microsoft.AspNetCore.Components.Forms
+@implements IAsyncDisposable
+@inject IPluginRuntimeManager PluginRuntimeManager
+@inject IJSRuntime JSRuntime
+
+<div class="global-install-surface">
+    @ChildContent
+
+    <div @ref="_dropOverlay" class="global-plugin-drop-overlay" aria-hidden="true">
+        <InputFile @key="_fileInputKey"
+                   class="global-plugin-drop-input"
+                   accept=".zip,application/zip,application/x-zip-compressed"
+                   disabled="@_isProcessing"
+                   aria-label="松开以安装插件整合包"
+                   OnChange="PrepareInstallAsync" />
+        <div class="global-drop-prompt">
+            <span class="global-drop-icon">⇩</span>
+            <p class="eyebrow">INSTALL PLUGINS</p>
+            <strong>@(_isProcessing ? "正在处理插件包" : "松开鼠标，扫描插件整合包")</strong>
+            <span>每个插件一个文件夹；只包含一个插件时使用完全相同的安装流程。</span>
+        </div>
+    </div>
+
+    @if (_pendingPreview is { } preview)
+    {
+        <div class="dialog-backdrop global-install-dialog-backdrop">
+            <section class="unload-dialog install-dialog"
+                     role="alertdialog"
+                     aria-modal="true"
+                     aria-labelledby="install-dialog-title">
+                <p class="eyebrow">INSTALL PLUGINS</p>
+                <h2 id="install-dialog-title">
+                    @(preview.CanInstall
+                        ? $"即将安装 {preview.InstallCount} 个插件"
+                        : "这个插件包无法安装")
+                </h2>
+                <p class="dialog-note">@preview.ArchiveFileName</p>
+
+                @if (preview.Plugins.Count > 0)
+                {
+                    <ul class="install-preview-list">
+                        @foreach (var plugin in preview.Plugins)
+                        {
+                            <li>
+                                <div>
+                                    <strong>@plugin.PluginId</strong>
+                                    <span>@GetInstallVersionText(plugin)</span>
+                                </div>
+                                <span class="install-action @GetInstallActionClass(plugin.Action)">
+                                    @GetInstallActionText(plugin.Action)
+                                </span>
+                            </li>
+                        }
+                    </ul>
+                }
+
+                @if (preview.Issues.Count > 0)
+                {
+                    <div class="install-issues">
+                        <strong>兼容性检查未通过</strong>
+                        <ul>
+                            @foreach (var issue in preview.Issues)
+                            {
+                                <li>
+                                    @if (!string.IsNullOrWhiteSpace(issue.PluginId))
+                                    {
+                                        <code>@issue.PluginId</code>
+                                    }
+                                    @issue.Reason
+                                </li>
+                            }
+                        </ul>
+                    </div>
+                }
+                else
+                {
+                    <p class="dialog-note">确认后才会写入 Modules；安装失败时会保留当前运行版本并恢复插件文件。</p>
+                }
+
+                <div class="dialog-actions">
+                    <button type="button" class="secondary-button" @onclick="CancelPreviewAsync">
+                        @(preview.CanInstall ? "取消" : "关闭")
+                    </button>
+                    @if (preview.CanInstall)
+                    {
+                        <button type="button"
+                                class="primary-button"
+                                disabled="@_isProcessing"
+                                @onclick="ConfirmInstallAsync">
+                            @(_isProcessing ? "正在安装…" : "确认安装")
+                        </button>
+                    }
+                </div>
+            </section>
+        </div>
+    }
+
+    @if (!string.IsNullOrWhiteSpace(_operationMessage))
+    {
+        <div class="global-operation-message @(_operationSucceeded ? "success" : "error")"
+             role="status">
+            <span>@_operationMessage</span>
+            <button type="button" aria-label="关闭消息" @onclick="DismissMessage">×</button>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    private PluginInstallPreview? _pendingPreview;
+    private string? _operationMessage;
+    private bool _operationSucceeded;
+    private bool _isProcessing;
+    private int _fileInputKey;
+    private readonly string _dropTargetId = Guid.NewGuid().ToString("N");
+    private ElementReference _dropOverlay;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await JSRuntime.InvokeVoidAsync(
+                "quantum.pluginInstallerDropTarget.initialize",
+                _dropTargetId,
+                _dropOverlay);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        try
+        {
+            await JSRuntime.InvokeVoidAsync(
+                "quantum.pluginInstallerDropTarget.dispose",
+                _dropTargetId);
+        }
+        catch (JSDisconnectedException)
+        {
+        }
+    }
+
+    private async Task PrepareInstallAsync(InputFileChangeEventArgs eventArgs)
+    {
+        await JSRuntime.InvokeVoidAsync(
+            "quantum.pluginInstallerDropTarget.hide",
+            _dropTargetId);
+        if (_isProcessing)
+        {
+            return;
+        }
+
+        _isProcessing = true;
+        _operationMessage = null;
+        try
+        {
+            var file = eventArgs.File;
+            await using var stream = file.OpenReadStream(PluginPackageLimits.MaximumArchiveBytes);
+            _pendingPreview = await PluginRuntimeManager.PrepareInstallAsync(stream, file.Name);
+        }
+        catch (Exception exception)
+        {
+            _operationSucceeded = false;
+            _operationMessage = $"无法读取插件 ZIP：{exception.Message}";
+        }
+        finally
+        {
+            _isProcessing = false;
+            _fileInputKey++;
+        }
+    }
+
+    private async Task CancelPreviewAsync()
+    {
+        var preview = _pendingPreview;
+        _pendingPreview = null;
+        if (preview?.PreviewId is not null)
+        {
+            await PluginRuntimeManager.CancelInstallAsync(preview.PreviewId);
+        }
+    }
+
+    private async Task ConfirmInstallAsync()
+    {
+        var preview = _pendingPreview;
+        if (_isProcessing || preview?.PreviewId is null || !preview.CanInstall)
+        {
+            return;
+        }
+
+        _isProcessing = true;
+        _operationMessage = null;
+        try
+        {
+            var result = await PluginRuntimeManager.InstallAsync(preview.PreviewId);
+            _operationSucceeded = result.Succeeded;
+            _operationMessage = result.Message;
+            _pendingPreview = null;
+        }
+        catch (Exception exception)
+        {
+            _operationSucceeded = false;
+            _operationMessage = $"插件安装失败：{exception.Message}";
+        }
+        finally
+        {
+            _isProcessing = false;
+        }
+    }
+
+    private void DismissMessage()
+        => _operationMessage = null;
+
+    private static string GetInstallVersionText(PluginInstallPreviewItem plugin)
+        => plugin.Action switch
+        {
+            PluginInstallAction.Install => $"v{plugin.PackageVersion}",
+            PluginInstallAction.Upgrade => $"v{plugin.InstalledVersion} → v{plugin.PackageVersion}",
+            _ => $"保留 v{plugin.InstalledVersion}（包内 v{plugin.PackageVersion}）"
+        };
+
+    private static string GetInstallActionText(PluginInstallAction action)
+        => action switch
+        {
+            PluginInstallAction.Install => "新安装",
+            PluginInstallAction.Upgrade => "升级",
+            _ => "跳过"
+        };
+
+    private static string GetInstallActionClass(PluginInstallAction action)
+        => action switch
+        {
+            PluginInstallAction.Install => "new",
+            PluginInstallAction.Upgrade => "upgrade",
+            _ => "skip"
+        };
+}

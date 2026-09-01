@@ -14,6 +14,7 @@ Quantum 是基于 .NET 10、NOF 与 .NET MAUI Blazor Hybrid 的本地优先插�
 - manifest 页面通过 `DynamicComponent`（.NET）或 iframe view（Web）注入路由和菜单。
 - `.NET` 与 Web 插件通过同一个 `database.migrations` manifest 能力发布追加式 SQLite SQL migrations；Host 统一排序、事务执行并校验历史 checksum。
 - 插件 `wwwroot` 通过自定义 `IFileProvider` 映射为 `_content/{pluginId}/...`。
+- 整个应用窗口支持拖拽插件整合包 ZIP；单插件包使用相同流程。宿主会按 SemVer 合并版本、预检整份依赖/运行时快照，用户确认后再事务化写入 `Modules`。
 - `head` 与 `postBlazor` Web 贡献在 Blazor 启动后注入；脚本节点会被重新创建以确保执行。
 
 ## 目录结构
@@ -87,9 +88,9 @@ dotnet build quantum/src/Quantum/Quantum.csproj -t:Run -f net10.0-maccatalyst
 目录中的每个直接子目录代表一个插件，至少包含 `plugin.json`，以及 manifest 指定的 .NET 入口 DLL 或
 `wwwroot` 下的 Web 入口 ESM bundle；声明数据库能力时还必须包含完整的 SQL migration artifact。
 
-运行时可在首页对单个插件执行“热升级”或“卸载”，也可重新扫描整个 `Modules`。卸载会释放 .NET 生命周期、私有 DI 容器和 ALC，或销毁 Web iframe，但不删除插件源目录；热升级先从源目录创建未激活的候选影子副本，切换时按依赖逆序停用所有下游强依赖插件，成功后按正序恢复，.NET 启动失败会自动回滚旧版本。Web 入口在快照提交后由 WebView 激活，失败时会隔离并报告，但当前不能反向回滚已经提交的 .NET 快照。卸载有下游强依赖的插件时，界面会列出所有直接和传递依赖插件并要求确认，确认后将它们一并卸载。
+运行时可在设置页对单个插件执行“热升级”或“卸载”，也可重新扫描整个 `Modules`。卸载会释放 .NET 生命周期、私有 DI 容器和 ALC，或销毁 Web iframe，但不删除插件源目录；热升级先从源目录创建未激活的候选影子副本，切换时按依赖逆序停用所有下游强依赖插件，成功后按正序恢复，.NET 启动失败会自动回滚旧版本。Web 入口在快照提交后由 WebView 激活，失败时会隔离并报告，但当前不能反向回滚已经提交的 .NET 快照。卸载有下游强依赖的插件时，界面会列出所有直接和传递依赖插件并要求确认，确认后将它们一并卸载。
 
-Mac Catalyst 受应用沙箱限制，不能直接读取任意工作区路径；macOS 插件应安装到应用数据目录。不可访问的 `QUANTUM_MODULES_PATH` 会安全回退到该目录，并在首页显示一条加载异常。
+Mac Catalyst 受应用沙箱限制，不能直接读取任意工作区路径；macOS 插件应安装到应用数据目录。不可访问的 `QUANTUM_MODULES_PATH` 会安全回退到该目录，并在设置页显示一条加载异常。
 
 Catalyst Release 默认的 AOT-only 模式不能加载外部 IL，因此桌面宿主在该目标上显式启用 Mono interpreter 并关闭托管程序集裁剪。若发行渠道是 Mac App Store，还需要单独评估性能、包体与动态插件审核政策；Windows 的 CoreCLR 插件模式不受此约束。
 

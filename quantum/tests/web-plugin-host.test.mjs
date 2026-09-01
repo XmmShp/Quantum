@@ -6,6 +6,7 @@ globalThis.window = {};
 await import("../src/Quantum/wwwroot/pluginHost.js");
 
 const hostDefinition = window.quantum.plugins;
+const dropTargetDefinition = window.quantum.pluginInstallerDropTarget;
 
 function createHost(overrides = {}) {
   return Object.assign({}, hostDefinition, {
@@ -19,6 +20,56 @@ function createHost(overrides = {}) {
     reconcileOperation: null
   }, overrides);
 }
+
+test("global plugin installer covers the window for file drags and removes listeners", () => {
+  const listeners = new Map();
+  const removed = [];
+  const originalWindow = globalThis.window;
+  globalThis.window = {
+    innerWidth: 1280,
+    innerHeight: 720,
+    addEventListener(name, listener) { listeners.set(name, listener); },
+    removeEventListener(name, listener) { removed.push([name, listener]); }
+  };
+  const classes = new Set();
+  const attributes = new Map();
+  const element = {
+    classList: {
+      add(value) { classes.add(value); },
+      remove(value) { classes.delete(value); }
+    },
+    setAttribute(name, value) { attributes.set(name, value); },
+    contains(target) { return target === this; }
+  };
+  const dropTarget = Object.assign({}, dropTargetDefinition, { registrations: new Map() });
+
+  try {
+    dropTarget.initialize("installer", element);
+    let prevented = false;
+    listeners.get("dragenter")({
+      dataTransfer: { types: ["Files"] },
+      preventDefault() { prevented = true; }
+    });
+
+    assert.equal(prevented, true);
+    assert.equal(classes.has("visible"), true);
+    assert.equal(attributes.get("aria-hidden"), "false");
+
+    listeners.get("drop")({
+      dataTransfer: { types: ["Files"] },
+      target: element,
+      preventDefault() { throw new Error("the file input drop must keep its native default"); }
+    });
+    assert.equal(classes.has("visible"), false);
+    assert.equal(attributes.get("aria-hidden"), "true");
+
+    dropTarget.dispose("installer");
+    assert.equal(dropTarget.registrations.size, 0);
+    assert.equal(removed.length, 5);
+  } finally {
+    globalThis.window = originalWindow;
+  }
+});
 
 test("concurrent Web plugin reconciliations are serialized and converge to the latest runtime", async () => {
   const pluginId = "quantum.plugin.web";
@@ -315,6 +366,33 @@ test("messages must match both the iframe window and runtime id", () => {
   });
 
   assert.equal(calls, 1);
+});
+
+test("a file drag entering a Web plugin iframe opens the host drop target", () => {
+  const frameWindow = {};
+  const record = { pluginId: "quantum.plugin.web", runtimeId: "current" };
+  const host = createHost();
+  host.framesByWindow.set(frameWindow, record);
+  const originalDropTarget = window.quantum.pluginInstallerDropTarget;
+  let calls = 0;
+  window.quantum.pluginInstallerDropTarget = {
+    showAll() { calls++; }
+  };
+
+  try {
+    host.handleMessage({
+      source: frameWindow,
+      data: {
+        channel: "quantum-web-plugin",
+        runtimeId: "current",
+        type: "host-file-drag-enter"
+      }
+    });
+
+    assert.equal(calls, 1);
+  } finally {
+    window.quantum.pluginInstallerDropTarget = originalDropTarget;
+  }
 });
 
 test("EventBus delivery reaches an activating iframe and waits for acknowledgement", async () => {

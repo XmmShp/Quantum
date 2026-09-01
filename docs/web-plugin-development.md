@@ -174,6 +174,8 @@ npm run build
 `samples/Quantum.ExamplePlugin` 的双向 integration 声明和 .NET FQN 异步握手调用；打开 .NET 示例页可以看到
 JS 发起的累计握手次数。
 
+也可以把 `plugin.json` 与 `wwwroot` 放在同一个插件目录中打成 ZIP，直接拖到 Quantum 窗口中的任意位置安装；单插件包与多插件整合包使用相同流程，包内插件目录不能互相嵌套。宿主会与已安装版本按 SemVer 择优，并在确认前用同一份新快照校验 Web 入口、强依赖和所有 .NET / Web 插件的兼容性。完整包结构、安全限制与事务语义见 [.NET 插件开发指南的分发 ZIP 安装包章节](plugin-development.md#8-分发-zip-安装包)。
+
 当前自动化环境验证 manifest、运行时、市场包、TypeScript 类型和 bundle 语法。Windows WebView2 与 Mac Catalyst
 WKWebView 仍应各做一次实机验证，尤其关注 sandbox iframe 加载和 `postMessage` 行为。
 

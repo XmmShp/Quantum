@@ -37,6 +37,25 @@
         ...payload
       }, "*");
 
+      const containsFiles = event => Array.from(event.dataTransfer?.types ?? [])
+        .some(type => String(type).toLowerCase() === "files");
+      addEventListener("dragenter", event => {
+        if (containsFiles(event)) {
+          event.preventDefault();
+          post("host-file-drag-enter");
+        }
+      }, true);
+      addEventListener("dragover", event => {
+        if (containsFiles(event)) {
+          event.preventDefault();
+        }
+      }, true);
+      addEventListener("drop", event => {
+        if (containsFiles(event)) {
+          event.preventDefault();
+        }
+      }, true);
+
       const errorMessage = error => error instanceof Error ? error.message : String(error);
 
       const quantumTopic = value => {

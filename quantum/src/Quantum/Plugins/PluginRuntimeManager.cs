@@ -15,6 +15,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
     private readonly List<string> _staleShadowRoots = [];
     private IReadOnlyList<PluginRuntime> _runtimes = [];
     private IServiceProvider? _hostServices;
+    private PendingPluginInstall? _pendingInstall;
     private bool _disposed;
 
     public PluginRuntimeManager(
@@ -320,6 +321,318 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         }
     }
 
+    public async Task<PluginInstallPreview> PrepareInstallAsync(
+        Stream archiveStream,
+        string archiveFileName,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(archiveStream);
+        ArgumentException.ThrowIfNullOrWhiteSpace(archiveFileName);
+        var displayFileName = Path.GetFileName(archiveFileName.Trim());
+        if (!displayFileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            return RejectedInstallPreview(displayFileName, "仅支持 ZIP 格式的插件包。");
+        }
+
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            EnsureReady();
+            ClearPendingInstall();
+            var stagingRoot = Path.Combine(SessionShadowRoot, $"install-preview-{Guid.NewGuid():N}");
+            try
+            {
+                _logger.LogInformation("Preparing plugin package {ArchiveFileName} for installation.", displayFileName);
+                var contentsRoot = await PluginPackageArchive.ExtractAsync(
+                        archiveStream,
+                        stagingRoot,
+                        cancellationToken)
+                    .ConfigureAwait(false);
+                var packageCandidates = PluginPackageArchive.DiscoverPlugins(contentsRoot, _manifestReader);
+                var evaluation = EvaluateInstall(packageCandidates);
+                if (evaluation.Issues.Count == 0)
+                {
+                    var staged = await StageAsync(
+                            evaluation.Plan,
+                            tolerateFailures: false,
+                            cancellationToken)
+                        .ConfigureAwait(false);
+                    try
+                    {
+                        if (staged.Failures.Count > 0)
+                        {
+                            evaluation = evaluation with
+                            {
+                                Issues = staged.Failures.Select(static failure =>
+                                    new PluginInstallIssue(failure.PluginId?.Value, failure.Reason)).ToArray()
+                            };
+                        }
+                    }
+                    finally
+                    {
+                        await DisposeRuntimesAsync(staged.Runtimes).ConfigureAwait(false);
+                    }
+                }
+
+                var previewId = evaluation.Issues.Count == 0
+                    && evaluation.Items.Any(static item =>
+                        item.Action is PluginInstallAction.Install or PluginInstallAction.Upgrade)
+                        ? Guid.NewGuid().ToString("N")
+                        : null;
+                var preview = new PluginInstallPreview(
+                    previewId,
+                    displayFileName,
+                    evaluation.Items,
+                    evaluation.Issues);
+                if (previewId is null)
+                {
+                    PluginShadowCopy.TryDelete(stagingRoot);
+                }
+                else
+                {
+                    _pendingInstall = new PendingPluginInstall(
+                        preview,
+                        stagingRoot,
+                        packageCandidates,
+                        _catalog.Revision);
+                }
+
+                _logger.LogInformation(
+                    "Plugin package {ArchiveFileName} preview completed: {PackagePluginCount} plugin(s), "
+                    + "{InstallPluginCount} selected, {IssueCount} issue(s).",
+                    displayFileName,
+                    evaluation.Items.Count,
+                    preview.InstallCount,
+                    preview.Issues.Count);
+                return preview;
+            }
+            catch (Exception exception) when (exception is IOException
+                or InvalidDataException
+                or JsonException
+                or ArgumentException
+                or FormatException
+                or UnauthorizedAccessException)
+            {
+                PluginShadowCopy.TryDelete(stagingRoot);
+                _logger.LogWarning(
+                    exception,
+                    "Plugin package {ArchiveFileName} could not be prepared.",
+                    displayFileName);
+                return RejectedInstallPreview(displayFileName, exception.Message);
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task<PluginOperationResult> InstallAsync(
+        string previewId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(previewId);
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            EnsureReady();
+            var pending = _pendingInstall;
+            if (pending is null || !string.Equals(pending.Preview.PreviewId, previewId, StringComparison.Ordinal))
+            {
+                return PluginOperationResult.Failure("安装预览已失效，请重新拖入 ZIP 包。");
+            }
+
+            if (pending.CatalogRevision != _catalog.Revision)
+            {
+                ClearPendingInstall();
+                return PluginOperationResult.Failure("插件清单在确认前已变化，请重新拖入 ZIP 包并确认最新清单。");
+            }
+
+            var evaluation = EvaluateInstall(pending.PackageCandidates);
+            if (evaluation.Issues.Count > 0
+                || !evaluation.Items.SequenceEqual(pending.Preview.Plugins))
+            {
+                ClearPendingInstall();
+                return PluginOperationResult.Failure("插件文件或依赖状态在确认前已变化，请重新拖入 ZIP 包。");
+            }
+
+            var selectedPackages = evaluation.Items
+                .Where(static item => item.Action is PluginInstallAction.Install or PluginInstallAction.Upgrade)
+                .Select(item => evaluation.PackageCandidates[new PluginId(item.PluginId)])
+                .ToArray();
+            var transactionRoot = Path.Combine(
+                Path.GetFullPath(_options.ModulesRootPath),
+                $".quantum-install-{Guid.NewGuid():N}");
+            var operations = new List<PluginFileInstallOperation>();
+            var filesCommitted = false;
+            var preserveTransaction = false;
+            try
+            {
+                var incomingRoot = Path.Combine(transactionRoot, "incoming");
+                var backupRoot = Path.Combine(transactionRoot, "backup");
+                Directory.CreateDirectory(incomingRoot);
+                Directory.CreateDirectory(backupRoot);
+
+                foreach (var package in selectedPackages)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var pluginId = package.Manifest.Id;
+                    var destinationPath = evaluation.InstalledCandidates.TryGetValue(pluginId, out var installed)
+                        ? installed.RootPath
+                        : Path.Combine(_options.ModulesRootPath, pluginId.Value);
+                    EnsureDirectModuleChild(destinationPath);
+                    var incomingPath = Path.Combine(incomingRoot, pluginId.Value);
+                    var backupPath = Path.Combine(backupRoot, pluginId.Value);
+                    PluginShadowCopy.Copy(package.RootPath, incomingPath);
+                    operations.Add(new PluginFileInstallOperation(
+                        pluginId,
+                        destinationPath,
+                        incomingPath,
+                        backupPath,
+                        Directory.Exists(destinationPath)));
+                }
+
+                filesCommitted = operations.Count > 0;
+                foreach (var operation in operations)
+                {
+                    if (operation.HadExistingDirectory)
+                    {
+                        Directory.Move(operation.DestinationPath, operation.BackupPath);
+                    }
+
+                    Directory.Move(operation.IncomingPath, operation.DestinationPath);
+                }
+
+                var discovery = Discover(excludedPluginIds: null);
+                var compatibilityFailure = discovery.Failures.FirstOrDefault();
+                if (compatibilityFailure is not null)
+                {
+                    await RestoreInstalledFilesAsync(operations).ConfigureAwait(false);
+                    filesCommitted = false;
+                    ClearPendingInstall();
+                    return PluginOperationResult.Failure(
+                        $"安装后的插件清单不兼容，未安装任何插件：{compatibilityFailure.Reason}");
+                }
+
+                foreach (var package in selectedPackages)
+                {
+                    var planned = discovery.Plan.OrderedCandidates.FirstOrDefault(candidate =>
+                        candidate.Manifest.Id == package.Manifest.Id);
+                    if (planned is null || !planned.Manifest.Version.Equals(package.Manifest.Version))
+                    {
+                        await RestoreInstalledFilesAsync(operations).ConfigureAwait(false);
+                        filesCommitted = false;
+                        ClearPendingInstall();
+                        return PluginOperationResult.Failure(
+                            $"插件 '{package.Manifest.Id}' 的安装版本清单发生变化，未安装任何插件。");
+                    }
+                }
+
+                var missingCurrent = FindMissingCurrentPlugins(discovery.Plan, excludedPluginIds: null);
+                if (missingCurrent.Length > 0)
+                {
+                    await RestoreInstalledFilesAsync(operations).ConfigureAwait(false);
+                    filesCommitted = false;
+                    ClearPendingInstall();
+                    return PluginOperationResult.Failure(
+                        $"安装会使已加载插件失效，未安装任何插件：{string.Join(", ", missingCurrent)}。");
+                }
+
+                var result = await ReplaceAllAsync(discovery, cancellationToken).ConfigureAwait(false);
+                if (!result.Succeeded)
+                {
+                    await RestoreInstalledFilesAsync(operations).ConfigureAwait(false);
+                    filesCommitted = false;
+                    ClearPendingInstall();
+                    return PluginOperationResult.Failure($"{result.Message} Modules 文件已恢复。");
+                }
+
+                filesCommitted = false;
+                ClearPendingInstall();
+                return PluginOperationResult.Success(
+                    $"已安装 {selectedPackages.Length} 个插件："
+                    + $"{string.Join(", ", selectedPackages.Select(static plugin => $"{plugin.Manifest.Id} {plugin.Manifest.Version}"))}。");
+            }
+            catch (OperationCanceledException exception)
+            {
+                if (filesCommitted)
+                {
+                    try
+                    {
+                        await RestoreInstalledFilesAsync(operations).ConfigureAwait(false);
+                    }
+                    catch (Exception rollbackException)
+                    {
+                        preserveTransaction = true;
+                        throw new InvalidOperationException(
+                            "插件安装已取消，但 Modules 文件恢复未完成。",
+                            new AggregateException(exception, rollbackException));
+                    }
+                }
+
+                ClearPendingInstall();
+                throw;
+            }
+            catch (Exception exception)
+            {
+                if (filesCommitted)
+                {
+                    try
+                    {
+                        await RestoreInstalledFilesAsync(operations).ConfigureAwait(false);
+                    }
+                    catch (Exception rollbackException)
+                    {
+                        preserveTransaction = true;
+                        _logger.LogCritical(
+                            rollbackException,
+                            "Plugin package file rollback failed for preview {PreviewId}.",
+                            previewId);
+                        return PluginOperationResult.Failure(
+                            $"插件安装失败且文件恢复未完成，请检查 Modules：{exception.Message}；"
+                            + $"恢复错误：{rollbackException.Message}");
+                    }
+                }
+
+                _logger.LogError(exception, "Plugin package installation failed for preview {PreviewId}.", previewId);
+                ClearPendingInstall();
+                return PluginOperationResult.Failure($"插件安装失败，未安装任何插件：{exception.Message}");
+            }
+            finally
+            {
+                if (!preserveTransaction)
+                {
+                    PluginShadowCopy.TryDelete(transactionRoot);
+                }
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
+    public async Task CancelInstallAsync(
+        string previewId,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(previewId);
+        await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_pendingInstall is not null
+                && string.Equals(_pendingInstall.Preview.PreviewId, previewId, StringComparison.Ordinal))
+            {
+                ClearPendingInstall();
+            }
+        }
+        finally
+        {
+            _gate.Release();
+        }
+    }
+
     public IServiceProvider? GetPluginServices(Assembly assembly)
         => _catalog.FindPlugin(assembly)?.Services;
 
@@ -339,6 +652,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             }
 
             _disposed = true;
+            ClearPendingInstall();
             var runtimes = _runtimes;
             _logger.LogInformation(
                 "Disposing plugin runtime manager with {PluginCount} active plugin(s).",
@@ -592,6 +906,207 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         }
     }
 
+    private PluginInstallEvaluation EvaluateInstall(IReadOnlyList<PluginCandidate> packageCandidates)
+    {
+        var moduleScan = ReadModuleCandidates();
+        var issues = moduleScan.Failures
+            .Select(static failure => new PluginInstallIssue(failure.PluginId?.Value, failure.Reason))
+            .ToList();
+
+        var installedCandidates = new Dictionary<PluginId, PluginCandidate>();
+        foreach (var group in moduleScan.Candidates.GroupBy(static candidate => candidate.Manifest.Id))
+        {
+            var ordered = OrderByNewest(group);
+            installedCandidates[group.Key] = ordered[0];
+            if (ordered.Length > 1)
+            {
+                issues.Add(new PluginInstallIssue(
+                    group.Key.Value,
+                    "Modules 中有多个目录声明了同一个插件 id，无法生成唯一版本清单。"));
+            }
+        }
+
+        var selectedPackages = new Dictionary<PluginId, PluginCandidate>();
+        foreach (var group in packageCandidates.GroupBy(static candidate => candidate.Manifest.Id))
+        {
+            var ordered = OrderByNewest(group);
+            var newest = ordered[0];
+            selectedPackages[group.Key] = newest;
+            if (ordered.Skip(1).Any(candidate => candidate.Manifest.Version.Equals(newest.Manifest.Version)))
+            {
+                issues.Add(new PluginInstallIssue(
+                    group.Key.Value,
+                    $"ZIP 中有多个 {newest.Manifest.Version} 版本，无法确定应安装的目录。"));
+            }
+        }
+
+        var mergedCandidates = installedCandidates.ToDictionary(static pair => pair.Key, static pair => pair.Value);
+        var items = new List<PluginInstallPreviewItem>();
+        foreach (var package in selectedPackages.Values
+                     .OrderBy(static candidate => candidate.Manifest.Id.Value, StringComparer.Ordinal))
+        {
+            installedCandidates.TryGetValue(package.Manifest.Id, out var installed);
+            var comparison = installed is null
+                ? 1
+                : package.Manifest.Version.CompareTo(installed.Manifest.Version);
+            var action = installed is null
+                ? PluginInstallAction.Install
+                : comparison > 0
+                    ? PluginInstallAction.Upgrade
+                    : PluginInstallAction.KeepInstalled;
+            if (action is PluginInstallAction.Install or PluginInstallAction.Upgrade)
+            {
+                mergedCandidates[package.Manifest.Id] = package;
+            }
+
+            items.Add(new PluginInstallPreviewItem(
+                package.Manifest.Id.Value,
+                package.Manifest.Version.ToString(),
+                installed?.Manifest.Version.ToString(),
+                action));
+
+            if (action == PluginInstallAction.Install)
+            {
+                var canonicalDestination = Path.Combine(_options.ModulesRootPath, package.Manifest.Id.Value);
+                if (Directory.Exists(canonicalDestination))
+                {
+                    issues.Add(new PluginInstallIssue(
+                        package.Manifest.Id.Value,
+                        $"目标目录 '{canonicalDestination}' 已存在但不是有效的已安装插件。"));
+                }
+            }
+        }
+
+        var plan = _dependencyPlanner.CreatePlan(mergedCandidates.Values);
+        issues.AddRange(plan.Failures.Select(static failure =>
+            new PluginInstallIssue(failure.PluginId?.Value, failure.Reason)));
+        var plannedIds = plan.OrderedCandidates
+            .Select(static candidate => candidate.Manifest.Id)
+            .ToHashSet();
+        foreach (var current in _runtimes.Where(runtime =>
+                     !plannedIds.Contains(runtime.Candidate.Manifest.Id)))
+        {
+            issues.Add(new PluginInstallIssue(
+                current.Candidate.Manifest.Id.Value,
+                "新的插件版本清单会使当前已加载插件失效。"));
+        }
+
+        if (!items.Any(static item =>
+                item.Action is PluginInstallAction.Install or PluginInstallAction.Upgrade))
+        {
+            issues.Add(new PluginInstallIssue(
+                null,
+                "ZIP 中没有比当前已安装版本更新的插件。"));
+        }
+
+        return new PluginInstallEvaluation(items, issues, selectedPackages, installedCandidates, plan);
+    }
+
+    private ModuleCandidateScan ReadModuleCandidates()
+    {
+        var candidates = new List<PluginCandidate>();
+        var failures = new List<PluginLoadFailure>();
+        if (!Directory.Exists(_options.ModulesRootPath))
+        {
+            return new ModuleCandidateScan(candidates, failures);
+        }
+
+        foreach (var directory in EnumerateModuleDirectories())
+        {
+            try
+            {
+                candidates.Add(_manifestReader.Read(directory));
+            }
+            catch (Exception exception) when (exception is IOException
+                or JsonException
+                or ArgumentException
+                or FormatException)
+            {
+                failures.Add(new PluginLoadFailure(
+                    null,
+                    $"Could not read plugin from '{directory}': {exception.Message}"));
+            }
+        }
+
+        return new ModuleCandidateScan(candidates, failures);
+    }
+
+    private IEnumerable<string> EnumerateModuleDirectories()
+        => Directory
+            .EnumerateDirectories(_options.ModulesRootPath)
+            .Where(static directory => !Path.GetFileName(directory)
+                .StartsWith(".quantum-install-", StringComparison.Ordinal))
+            .Order(StringComparer.Ordinal);
+
+    private static PluginCandidate[] OrderByNewest(IEnumerable<PluginCandidate> candidates)
+        => candidates
+            .OrderByDescending(
+                static candidate => candidate.Manifest.Version,
+                Comparer<SemanticVersion>.Create(static (left, right) => left.CompareTo(right)))
+            .ThenBy(static candidate => candidate.RootPath, StringComparer.Ordinal)
+            .ToArray();
+
+    private static PluginInstallPreview RejectedInstallPreview(string archiveFileName, string reason)
+        => new(
+            PreviewId: null,
+            archiveFileName,
+            Plugins: [],
+            Issues: [new PluginInstallIssue(null, reason)]);
+
+    private void ClearPendingInstall()
+    {
+        var pending = _pendingInstall;
+        _pendingInstall = null;
+        if (pending is not null && !PluginShadowCopy.TryDelete(pending.StagingRoot))
+        {
+            _logger.LogWarning(
+                "Could not delete plugin install preview directory {StagingRoot}.",
+                pending.StagingRoot);
+        }
+    }
+
+    private void EnsureDirectModuleChild(string path)
+    {
+        var fullPath = Path.GetFullPath(path);
+        var parent = Path.GetDirectoryName(fullPath);
+        var modulesRoot = Path.GetFullPath(_options.ModulesRootPath)
+            .TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar);
+        var comparison = OperatingSystem.IsWindows()
+            ? StringComparison.OrdinalIgnoreCase
+            : StringComparison.Ordinal;
+        if (parent is null || !string.Equals(
+                parent.TrimEnd(Path.DirectorySeparatorChar, Path.AltDirectorySeparatorChar),
+                modulesRoot,
+                comparison))
+        {
+            throw new InvalidOperationException($"插件安装目标 '{fullPath}' 不在 Modules 根目录中。");
+        }
+    }
+
+    private static Task RestoreInstalledFilesAsync(IReadOnlyList<PluginFileInstallOperation> operations)
+    {
+        foreach (var operation in operations.Reverse())
+        {
+            if (Directory.Exists(operation.BackupPath))
+            {
+                if (Directory.Exists(operation.DestinationPath))
+                {
+                    Directory.Delete(operation.DestinationPath, recursive: true);
+                }
+
+                Directory.Move(operation.BackupPath, operation.DestinationPath);
+            }
+            else if (!operation.HadExistingDirectory
+                && Directory.Exists(operation.DestinationPath)
+                && !Directory.Exists(operation.IncomingPath))
+            {
+                Directory.Delete(operation.DestinationPath, recursive: true);
+            }
+        }
+
+        return Task.CompletedTask;
+    }
+
     private PluginDiscovery Discover(IReadOnlySet<PluginId>? excludedPluginIds)
     {
         var candidates = new List<PluginCandidate>();
@@ -605,9 +1120,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             return new PluginDiscovery(_dependencyPlanner.CreatePlan([]), failures);
         }
 
-        foreach (var directory in Directory
-                     .EnumerateDirectories(_options.ModulesRootPath)
-                     .Order(StringComparer.Ordinal))
+        foreach (var directory in EnumerateModuleDirectories())
         {
             try
             {
@@ -787,4 +1300,28 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
     private sealed record PluginStageResult(
         IReadOnlyList<PluginRuntime> Runtimes,
         IReadOnlyList<PluginLoadFailure> Failures);
+
+    private sealed record ModuleCandidateScan(
+        IReadOnlyList<PluginCandidate> Candidates,
+        IReadOnlyList<PluginLoadFailure> Failures);
+
+    private sealed record PluginInstallEvaluation(
+        IReadOnlyList<PluginInstallPreviewItem> Items,
+        IReadOnlyList<PluginInstallIssue> Issues,
+        IReadOnlyDictionary<PluginId, PluginCandidate> PackageCandidates,
+        IReadOnlyDictionary<PluginId, PluginCandidate> InstalledCandidates,
+        PluginLoadPlan Plan);
+
+    private sealed record PendingPluginInstall(
+        PluginInstallPreview Preview,
+        string StagingRoot,
+        IReadOnlyList<PluginCandidate> PackageCandidates,
+        long CatalogRevision);
+
+    private sealed record PluginFileInstallOperation(
+        PluginId PluginId,
+        string DestinationPath,
+        string IncomingPath,
+        string BackupPath,
+        bool HadExistingDirectory);
 }

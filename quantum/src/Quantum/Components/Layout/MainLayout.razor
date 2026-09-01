@@ -2,46 +2,46 @@
 @implements IDisposable
 @inject PluginCatalog PluginCatalog
 
-<div class="app-shell">
-    <aside class="sidebar">
-        <a class="brand" href="/">
-            <span class="brand-mark">Q</span>
-            <span>
-                <strong>Quantum</strong>
-                <small>Local plugin workspace</small>
-            </span>
-        </a>
+<GlobalPluginInstaller>
+    <div class="app-shell">
+        <aside class="sidebar">
+            <a class="brand" href="/">
+                <span class="brand-mark">Q</span>
+                <span>
+                    <strong>Quantum</strong>
+                    <small>Local plugin workspace</small>
+                </span>
+            </a>
 
-        <nav aria-label="主导航">
-            <p class="nav-label">WORKSPACE</p>
-            <NavLink href="/" Match="NavLinkMatch.All" class="nav-item">
-                <span class="nav-icon">⌂</span>
-                概览
-            </NavLink>
-
-            @if (PluginCatalog.Routes.Count > 0)
-            {
-                <p class="nav-label plugin-label">PLUGINS</p>
-                @foreach (var route in PluginCatalog.Routes)
+            <nav aria-label="插件导航">
+                @if (PluginCatalog.Routes.Count > 0)
                 {
-                    <NavLink href="@route.Definition.Path" class="nav-item">
-                        <span class="nav-icon">@(route.Definition.Icon ?? "◇")</span>
-                        @(route.Definition.Title ?? route.PluginId.Value)
-                    </NavLink>
+                    <p class="nav-label plugin-label">PLUGINS</p>
+                    @foreach (var route in PluginCatalog.Routes)
+                    {
+                        <NavLink href="@route.Definition.Path" class="nav-item">
+                            <span class="nav-icon">@(route.Definition.Icon ?? "◇")</span>
+                            @(route.Definition.Title ?? route.PluginId.Value)
+                        </NavLink>
+                    }
                 }
-            }
-        </nav>
+            </nav>
 
-        <div class="sidebar-footer">
-            <span class="status-dot"></span>
-            @PluginCatalog.Plugins.Count 个插件已加载
-        </div>
-    </aside>
+            <div class="sidebar-footer">
+                <span class="status-dot"></span>
+                @PluginCatalog.Plugins.Count 个插件已加载
+            </div>
+            <NavLink href="/settings" class="nav-item settings-nav-item">
+                <span class="nav-icon settings-gear" aria-hidden="true">⚙</span>
+                设置
+            </NavLink>
+        </aside>
 
-    <main class="content">
-        @Body
-    </main>
-</div>
+        <main class="content">
+            @Body
+        </main>
+    </div>
+</GlobalPluginInstaller>
 
 @code {
     protected override void OnInitialized()

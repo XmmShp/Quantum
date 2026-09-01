@@ -369,9 +369,35 @@ Modules/
 
 1. 在 `Modules/<plugin-id>` 中替换 DLL、manifest 和 `wwwroot`；正在运行的入口 DLL 来自影子目录，因此源文件可直接覆盖。
 2. 推荐同步提升 manifest `version`，便于确认切换结果。
-3. 在 Quantum 首页点击“热升级”；也可以点击“重新扫描 Modules”重建整个插件快照。
+3. 在 Quantum 设置页点击“热升级”；也可以点击“重新扫描 Modules”重建整个插件快照。
 4. 新快照的装载、SQL migration 或 `StartAsync` 失败时，宿主保留/恢复旧 runtime 并显示失败原因；已经成功提交的 forward-only migration 不回滚。
 
-首页“卸载”仅释放运行时，不删除 `Modules` 文件。若其他插件直接或传递地强依赖目标，宿主会先列出完整级联卸载清单并要求确认；确认后，下游插件按依赖逆序先于目标停止并一同卸载。重新扫描可再次加载这些插件。为了让 collectible ALC 真正被 GC 回收，插件必须在 `StopAsync` 后消除所有后台任务、事件、委托、JS interop 和共享静态缓存对插件对象或类型的引用。
+设置页的“卸载”仅释放运行时，不删除 `Modules` 文件。若其他插件直接或传递地强依赖目标，宿主会先列出完整级联卸载清单并要求确认；确认后，下游插件按依赖逆序先于目标停止并一同卸载。重新扫描可再次加载这些插件。为了让 collectible ALC 真正被 GC 回收，插件必须在 `StopAsync` 后消除所有后台任务、事件、委托、JS interop 和共享静态缓存对插件对象或类型的引用。
 
 Mac Catalyst 应用运行在沙箱中，不能直接扫描普通工作区目录。macOS 调试时请把插件复制到应用数据的 `Modules` 目录；环境变量指定的目录不可访问时，宿主会回退到应用数据目录。
+
+## 8. 分发 ZIP 安装包
+
+Quantum 在任意界面、窗口内任意位置都可以拖入 `.zip` 安装插件。所有 ZIP 都按整合包处理，每个插件占用一个独立文件夹；只含一个插件的 ZIP 是同一格式的特殊情况：
+
+```text
+community-pack.zip
+├── quantum.plugin.notes/
+│   ├── plugin.json
+│   └── Quantum.NotesPlugin.dll
+└── quantum.plugin.theme/
+    ├── plugin.json
+    └── wwwroot/
+        └── dist/plugin.js
+```
+
+插件目录可以位于一层包装目录下，但插件目录之间不能嵌套。ZIP 内路径必须使用 `/`，不能包含绝对路径、`..`、反斜杠、盘符或符号链接。宿主当前限制单个 ZIP 不超过 512 MiB、解压后不超过 2 GiB、20,000 个条目和 256 个插件。
+
+宿主解压到临时目录后执行以下预检，不会立即改动 `Modules`：
+
+1. 使用与普通目录加载相同的规则验证 manifest、runtime 入口和 migration artifact。
+2. ZIP 内同一插件有多个版本时按 SemVer 选择最高版本；与已安装插件重复时，只有严格更新的包内版本会进入安装清单，相同或更旧版本显示为“跳过”。同一最高版本对应多个目录会被视为歧义并拒绝。
+3. 将候选版本与现有 `Modules` 合成完整的新快照，校验所有强依赖、最低版本和依赖环，并实际暂存 .NET ALC / DI 或 Web runtime 入口以发现 ABI、路由及服务注册错误。预检阶段不调用插件生命周期，也不执行数据库 migration。
+4. 任一插件失败会拒绝整个 ZIP。全部通过后，界面展示“新安装 / 升级 / 跳过”清单并要求确认。
+
+确认后宿主才以文件事务更新 `Modules` 并热切换完整运行时快照。文件替换、runtime staging 或生命周期启动失败时会恢复旧插件目录和旧 runtime。SQL migration 仍遵循 forward-only 规则：一旦在确认后的启动阶段提交，不会随着后续生命周期失败反向执行。
