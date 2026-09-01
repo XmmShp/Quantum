@@ -9,12 +9,6 @@
       "minVersion": "0.1.0"
     }
   ],
-  "permissions": [
-    {
-      "name": "ui.navigation",
-      "required": true
-    }
-  ],
   "ui": {
     "routes": [
       {

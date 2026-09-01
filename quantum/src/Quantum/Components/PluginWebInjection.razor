@@ -49,8 +49,7 @@
                 EntryUrl = Navigation.ToAbsoluteUri(
                     $"_content/{plugin.Manifest.Id.Value}/{EncodePath(plugin.Manifest.Runtime.Entry)}"
                     + $"?runtime={plugin.RuntimeId:N}").ToString(),
-                AssetBaseUrl = Navigation.ToAbsoluteUri($"_content/{plugin.Manifest.Id.Value}/").ToString(),
-                Permissions = plugin.Manifest.Permissions.Select(static permission => permission.Name).ToArray()
+                AssetBaseUrl = Navigation.ToAbsoluteUri($"_content/{plugin.Manifest.Id.Value}/").ToString()
             })
             .ToArray();
         var previousFailureMessage = _failureMessage;

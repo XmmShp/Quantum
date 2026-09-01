@@ -65,7 +65,7 @@ public sealed class WebPluginInteropBridge(
             {
                 "log" => InvokeLog(pluginId, method, arguments),
                 "environment" => InvokeEnvironment(plugin, method),
-                "navigation" => InvokeNavigation(plugin, method, arguments),
+                "navigation" => InvokeNavigation(method, arguments),
                 "eventBus" => await InvokeEventBusAsync(
                         plugin,
                         runtimeId,
@@ -185,9 +185,8 @@ public sealed class WebPluginInteropBridge(
         });
     }
 
-    private JsonElement InvokeNavigation(LoadedPlugin plugin, string method, JsonElement arguments)
+    private JsonElement InvokeNavigation(string method, JsonElement arguments)
     {
-        RequirePermission(plugin, "ui.navigation");
         if (!string.Equals(method, "navigate", StringComparison.Ordinal))
         {
             throw new InvalidOperationException($"Unknown navigation method '{method}'.");
@@ -335,7 +334,6 @@ public sealed class WebPluginInteropBridge(
         var target = OptionalString(arguments, "target") ?? "host";
         var serviceTypeName = RequireString(arguments, "service");
         var methodName = RequireString(arguments, "method");
-        RequireDotNetPermission(owner, target, serviceTypeName);
 
         var provider = ResolveTargetProvider(owner, target);
         AsyncServiceScope? scope = null;
@@ -564,31 +562,6 @@ public sealed class WebPluginInteropBridge(
         catch (Exception exception) when (exception is not OutOfMemoryException)
         {
             logger.LogWarning(exception, "Could not dispose a deferred Web plugin RPC scope.");
-        }
-    }
-
-    private static void RequirePermission(LoadedPlugin plugin, string permission)
-    {
-        if (!plugin.Manifest.Permissions.Any(candidate => string.Equals(
-                candidate.Name,
-                permission,
-                StringComparison.Ordinal)))
-        {
-            throw new UnauthorizedAccessException(
-                $"Plugin '{plugin.Manifest.Id}' did not declare permission '{permission}'.");
-        }
-    }
-
-    private static void RequireDotNetPermission(LoadedPlugin plugin, string target, string serviceTypeName)
-    {
-        var permissions = plugin.Manifest.Permissions.Select(static permission => permission.Name).ToHashSet();
-        if (!permissions.Contains("dotnet.invoke:*")
-            && !permissions.Contains($"dotnet.invoke:{target}:*")
-            && !permissions.Contains($"dotnet.invoke:{target}:{serviceTypeName}"))
-        {
-            throw new UnauthorizedAccessException(
-                $"Plugin '{plugin.Manifest.Id}' did not declare permission "
-                + $"'dotnet.invoke:{target}:{serviceTypeName}'.");
         }
     }
 

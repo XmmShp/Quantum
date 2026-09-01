@@ -213,8 +213,7 @@ window.quantum.plugins = {
           pluginId: descriptor.pluginId,
           version: descriptor.version,
           runtimeId: descriptor.runtimeId,
-          assetBaseUrl: descriptor.assetBaseUrl,
-          permissions: descriptor.permissions ?? []
+          assetBaseUrl: descriptor.assetBaseUrl
         }
       });
       await activated;

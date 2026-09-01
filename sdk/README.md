@@ -91,5 +91,5 @@ bootstrap 不注册到 DI。两个方法收到同一个运行期 scoped provider
 解析 scoped 服务时，行为与原生 `GetService(Type)` 相同（启用 scope 校验的容器会抛出异常）。
 
 纯 JavaScript/TypeScript 插件使用同级目录中的 `typescript` SDK。该 SDK 提供与 .NET 共用的 Topic EventBus，以及
-隔离 iframe 生命周期、路由挂载、资源、导航、环境信息和受权限约束的 .NET 服务调用；详细说明见插件开发文档中的
+隔离 iframe 生命周期、路由挂载、资源、导航、环境信息和 .NET 服务调用；详细说明见插件开发文档中的
 Web 插件章节。

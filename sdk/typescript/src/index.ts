@@ -13,7 +13,6 @@ export interface QuantumPluginIdentity {
   readonly id: string;
   readonly version: string;
   readonly runtimeId: string;
-  readonly permissions: readonly string[];
 }
 
 export interface QuantumPluginInfo {

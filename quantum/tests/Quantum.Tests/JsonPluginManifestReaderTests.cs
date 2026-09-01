@@ -17,7 +17,6 @@ public sealed class JsonPluginManifestReaderTests
               "entryAssembly": "Test.dll",
               "dependencies": [{ "id": "core", "minVersion": "1.0.0" }],
               "integrations": [{ "id": "optional-addon", "minVersion": "2.0.0" }],
-              "permissions": [{ "name": "files.read", "required": true }],
               "ui": {
                 "routes": [{
                   "path": "/plugins/test",
@@ -41,7 +40,6 @@ public sealed class JsonPluginManifestReaderTests
         var integration = Assert.Single(candidate.Manifest.Integrations);
         Assert.Equal("optional-addon", integration.Id.Value);
         Assert.Equal("2.0.0", integration.MinimumVersion.ToString());
-        Assert.Single(candidate.Manifest.Permissions);
         Assert.Single(candidate.Manifest.Routes);
         Assert.Single(candidate.Manifest.Web.Head);
     }

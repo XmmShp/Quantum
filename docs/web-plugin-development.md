@@ -44,13 +44,6 @@ npm install --save-dev typescript esbuild
     "entry": "dist/plugin.js"
   },
   "integrations": [],
-  "permissions": [
-    { "name": "ui.navigation", "required": true },
-    {
-      "name": "dotnet.invoke:host:My.Contracts.INotesService",
-      "required": true
-    }
-  ],
   "ui": {
     "routes": [{
       "path": "/plugins/notes",
@@ -105,8 +98,8 @@ iframe 的 CSP 禁止直接网络连接。文本资源可通过 `assets.readText
 
 ## 5. 使用 Topic EventBus
 
-Web 插件与 .NET 插件共享同一套 Host EventBus，不需要额外 manifest permission。Topic 必须通过 branded factory
-创建，校验规则与 .NET 的 NOF `QuantumTopic` 值对象一致：最大长度 255，并且必须匹配
+Web 插件与 .NET 插件共享同一套 Host EventBus。Topic 必须通过 branded factory 创建，校验规则与 .NET 的 NOF
+`QuantumTopic` 值对象一致：最大长度 255，并且必须匹配
 `^[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z0-9][A-Za-z0-9_-]*)*$`。
 
 ```ts
@@ -146,9 +139,8 @@ const result = await context.dotnet.invoke<MyResult>({
 }, { signal });
 ```
 
-权限名为 `dotnet.invoke:<target>:<service-fqn>`。`target` 可以是 `host`，也可以是 manifest 中已激活的 .NET
-integration 插件 id；后者从目标插件的私有容器解析服务。也支持 `dotnet.invoke:<target>:*` 和
-`dotnet.invoke:*`，但宽泛权限应由安装和市场审核流程重点提示。
+`target` 可以是 `host`，也可以是 manifest 中已激活的 .NET integration 插件 id；后者从目标插件的私有容器解析服务。
+Quantum 将已安装插件视为受控代码，导航和 .NET 服务调用均可直接使用。
 
 互操作约束：
 
@@ -173,6 +165,6 @@ JS 发起的累计握手次数。
 当前自动化环境验证 manifest、运行时、市场包、TypeScript 类型和 bundle 语法。Windows WebView2 与 Mac Catalyst
 WKWebView 仍应各做一次实机验证，尤其关注 sandbox iframe 加载和 `postMessage` 行为。
 
-Web runtime 的 .NET 快照切换和 iframe 激活分属两个异步阶段：新 iframe 激活失败时宿主会报告错误并停止授予旧
-runtime RPC 权限，但当前版本还不能把 .NET 侧已经提交的插件快照自动回滚。入口 bundle 应尽量把可失败的初始化放在
+Web runtime 的 .NET 快照切换和 iframe 激活分属两个异步阶段：新 iframe 激活失败时宿主会报告错误并拒绝旧
+runtime 的后续 RPC，但当前版本还不能把 .NET 侧已经提交的插件快照自动回滚。入口 bundle 应尽量把可失败的初始化放在
 `activate`，并在发布前同时验证 WebView2 与 WKWebView。

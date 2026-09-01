@@ -8,7 +8,6 @@ public sealed class PluginManifest
         string entryAssembly,
         IEnumerable<PluginDependency>? dependencies = null,
         IEnumerable<PluginIntegration>? integrations = null,
-        IEnumerable<PluginPermission>? permissions = null,
         IEnumerable<PluginRouteDefinition>? routes = null,
         PluginWebContributions? web = null)
         : this(
@@ -17,7 +16,6 @@ public sealed class PluginManifest
             PluginRuntimeDefinition.DotNet(entryAssembly),
             dependencies,
             integrations,
-            permissions,
             routes,
             web)
     {
@@ -29,7 +27,6 @@ public sealed class PluginManifest
         PluginRuntimeDefinition runtime,
         IEnumerable<PluginDependency>? dependencies = null,
         IEnumerable<PluginIntegration>? integrations = null,
-        IEnumerable<PluginPermission>? permissions = null,
         IEnumerable<PluginRouteDefinition>? routes = null,
         PluginWebContributions? web = null)
     {
@@ -38,7 +35,6 @@ public sealed class PluginManifest
         Runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         Dependencies = (dependencies ?? []).ToArray();
         Integrations = (integrations ?? []).ToArray();
-        Permissions = (permissions ?? []).ToArray();
         Routes = (routes ?? []).ToArray();
         Web = web ?? PluginWebContributions.Empty;
 
@@ -74,7 +70,6 @@ public sealed class PluginManifest
                 .Concat(Integrations.Select(static integration => integration.Id)),
             "plugin relationship");
         EnsureUnique(Routes.Select(static route => route.Path), "route");
-        EnsureUnique(Permissions.Select(static permission => permission.Name), "permission");
     }
 
     public PluginId Id { get; }
@@ -88,8 +83,6 @@ public sealed class PluginManifest
     public IReadOnlyList<PluginDependency> Dependencies { get; }
 
     public IReadOnlyList<PluginIntegration> Integrations { get; }
-
-    public IReadOnlyList<PluginPermission> Permissions { get; }
 
     public IReadOnlyList<PluginRouteDefinition> Routes { get; }
 
@@ -160,20 +153,6 @@ public sealed record PluginRuntimeDefinition
 public sealed record PluginDependency(PluginId Id, SemanticVersion MinimumVersion);
 
 public sealed record PluginIntegration(PluginId Id, SemanticVersion MinimumVersion);
-
-public sealed record PluginPermission
-{
-    public PluginPermission(string name, bool required = true)
-    {
-        ArgumentException.ThrowIfNullOrWhiteSpace(name);
-        Name = name.Trim();
-        Required = required;
-    }
-
-    public string Name { get; }
-
-    public bool Required { get; }
-}
 
 public sealed record PluginRouteDefinition
 {

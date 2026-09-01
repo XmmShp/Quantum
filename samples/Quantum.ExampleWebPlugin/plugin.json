@@ -12,20 +12,6 @@
       "minVersion": "0.1.0"
     }
   ],
-  "permissions": [
-    {
-      "name": "ui.navigation",
-      "required": true
-    },
-    {
-      "name": "dotnet.invoke:host:Quantum.Plugin.Abstraction.IQuantumPluginEnvironment",
-      "required": true
-    },
-    {
-      "name": "dotnet.invoke:quantum.plugin.example:Quantum.ExamplePlugin.IExamplePluginState",
-      "required": true
-    }
-  ],
   "ui": {
     "routes": [
       {

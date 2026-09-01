@@ -38,7 +38,6 @@ public sealed class JsonPluginManifestReader
             document.Integrations.Select(static integration => new PluginIntegration(
                 new PluginId(integration.Id),
                 SemanticVersion.Parse(integration.MinimumVersion))),
-            document.Permissions.Select(static permission => new PluginPermission(permission.Name, permission.Required)),
             document.Ui.Routes.Select(route => runtime.Kind == PluginRuntimeKind.Web
                 ? PluginRouteDefinition.Web(
                     route.Path,
@@ -110,8 +109,6 @@ public sealed class JsonPluginManifestReader
 
         public IReadOnlyList<PluginIntegrationDocument> Integrations { get; init; } = [];
 
-        public IReadOnlyList<PluginPermissionDocument> Permissions { get; init; } = [];
-
         public PluginUiDocument Ui { get; init; } = new();
 
         public PluginWebDocument Web { get; init; } = new();
@@ -138,13 +135,6 @@ public sealed class JsonPluginManifestReader
 
         [JsonPropertyName("minVersion")]
         public string MinimumVersion { get; init; } = string.Empty;
-    }
-
-    private sealed class PluginPermissionDocument
-    {
-        public string Name { get; init; } = string.Empty;
-
-        public bool Required { get; init; } = true;
     }
 
     private sealed class PluginUiDocument

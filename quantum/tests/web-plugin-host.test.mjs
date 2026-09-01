@@ -232,8 +232,7 @@ test("a Web runtime frame uses a Blob document instead of navigating the app sch
       runtimeId: "runtime-123",
       version: "1.0.0",
       entryUrl: "app://0.0.0.1/_content/quantum.plugin.web/plugin.js",
-      assetBaseUrl: "app://0.0.0.1/_content/quantum.plugin.web/",
-      permissions: []
+      assetBaseUrl: "app://0.0.0.1/_content/quantum.plugin.web/"
     };
 
     const record = await host.createRecord(descriptor);

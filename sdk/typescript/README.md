@@ -31,12 +31,7 @@ The emitted plugin entry must be a single self-contained ESM file. Bundle depend
 esbuild, Rollup, Vite, or another ESM-capable bundler; runtime imports are intentionally unavailable inside the
 opaque-origin frame.
 
-Host navigation requires `ui.navigation`. Generic .NET invocation requires one of these manifest permissions:
-
-- `dotnet.invoke:<target>:<service-fqn>`
-- `dotnet.invoke:<target>:*`
-- `dotnet.invoke:*`
-
+Installed plugins run as trusted, controlled code. Host navigation and .NET invocation are directly available.
 `target` is `host` or the id of an active .NET plugin integration. Each invocation owns a DI scope, injects
 `CancellationToken` parameters, awaits `Task`/`ValueTask`, serializes the result, and then disposes the scope.
 
@@ -45,7 +40,7 @@ Host navigation requires `ui.navigation`. Generic .NET invocation requires one o
 TypeScript and .NET plugins share the same Host EventBus. `QuantumTopic.of()` applies the same dot-delimited,
 255-character validation as the .NET `QuantumTopic` value object. Topics must match
 `^[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z0-9][A-Za-z0-9_-]*)*$`; the branded TypeScript type prevents passing unchecked
-strings to the SDK API. EventBus access does not require a manifest permission.
+strings to the SDK API.
 
 `QuantumEvent.payload` is the original JSON value. JavaScript already has a deserialized value, so the SDK does
 not add CLR-style deserialization helpers; validate or narrow the `unknown` payload in the handler. Publishing

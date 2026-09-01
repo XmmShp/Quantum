@@ -175,8 +175,7 @@
         plugin: Object.freeze({
           id: metadata.pluginId,
           version: metadata.version,
-          runtimeId: metadata.runtimeId,
-          permissions: Object.freeze([...(metadata.permissions ?? [])])
+          runtimeId: metadata.runtimeId
         }),
         signal: lifecycleController.signal,
         rpc,
