@@ -156,12 +156,54 @@ public sealed class PhysicalPluginPackageStore : IPluginPackageStore
             throw new InvalidDataException("plugin.json id and version must match the requested plugin release.");
         }
 
-        if (string.IsNullOrWhiteSpace(manifest.EntryAssembly) ||
-            !string.Equals(Path.GetFileName(manifest.EntryAssembly), manifest.EntryAssembly, StringComparison.Ordinal) ||
-            !manifest.EntryAssembly.EndsWith(".dll", StringComparison.OrdinalIgnoreCase) ||
-            !files.Contains(manifest.EntryAssembly))
+        var hasLegacyEntry = !string.IsNullOrWhiteSpace(manifest.EntryAssembly);
+        if (hasLegacyEntry && manifest.Runtime is not null)
         {
-            throw new InvalidDataException("plugin.json entryAssembly must name a DLL at the package root.");
+            throw new InvalidDataException("plugin.json cannot declare both entryAssembly and runtime.");
+        }
+
+        if (hasLegacyEntry)
+        {
+            ValidateDotNetEntry(manifest.EntryAssembly!, files);
+        }
+        else if (manifest.Runtime is null)
+        {
+            throw new InvalidDataException("plugin.json must declare entryAssembly or runtime.");
+        }
+        else
+        {
+            if (string.IsNullOrWhiteSpace(manifest.Runtime.Entry)
+                || string.IsNullOrWhiteSpace(manifest.Runtime.Kind))
+            {
+                throw new InvalidDataException("plugin.json runtime kind and entry are required.");
+            }
+
+            var entry = NormalizeArchivePath(manifest.Runtime.Entry);
+            switch (manifest.Runtime.Kind.Trim().ToLowerInvariant())
+            {
+                case "dotnet":
+                    ValidateDotNetEntry(entry, files);
+                    break;
+                case "web" when (entry.EndsWith(".js", StringComparison.OrdinalIgnoreCase)
+                    || entry.EndsWith(".mjs", StringComparison.OrdinalIgnoreCase))
+                    && files.Contains($"wwwroot/{entry}"):
+                    break;
+                case "web":
+                    throw new InvalidDataException(
+                        "plugin.json Web runtime entry must name a JavaScript module under wwwroot.");
+                default:
+                    throw new InvalidDataException($"Unknown plugin runtime kind '{manifest.Runtime.Kind}'.");
+            }
+        }
+    }
+
+    private static void ValidateDotNetEntry(string entry, IReadOnlySet<string> files)
+    {
+        if (!string.Equals(Path.GetFileName(entry), entry, StringComparison.Ordinal)
+            || !entry.EndsWith(".dll", StringComparison.OrdinalIgnoreCase)
+            || !files.Contains(entry))
+        {
+            throw new InvalidDataException("plugin.json .NET runtime entry must name a DLL at the package root.");
         }
     }
 
@@ -187,8 +229,19 @@ public sealed class PhysicalPluginPackageStore : IPluginPackageStore
 
     private static string NormalizeArchivePath(string path)
     {
-        if (string.IsNullOrWhiteSpace(path) || path.Contains('\\') || path.StartsWith('/') ||
-            path.Split('/').Any(segment => segment is ".." or "."))
+        if (string.IsNullOrWhiteSpace(path))
+        {
+            throw new InvalidDataException($"Unsafe plugin package path '{path}'.");
+        }
+
+        var comparablePath = path.EndsWith("/", StringComparison.Ordinal)
+            ? path[..^1]
+            : path;
+        if (string.IsNullOrWhiteSpace(comparablePath)
+            || path.Contains('\\')
+            || path.Contains(':')
+            || path.StartsWith('/')
+            || comparablePath.Split('/').Any(segment => segment.Length == 0 || segment is ".." or "."))
         {
             throw new InvalidDataException($"Unsafe plugin package path '{path}'.");
         }
@@ -201,5 +254,14 @@ public sealed class PhysicalPluginPackageStore : IPluginPackageStore
         public string? Id { get; init; }
         public string? Version { get; init; }
         public string? EntryAssembly { get; init; }
+
+        public PluginRuntimeEnvelope? Runtime { get; init; }
+    }
+
+    private sealed record PluginRuntimeEnvelope
+    {
+        public string? Kind { get; init; }
+
+        public string? Entry { get; init; }
     }
 }

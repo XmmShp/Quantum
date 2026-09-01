@@ -78,7 +78,8 @@ public sealed class PluginCatalog : IQuantumPluginEnvironment
     public LoadedPlugin? FindPlugin(Assembly assembly)
     {
         ArgumentNullException.ThrowIfNull(assembly);
-        return Plugins.FirstOrDefault(plugin => ReferenceEquals(plugin.EntryAssembly, assembly));
+        return Plugins.FirstOrDefault(plugin => plugin.EntryAssembly is not null
+            && ReferenceEquals(plugin.EntryAssembly, assembly));
     }
 
     private void RaiseChanged()
@@ -135,15 +136,25 @@ public sealed class LoadedPlugin
     public LoadedPlugin(
         PluginManifest manifest,
         string rootPath,
-        Assembly entryAssembly,
+        Assembly? entryAssembly,
         IReadOnlyList<PluginRouteRegistration> routes,
         Guid runtimeId = default,
         IServiceProvider? services = null)
     {
         Manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
         ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
+        if (manifest.Runtime.Kind == PluginRuntimeKind.DotNet && entryAssembly is null)
+        {
+            throw new ArgumentException("A .NET plugin must provide its entry assembly.", nameof(entryAssembly));
+        }
+
+        if (manifest.Runtime.Kind == PluginRuntimeKind.Web && entryAssembly is not null)
+        {
+            throw new ArgumentException("A Web plugin cannot provide a .NET entry assembly.", nameof(entryAssembly));
+        }
+
         RootPath = rootPath;
-        EntryAssembly = entryAssembly ?? throw new ArgumentNullException(nameof(entryAssembly));
+        EntryAssembly = entryAssembly;
         Routes = routes ?? throw new ArgumentNullException(nameof(routes));
         RuntimeId = runtimeId;
         Services = services;
@@ -153,7 +164,7 @@ public sealed class LoadedPlugin
 
     public string RootPath { get; }
 
-    public Assembly EntryAssembly { get; }
+    public Assembly? EntryAssembly { get; }
 
     public IReadOnlyList<PluginRouteRegistration> Routes { get; }
 
@@ -165,13 +176,19 @@ public sealed class LoadedPlugin
 public sealed record PluginRouteRegistration(
     PluginId PluginId,
     PluginRouteDefinition Definition,
-    Type ComponentType)
+    Type? ComponentType)
 {
     public static PluginRouteRegistration Create(
         PluginId pluginId,
         PluginRouteDefinition definition,
         Assembly assembly)
     {
+        if (definition.Component is null)
+        {
+            throw new InvalidOperationException(
+                $"Plugin '{pluginId}' route '{definition.Path}' does not declare a .NET component.");
+        }
+
         var componentType = assembly.GetType(definition.Component, throwOnError: false, ignoreCase: false)
             ?? throw new InvalidOperationException(
                 $"Plugin '{pluginId}' route '{definition.Path}' references missing component '{definition.Component}'.");
@@ -183,5 +200,18 @@ public sealed record PluginRouteRegistration(
         }
 
         return new PluginRouteRegistration(pluginId, definition, componentType);
+    }
+
+    public static PluginRouteRegistration CreateWeb(
+        PluginId pluginId,
+        PluginRouteDefinition definition)
+    {
+        if (definition.View is null)
+        {
+            throw new InvalidOperationException(
+                $"Plugin '{pluginId}' route '{definition.Path}' does not declare a Web view.");
+        }
+
+        return new PluginRouteRegistration(pluginId, definition, ComponentType: null);
     }
 }

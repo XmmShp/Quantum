@@ -66,6 +66,52 @@ public sealed class HostServicesTests : IDisposable
             CancellationToken.None));
     }
 
+    [Fact]
+    public async Task PackageStore_AcceptsWebPluginWithoutAssembly()
+    {
+        var store = CreateStore();
+        var archive = CreateArchive(
+            ("plugin.json", """
+                {
+                  "id":"quantum.plugin.web",
+                  "version":"1.0.0",
+                  "runtime":{"kind":"web","entry":"dist/plugin.js"}
+                }
+                """),
+            ("wwwroot/dist/plugin.js", "export default {};"));
+
+        var stored = await store.SaveAsync(
+            "quantum.plugin.web",
+            "1.0.0",
+            Convert.ToBase64String(archive),
+            null,
+            CancellationToken.None);
+
+        Assert.Equal("quantum.plugin.web/1.0.0.zip", stored.RelativePath);
+    }
+
+    [Fact]
+    public async Task PackageStore_RejectsPlatformSpecificWebEntryPath()
+    {
+        var store = CreateStore();
+        var archive = CreateArchive(
+            ("plugin.json", """
+                {
+                  "id":"quantum.plugin.web",
+                  "version":"1.0.0",
+                  "runtime":{"kind":"web","entry":"C:/plugin.js"}
+                }
+                """),
+            ("wwwroot/C:/plugin.js", "export default {};"));
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => store.SaveAsync(
+            "quantum.plugin.web",
+            "1.0.0",
+            Convert.ToBase64String(archive),
+            null,
+            CancellationToken.None));
+    }
+
     public void Dispose()
     {
         if (Directory.Exists(rootPath))

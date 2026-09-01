@@ -1,8 +1,12 @@
 @using Microsoft.Extensions.Logging
+@using Quantum.Domain.Plugins
+@using Quantum.WebPlugins
 @inject PluginCatalog PluginCatalog
 @inject IJSRuntime JavaScript
 @inject ILogger<PluginWebInjection> Logger
-@implements IDisposable
+@inject NavigationManager Navigation
+@inject WebPluginInteropBridge InteropBridge
+@implements IAsyncDisposable
 
 @if (!string.IsNullOrWhiteSpace(_failureMessage))
 {
@@ -14,6 +18,7 @@
 @code {
     private long _appliedRevision = -1;
     private string? _failureMessage;
+    private DotNetObjectReference<WebPluginInteropBridge>? _bridgeReference;
 
     protected override void OnInitialized()
     {
@@ -34,15 +39,35 @@
             plugin.Manifest.Web.Head,
             plugin.Manifest.Web.PostBlazor
         }).ToArray();
+        var webPlugins = PluginCatalog.Plugins
+            .Where(static plugin => plugin.Manifest.Runtime.Kind == PluginRuntimeKind.Web)
+            .Select(plugin => new
+            {
+                PluginId = plugin.Manifest.Id.Value,
+                RuntimeId = plugin.RuntimeId.ToString("N"),
+                Version = plugin.Manifest.Version.ToString(),
+                EntryUrl = Navigation.ToAbsoluteUri(
+                    $"_content/{plugin.Manifest.Id.Value}/{EncodePath(plugin.Manifest.Runtime.Entry)}"
+                    + $"?runtime={plugin.RuntimeId:N}").ToString(),
+                AssetBaseUrl = Navigation.ToAbsoluteUri($"_content/{plugin.Manifest.Id.Value}/").ToString(),
+                Permissions = plugin.Manifest.Permissions.Select(static permission => permission.Name).ToArray()
+            })
+            .ToArray();
         var previousFailureMessage = _failureMessage;
 
         try
         {
+            _bridgeReference ??= DotNetObjectReference.Create(InteropBridge);
             // The cast is required: anonymous-type arrays are covariant with object[], which
             // otherwise makes JS interop treat every contribution as a separate argument.
             await JavaScript.InvokeVoidAsync(
                 "quantum.plugins.replaceContributions",
                 (object)contributions);
+            await JavaScript.InvokeVoidAsync(
+                "quantum.plugins.reconcileWebPlugins",
+                (object)webPlugins,
+                _bridgeReference);
+            WriteDiagnostics($"Reconciled {webPlugins.Length} Web plugin runtime(s).");
             _failureMessage = null;
         }
         catch (Exception exception) when (exception is not OutOfMemoryException)
@@ -52,6 +77,7 @@
                 exception,
                 "Could not apply plugin Web contributions for catalog revision {Revision}.",
                 revision);
+            WriteDiagnostics($"Web plugin reconciliation failed: {exception.Message}");
         }
 
         _appliedRevision = revision;
@@ -61,13 +87,37 @@
         }
     }
 
-    public void Dispose()
+    public async ValueTask DisposeAsync()
     {
         PluginCatalog.Changed -= OnCatalogChanged;
+        try
+        {
+            await JavaScript.InvokeVoidAsync("quantum.plugins.shutdownWebPlugins");
+        }
+        catch (Exception exception) when (exception is JSException or TaskCanceledException)
+        {
+        }
+
+        _bridgeReference?.Dispose();
+        _bridgeReference = null;
     }
 
     private void OnCatalogChanged(object? sender, EventArgs eventArgs)
     {
         _ = InvokeAsync(StateHasChanged);
+    }
+
+    private static string EncodePath(string path)
+        => string.Join('/', path.Split('/').Select(Uri.EscapeDataString));
+
+    private static void WriteDiagnostics(string message)
+    {
+        if (string.Equals(
+                Environment.GetEnvironmentVariable("QUANTUM_PLUGIN_DIAGNOSTICS"),
+                "1",
+                StringComparison.Ordinal))
+        {
+            Console.WriteLine($"[Quantum] {message}");
+        }
     }
 }

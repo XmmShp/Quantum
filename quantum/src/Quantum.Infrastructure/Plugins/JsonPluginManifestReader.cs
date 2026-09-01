@@ -29,10 +29,12 @@ public sealed class JsonPluginManifestReader
         var document = JsonSerializer.Deserialize<PluginManifestDocument>(stream, SerializerOptions)
             ?? throw new InvalidDataException($"Plugin manifest '{manifestPath}' is empty.");
 
+        var runtime = CreateRuntime(document);
+
         var manifest = new PluginManifest(
             new PluginId(document.Id),
             SemanticVersion.Parse(document.Version),
-            document.EntryAssembly,
+            runtime,
             document.Dependencies.Select(static dependency => new PluginDependency(
                 new PluginId(dependency.Id),
                 SemanticVersion.Parse(dependency.MinimumVersion))),
@@ -40,23 +42,61 @@ public sealed class JsonPluginManifestReader
                 new PluginId(integration.Id),
                 SemanticVersion.Parse(integration.MinimumVersion))),
             document.Permissions.Select(static permission => new PluginPermission(permission.Name, permission.Required)),
-            document.Ui.Routes.Select(static route => new PluginRouteDefinition(
-                route.Path,
-                route.Component,
-                route.Title,
-                route.Icon,
-                route.Order)),
+            document.Ui.Routes.Select(route => runtime.Kind == PluginRuntimeKind.Web
+                ? PluginRouteDefinition.Web(
+                    route.Path,
+                    route.View,
+                    route.Title,
+                    route.Icon,
+                    route.Order)
+                : new PluginRouteDefinition(
+                    route.Path,
+                    route.Component,
+                    route.Title,
+                    route.Icon,
+                    route.Order)),
             new PluginWebContributions(document.Web.Head, document.Web.PostBlazor));
 
-        var entryAssemblyPath = Path.Combine(fullRootPath, manifest.EntryAssembly);
-        if (!File.Exists(entryAssemblyPath))
+        var entryPath = ResolveEntryPath(fullRootPath, runtime);
+        if (!File.Exists(entryPath))
         {
             throw new FileNotFoundException(
-                $"Entry assembly '{manifest.EntryAssembly}' was not found for plugin '{manifest.Id}'.",
-                entryAssemblyPath);
+                $"Runtime entry '{runtime.Entry}' was not found for plugin '{manifest.Id}'.",
+                entryPath);
         }
 
         return new PluginCandidate(manifest, fullRootPath);
+    }
+
+    private static PluginRuntimeDefinition CreateRuntime(PluginManifestDocument document)
+    {
+        var hasLegacyEntry = !string.IsNullOrWhiteSpace(document.EntryAssembly);
+        if (document.Runtime is null)
+        {
+            return hasLegacyEntry
+                ? PluginRuntimeDefinition.DotNet(document.EntryAssembly!)
+                : throw new InvalidDataException("plugin.json must declare entryAssembly or runtime.");
+        }
+
+        if (hasLegacyEntry)
+        {
+            throw new InvalidDataException("plugin.json cannot declare both entryAssembly and runtime.");
+        }
+
+        return (document.Runtime.Kind ?? string.Empty).Trim().ToLowerInvariant() switch
+        {
+            "dotnet" => PluginRuntimeDefinition.DotNet(document.Runtime.Entry!),
+            "web" => PluginRuntimeDefinition.Web(document.Runtime.Entry!),
+            _ => throw new InvalidDataException($"Unknown plugin runtime kind '{document.Runtime.Kind}'.")
+        };
+    }
+
+    private static string ResolveEntryPath(string pluginRootPath, PluginRuntimeDefinition runtime)
+    {
+        var relativeEntry = runtime.Entry.Replace('/', Path.DirectorySeparatorChar);
+        return runtime.Kind == PluginRuntimeKind.Web
+            ? Path.Combine(pluginRootPath, "wwwroot", relativeEntry)
+            : Path.Combine(pluginRootPath, relativeEntry);
     }
 
     private sealed class PluginManifestDocument
@@ -65,7 +105,9 @@ public sealed class JsonPluginManifestReader
 
         public string Version { get; init; } = string.Empty;
 
-        public string EntryAssembly { get; init; } = string.Empty;
+        public string? EntryAssembly { get; init; }
+
+        public PluginRuntimeDocument? Runtime { get; init; }
 
         public IReadOnlyList<PluginDependencyDocument> Dependencies { get; init; } = [];
 
@@ -76,6 +118,13 @@ public sealed class JsonPluginManifestReader
         public PluginUiDocument Ui { get; init; } = new();
 
         public PluginWebDocument Web { get; init; } = new();
+    }
+
+    private sealed class PluginRuntimeDocument
+    {
+        public string? Kind { get; init; }
+
+        public string? Entry { get; init; }
     }
 
     private sealed class PluginDependencyDocument
@@ -111,6 +160,8 @@ public sealed class JsonPluginManifestReader
         public string Path { get; init; } = string.Empty;
 
         public string Component { get; init; } = string.Empty;
+
+        public string View { get; init; } = string.Empty;
 
         public string? Title { get; init; }
 

@@ -1,0 +1,18 @@
+{
+  "name": "quantum-example-web-plugin",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --format=esm --platform=browser --target=es2022 --outfile=wwwroot/dist/plugin.js",
+    "typecheck": "tsc --noEmit",
+    "test": "npm run typecheck && npm run build"
+  },
+  "dependencies": {
+    "@quantum/plugin-sdk": "file:../../sdk/typescript"
+  },
+  "devDependencies": {
+    "esbuild": "0.25.9",
+    "typescript": "5.9.2"
+  }
+}

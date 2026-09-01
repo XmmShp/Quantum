@@ -1,0 +1,40 @@
+{
+  "id": "quantum.plugin.example-web",
+  "version": "0.1.0",
+  "runtime": {
+    "kind": "web",
+    "entry": "dist/plugin.js"
+  },
+  "dependencies": [],
+  "integrations": [
+    {
+      "id": "quantum.plugin.example",
+      "minVersion": "0.1.0"
+    }
+  ],
+  "permissions": [
+    {
+      "name": "ui.navigation",
+      "required": true
+    },
+    {
+      "name": "dotnet.invoke:host:Quantum.Plugin.Abstraction.IQuantumPluginEnvironment",
+      "required": true
+    },
+    {
+      "name": "dotnet.invoke:quantum.plugin.example:Quantum.ExamplePlugin.IExamplePluginState",
+      "required": true
+    }
+  ],
+  "ui": {
+    "routes": [
+      {
+        "path": "/plugins/example-web",
+        "view": "main",
+        "title": "TypeScript 示例",
+        "icon": "TS",
+        "order": 110
+      }
+    ]
+  }
+}

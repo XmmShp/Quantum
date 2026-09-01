@@ -55,6 +55,8 @@ quantum-extension-market/**/Files/
 
 # Front-end dependencies
 node_modules/
+/sdk/typescript/dist/
+/sdk/typescript/*.tgz
 
 # Operating-system files
 .DS_Store

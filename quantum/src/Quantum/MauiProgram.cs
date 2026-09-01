@@ -5,6 +5,7 @@ using NOF.Hosting.Maui;
 using Quantum.Application.Plugins;
 using Quantum.Infrastructure.Plugins;
 using Quantum.Plugin.Abstraction;
+using Quantum.WebPlugins;
 
 namespace Quantum;
 
@@ -40,6 +41,7 @@ public static class MauiProgram
         builder.Services.AddSingleton<IPluginRuntimeManager>(services =>
             services.GetRequiredService<PluginRuntimeManager>());
         builder.Services.AddSingleton<PluginStaticAssetFileProvider>();
+        builder.Services.AddScoped<WebPluginInteropBridge>();
         builder.Services.AddSingleton<MainPage>();
         builder.Services.AddSingleton<IComponentActivator, PluginComponentActivator>();
         builder.Services.AddInitializationStep(new PluginLifecycleInitializationStep());

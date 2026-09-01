@@ -2,16 +2,17 @@ using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Quantum.Application.Plugins;
+using Quantum.Domain.Plugins;
 using Quantum.Plugin.Abstraction;
 
 namespace Quantum.Infrastructure.Plugins;
 
 internal sealed class PluginRuntime
 {
-    private readonly PluginLoadContext _loadContext;
-    private readonly ServiceProvider _services;
+    private readonly PluginLoadContext? _loadContext;
+    private readonly ServiceProvider? _services;
     private readonly IReadOnlyList<IQuantumPlugin> _lifecycles;
-    private readonly PluginEnvironmentProxy _environment;
+    private readonly PluginEnvironmentProxy? _environment;
     private readonly bool[] _started;
     private readonly ILogger _logger;
     private bool _disposed;
@@ -19,10 +20,10 @@ internal sealed class PluginRuntime
     public PluginRuntime(
         PluginCandidate candidate,
         string shadowRootPath,
-        PluginLoadContext loadContext,
-        ServiceProvider services,
+        PluginLoadContext? loadContext,
+        ServiceProvider? services,
         IReadOnlyList<IQuantumPlugin> lifecycles,
-        PluginEnvironmentProxy environment,
+        PluginEnvironmentProxy? environment,
         LoadedPlugin loadedPlugin,
         ILogger logger)
     {
@@ -43,14 +44,22 @@ internal sealed class PluginRuntime
 
     public LoadedPlugin LoadedPlugin { get; }
 
-    public WeakReference LoadContextReference => new(_loadContext, trackResurrection: false);
+    public WeakReference? LoadContextReference => _loadContext is null
+        ? null
+        : new WeakReference(_loadContext, trackResurrection: false);
 
     public void UseEnvironment(IQuantumPluginEnvironment environment)
-        => _environment.Target = environment;
+    {
+        if (_environment is not null)
+        {
+            _environment.Target = environment;
+        }
+    }
 
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        var services = _services;
         for (var index = 0; index < _lifecycles.Count; index++)
         {
             if (_started[index])
@@ -59,7 +68,7 @@ internal sealed class PluginRuntime
             }
 
             await _lifecycles[index]
-                .StartAsync(_services, cancellationToken)
+                .StartAsync(services!, cancellationToken)
                 .ConfigureAwait(false);
             _started[index] = true;
             _logger.LogInformation(
@@ -72,6 +81,7 @@ internal sealed class PluginRuntime
     public async Task<IReadOnlyList<Exception>> StopAsync(CancellationToken cancellationToken)
     {
         var failures = new List<Exception>();
+        var services = _services;
         for (var index = _lifecycles.Count - 1; index >= 0; index--)
         {
             if (!_started[index])
@@ -82,7 +92,7 @@ internal sealed class PluginRuntime
             try
             {
                 await _lifecycles[index]
-                    .StopAsync(_services, cancellationToken)
+                    .StopAsync(services!, cancellationToken)
                     .ConfigureAwait(false);
                 _started[index] = false;
                 _logger.LogInformation(
@@ -115,11 +125,14 @@ internal sealed class PluginRuntime
         await StopAsync(CancellationToken.None).ConfigureAwait(false);
         try
         {
-            await _services.DisposeAsync().ConfigureAwait(false);
+            if (_services is not null)
+            {
+                await _services.DisposeAsync().ConfigureAwait(false);
+            }
         }
         finally
         {
-            _loadContext.Unload();
+            _loadContext?.Unload();
         }
     }
 
@@ -145,7 +158,41 @@ internal sealed class PluginRuntime
         ServiceProvider? services = null;
         try
         {
-            var entryAssemblyPath = Path.Combine(shadowRoot, candidate.Manifest.EntryAssembly);
+            if (candidate.Manifest.Runtime.Kind == PluginRuntimeKind.Web)
+            {
+                var entryModulePath = Path.Combine(
+                    shadowRoot,
+                    "wwwroot",
+                    candidate.Manifest.Runtime.Entry.Replace('/', Path.DirectorySeparatorChar));
+                if (!File.Exists(entryModulePath))
+                {
+                    throw new FileNotFoundException(
+                        $"Web entry module '{candidate.Manifest.Runtime.Entry}' was not copied into the runtime shadow.",
+                        entryModulePath);
+                }
+
+                var webRoutes = candidate.Manifest.Routes
+                    .Select(route => PluginRouteRegistration.CreateWeb(candidate.Manifest.Id, route))
+                    .ToArray();
+                var webPlugin = new LoadedPlugin(
+                    candidate.Manifest,
+                    shadowRoot,
+                    entryAssembly: null,
+                    routes: webRoutes,
+                    runtimeId: runtimeId,
+                    services: null);
+                return new PluginRuntime(
+                    candidate,
+                    shadowRoot,
+                    loadContext: null,
+                    services: null,
+                    lifecycles: [],
+                    environment: null,
+                    loadedPlugin: webPlugin,
+                    logger: logger);
+            }
+
+            var entryAssemblyPath = Path.Combine(shadowRoot, candidate.Manifest.Runtime.Entry);
             loadContext = new PluginLoadContext(entryAssemblyPath);
             var assembly = loadContext.LoadEntryAssembly();
             var routes = candidate.Manifest.Routes

@@ -1,4 +1,5 @@
 using Quantum.Infrastructure.Plugins;
+using Quantum.Domain.Plugins;
 
 namespace Quantum.Tests;
 
@@ -63,6 +64,97 @@ public sealed class JsonPluginManifestReaderTests
         File.WriteAllBytes(Path.Combine(directory.Path, "Test.dll"), []);
 
         Assert.ThrowsAny<Exception>(() => new JsonPluginManifestReader().Read(directory.Path));
+    }
+
+    [Fact]
+    public void Read_MapsWebRuntimeAndViewWithoutAssembly()
+    {
+        using var directory = TemporaryDirectory.Create();
+        Directory.CreateDirectory(Path.Combine(directory.Path, "wwwroot", "dist"));
+        File.WriteAllText(Path.Combine(directory.Path, "wwwroot", "dist", "plugin.js"), "export default {};");
+        File.WriteAllText(
+            Path.Combine(directory.Path, "plugin.json"),
+            """
+            {
+              "id": "quantum.plugin.web",
+              "version": "1.0.0",
+              "runtime": {
+                "kind": "web",
+                "entry": "dist/plugin.js"
+              },
+              "ui": {
+                "routes": [{
+                  "path": "/plugins/web",
+                  "view": "main",
+                  "title": "Web plugin"
+                }]
+              }
+            }
+            """);
+
+        var candidate = new JsonPluginManifestReader().Read(directory.Path);
+
+        Assert.Equal(PluginRuntimeKind.Web, candidate.Manifest.Runtime.Kind);
+        Assert.Equal("dist/plugin.js", candidate.Manifest.Runtime.Entry);
+        Assert.Null(candidate.Manifest.EntryAssembly);
+        var route = Assert.Single(candidate.Manifest.Routes);
+        Assert.Equal("main", route.View);
+        Assert.Null(route.Component);
+    }
+
+    [Fact]
+    public void Read_RejectsManifestWithLegacyAndDiscriminatedRuntime()
+    {
+        using var directory = TemporaryDirectory.Create();
+        File.WriteAllText(
+            Path.Combine(directory.Path, "plugin.json"),
+            """
+            {
+              "id": "quantum.plugin.test",
+              "version": "1.0.0",
+              "entryAssembly": "Test.dll",
+              "runtime": { "kind": "web", "entry": "plugin.js" }
+            }
+            """);
+
+        Assert.Throws<InvalidDataException>(() => new JsonPluginManifestReader().Read(directory.Path));
+    }
+
+    [Fact]
+    public void Read_RejectsPlatformSpecificWebEntryPath()
+    {
+        using var directory = TemporaryDirectory.Create();
+        File.WriteAllText(
+            Path.Combine(directory.Path, "plugin.json"),
+            """
+            {
+              "id": "quantum.plugin.web",
+              "version": "1.0.0",
+              "runtime": { "kind": "web", "entry": "C:/plugin.js" }
+            }
+            """);
+
+        Assert.Throws<ArgumentException>(() => new JsonPluginManifestReader().Read(directory.Path));
+    }
+
+    [Fact]
+    public void Read_RejectsWebRouteWithoutView()
+    {
+        using var directory = TemporaryDirectory.Create();
+        Directory.CreateDirectory(Path.Combine(directory.Path, "wwwroot"));
+        File.WriteAllText(Path.Combine(directory.Path, "wwwroot", "plugin.js"), "export default {};");
+        File.WriteAllText(
+            Path.Combine(directory.Path, "plugin.json"),
+            """
+            {
+              "id": "quantum.plugin.web",
+              "version": "1.0.0",
+              "runtime": { "kind": "web", "entry": "plugin.js" },
+              "ui": { "routes": [{ "path": "/plugins/web" }] }
+            }
+            """);
+
+        Assert.Throws<ArgumentException>(() => new JsonPluginManifestReader().Read(directory.Path));
     }
 
     private sealed class TemporaryDirectory : IDisposable

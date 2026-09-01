@@ -65,4 +65,23 @@
           DestinationFolder="$(ExamplePluginTarget)\wwwroot\%(RecursiveDir)"
           SkipUnchangedFiles="true" />
   </Target>
+
+  <Target Name="StageExampleWebPlugin"
+          AfterTargets="Build"
+          Condition="'$(Configuration)' == 'Debug' And '$(TargetFramework)' != '' And Exists('$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExampleWebPlugin\wwwroot\dist\plugin.js')">
+    <PropertyGroup>
+      <ExampleWebPluginRoot>$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExampleWebPlugin</ExampleWebPluginRoot>
+      <ExampleWebPluginTarget>$(TargetDir)Modules\quantum.plugin.example-web</ExampleWebPluginTarget>
+    </PropertyGroup>
+    <ItemGroup>
+      <ExampleWebPluginAsset Include="$(ExampleWebPluginRoot)\wwwroot\**\*" />
+    </ItemGroup>
+    <MakeDir Directories="$(ExampleWebPluginTarget)\wwwroot" />
+    <Copy SourceFiles="$(ExampleWebPluginRoot)\plugin.json"
+          DestinationFolder="$(ExampleWebPluginTarget)"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(ExampleWebPluginAsset)"
+          DestinationFolder="$(ExampleWebPluginTarget)\wwwroot\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
 </Project>

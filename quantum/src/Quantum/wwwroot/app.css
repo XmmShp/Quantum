@@ -294,6 +294,21 @@ a {
   font-size: 12px;
 }
 
+.web-plugin-view {
+  width: 100%;
+  min-height: calc(100vh - 144px);
+}
+
+.quantum-web-plugin-frame {
+  display: block;
+  width: 100%;
+  min-height: calc(100vh - 144px);
+  border: 0;
+  border-radius: 18px;
+  background: white;
+  box-shadow: 0 16px 44px rgba(47, 40, 76, 0.05);
+}
+
 .plugin-list,
 .empty-card,
 .failure-row {

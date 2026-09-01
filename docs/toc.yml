@@ -1,4 +1,6 @@
 - name: 插件开发指南
   href: plugin-development.md
+- name: TypeScript 插件开发
+  href: web-plugin-development.md
 - name: 架构说明
   href: architecture.md

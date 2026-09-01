@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'none'; script-src 'unsafe-inline' blob:; style-src 'unsafe-inline' https: http:; img-src data: blob: https: http:; font-src data: https: http:" />
+  <style>
+    html, body, #quantum-root { width: 100%; min-height: 100%; margin: 0; }
+    * { box-sizing: border-box; }
+  </style>
+</head>
+<body>
+  <main id="quantum-root"></main>
+  <script>
+    (() => {
+      "use strict";
+
+      const channel = "quantum-web-plugin";
+      const runtimeId = "__QUANTUM_RUNTIME_ID__";
+      const root = document.getElementById("quantum-root");
+      const pendingRpc = new Map();
+      let definition = null;
+      let context = null;
+      let lifecycleController = null;
+      let mountController = null;
+      let activationCleanup = null;
+      let mountCleanup = null;
+      let requestSequence = 0;
+
+      const post = (type, payload = {}) => parent.postMessage({
+        channel,
+        runtimeId,
+        type,
+        ...payload
+      }, "*");
+
+      const errorMessage = error => error instanceof Error ? error.message : String(error);
+
+      const runCleanup = async cleanup => {
+        if (typeof cleanup === "function") {
+          await cleanup();
+        } else if (cleanup && typeof cleanup.dispose === "function") {
+          await cleanup.dispose();
+        }
+      };
+
+      const rpc = (capability, method, args = {}, options = {}) => {
+        const requestId = globalThis.crypto?.randomUUID?.()
+          ?? `${Date.now()}-${++requestSequence}`;
+        const signal = options.signal;
+        if (signal?.aborted) {
+          return Promise.reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+        }
+
+        return new Promise((resolve, reject) => {
+          const abort = () => {
+            pendingRpc.delete(requestId);
+            post("rpc-cancel", { requestId });
+            reject(signal.reason ?? new DOMException("Aborted", "AbortError"));
+          };
+          signal?.addEventListener("abort", abort, { once: true });
+          pendingRpc.set(requestId, {
+            resolve: value => {
+              signal?.removeEventListener("abort", abort);
+              resolve(value);
+            },
+            reject: error => {
+              signal?.removeEventListener("abort", abort);
+              reject(error);
+            }
+          });
+          post("rpc", { requestId, capability, method, arguments: args });
+        });
+      };
+
+      const assetUrl = (base, path) => {
+        if (typeof path !== "string"
+          || path.length === 0
+          || path.startsWith("/")
+          || path.includes("\\")
+          || path.includes(":")
+          || path.split("/").some(segment => segment.length === 0 || segment === "." || segment === "..")) {
+          throw new Error("Asset paths must be non-empty relative paths.");
+        }
+
+        const baseUrl = new URL(base);
+        const resolved = new URL(path, baseUrl);
+        if (resolved.origin !== baseUrl.origin || !resolved.pathname.startsWith(baseUrl.pathname)) {
+          throw new Error("Asset path escapes the plugin asset directory.");
+        }
+        return resolved.href;
+      };
+
+      const createContext = metadata => Object.freeze({
+        plugin: Object.freeze({
+          id: metadata.pluginId,
+          version: metadata.version,
+          runtimeId: metadata.runtimeId,
+          permissions: Object.freeze([...(metadata.permissions ?? [])])
+        }),
+        signal: lifecycleController.signal,
+        rpc,
+        log: Object.freeze({
+          trace: message => rpc("log", "trace", { message }),
+          debug: message => rpc("log", "debug", { message }),
+          info: message => rpc("log", "info", { message }),
+          warn: message => rpc("log", "warn", { message }),
+          error: message => rpc("log", "error", { message })
+        }),
+        navigation: Object.freeze({
+          navigate: href => rpc("navigation", "navigate", { href })
+        }),
+        environment: Object.freeze({
+          snapshot: () => rpc("environment", "snapshot")
+        }),
+        assets: Object.freeze({
+          url: path => assetUrl(metadata.assetBaseUrl, path),
+          readText: (path, options) => rpc("assets", "readText", { path }, options)
+        }),
+        dotnet: Object.freeze({
+          invoke: (request, options) => rpc("dotnet", "invoke", request, options)
+        })
+      });
+
+      const unmount = async () => {
+        mountController?.abort();
+        mountController = null;
+        await runCleanup(mountCleanup);
+        mountCleanup = null;
+        if (definition && typeof definition.unmount === "function") {
+          await definition.unmount(context);
+        }
+        root.replaceChildren();
+      };
+
+      addEventListener("message", async event => {
+        const message = event.data;
+        if (event.source !== parent
+          || !message
+          || message.channel !== channel
+          || message.runtimeId !== runtimeId) {
+          return;
+        }
+
+        if (message.type === "rpc-result" || message.type === "rpc-error") {
+          const pending = pendingRpc.get(message.requestId);
+          if (!pending) {
+            return;
+          }
+          pendingRpc.delete(message.requestId);
+          if (message.type === "rpc-result") {
+            pending.resolve(message.result);
+          } else {
+            pending.reject(new Error(message.message ?? "RPC failed."));
+          }
+          return;
+        }
+
+        try {
+          if (message.type === "initialize") {
+            lifecycleController = new AbortController();
+            context = createContext(message.metadata);
+            const blob = new Blob([message.source], { type: "text/javascript" });
+            const moduleUrl = URL.createObjectURL(blob);
+            try {
+              const module = await import(moduleUrl);
+              definition = module.default;
+            } finally {
+              URL.revokeObjectURL(moduleUrl);
+            }
+
+            if (!definition || typeof definition !== "object") {
+              throw new Error("The entry module must default-export a Quantum plugin definition.");
+            }
+            if (typeof definition.activate === "function") {
+              activationCleanup = await definition.activate(context);
+            }
+            post("activated");
+            return;
+          }
+
+          if (message.type === "mount") {
+            await unmount();
+            mountController = new AbortController();
+            if (typeof definition?.mount !== "function") {
+              throw new Error("The plugin does not export mount().");
+            }
+            mountCleanup = await definition.mount(Object.freeze({
+              ...context,
+              element: root,
+              route: Object.freeze(message.route),
+              signal: mountController.signal
+            }));
+            post("mounted");
+            return;
+          }
+
+          if (message.type === "unmount") {
+            await unmount();
+            post("unmounted");
+            return;
+          }
+
+          if (message.type === "deactivate") {
+            await unmount();
+            lifecycleController?.abort();
+            await runCleanup(activationCleanup);
+            activationCleanup = null;
+            if (typeof definition?.deactivate === "function") {
+              await definition.deactivate(context);
+            }
+            for (const [requestId, pending] of pendingRpc) {
+              post("rpc-cancel", { requestId });
+              pending.reject(new Error("Plugin runtime was deactivated."));
+            }
+            pendingRpc.clear();
+            post("deactivated");
+          }
+        } catch (error) {
+          post("error", { phase: message.type, message: errorMessage(error) });
+        }
+      });
+
+      post("ready");
+    })();
+  </script>
+</body>
+</html>

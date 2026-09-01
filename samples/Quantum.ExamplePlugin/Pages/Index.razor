@@ -29,9 +29,18 @@
             <p>初始化通过 NOF Initialization Step 驱动。</p>
         </article>
         <article>
-            <span>OPTIONAL INTEGRATION</span>
-            <strong>@(State.ThemeIntegrationActive ? "ACTIVE" : "STANDALONE")</strong>
-            <p>弱联动缺失时插件仍可独立运行。</p>
+            <span>WEB INTEGRATION</span>
+            <strong>@(State.WebIntegrationActive ? "ACTIVE" : "STANDALONE")</strong>
+            <p>与 TypeScript 示例通过弱 integration 互相发现。</p>
+        </article>
+        <article>
+            <span>JS → .NET RPC</span>
+            <strong>@State.WebHandshakeCount</strong>
+            <p>
+                @(State.LastWebPluginId is null
+                    ? "等待 TypeScript 插件发起 FQN 调用。"
+                    : $"最近调用方：{State.LastWebPluginId}")
+            </p>
         </article>
     </div>
 </section>

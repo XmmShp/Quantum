@@ -1,6 +1,6 @@
 # Quantum 插件开发指南
 
-Quantum 插件由一个 `net10.0` DLL、一份 `plugin.json` 和可选的 `wwwroot` 组成。NOF `AutoInject` 元数据会注册到每代插件独立的 DI 容器，使容器和程序集能在运行时一起释放。
+Quantum 插件可以使用 .NET DLL 或 Web runtime。本篇介绍 .NET 插件；纯 JavaScript/TypeScript 插件见 [TypeScript 插件开发](web-plugin-development.md)。NOF `AutoInject` 元数据会注册到每代 .NET 插件独立的 DI 容器，使容器和程序集能在运行时一起释放。
 
 ## 1. 创建项目
 
@@ -77,8 +77,8 @@ Quantum 插件由一个 `net10.0` DLL、一份 `plugin.json` 和可选的 `wwwro
 
 - `id` 使用小写字母、数字、点、下划线或连字符。
 - `version` 与 `minVersion` 使用 SemVer；预发布版本参与正确的先后比较。
-- `entryAssembly` 只能是当前插件目录下的 DLL 文件名，不能包含路径。
-- `component` 必须是入口程序集内实现 `IComponent` 的完整类型名。
+- 旧版 `entryAssembly` 继续受支持，等价于 `{ "runtime": { "kind": "dotnet", "entry": "..." } }`；DLL 入口只能是插件根目录下的文件名。
+- .NET 路由的 `component` 必须是入口程序集内实现 `IComponent` 的完整类型名；Web 路由改用 `view`。
 - 同一目标不能同时出现在 `dependencies` 和 `integrations`，各类关系、路由和权限不能重复；未知 manifest 字段会被拒绝，避免拼写错误静默失效。
 
 ## 3. 注册服务和启动逻辑

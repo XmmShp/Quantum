@@ -21,7 +21,7 @@ tests/
 - 插件 ZIP 上传、SHA-256 校验、审核、下载计数及 Quantum 版本兼容性判断。
 - 管理员审计查询与可配置的安全管理员引导。
 - PostgreSQL 持久化，使用 NOF `NOFDbContext`、Repository、Application Parts、Initialization Steps 与自动迁移。
-- ZIP 路径穿越、重复路径、体积/条目数、manifest 与入口 DLL 校验；文件通过同目录临时文件原子写入。
+- ZIP 路径穿越、重复路径、体积/条目数、manifest 与 .NET/Web runtime 入口校验；文件通过同目录临时文件原子写入。
 
 ## 启动
 

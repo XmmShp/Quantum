@@ -66,7 +66,25 @@ public sealed class PluginCatalogBootstrapper
 
             try
             {
-                var entryAssemblyPath = Path.Combine(candidate.RootPath, candidate.Manifest.EntryAssembly);
+                if (candidate.Manifest.Runtime.Kind == PluginRuntimeKind.Web)
+                {
+                    var webRoutes = candidate.Manifest.Routes
+                        .Select(route => PluginRouteRegistration.CreateWeb(candidate.Manifest.Id, route))
+                        .ToArray();
+                    loaded.Add(new LoadedPlugin(
+                        candidate.Manifest,
+                        candidate.RootPath,
+                        entryAssembly: null,
+                        routes: webRoutes));
+                    loadedIds.Add(candidate.Manifest.Id);
+                    _logger.LogInformation(
+                        "Loaded Web plugin descriptor {PluginId} {PluginVersion}.",
+                        candidate.Manifest.Id,
+                        candidate.Manifest.Version);
+                    continue;
+                }
+
+                var entryAssemblyPath = Path.Combine(candidate.RootPath, candidate.Manifest.Runtime.Entry);
                 var loadContext = new PluginLoadContext(entryAssemblyPath);
                 var assembly = loadContext.LoadEntryAssembly();
                 var routes = candidate.Manifest.Routes

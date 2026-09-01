@@ -16,3 +16,6 @@ dynamic? service = services.GetService("MyNamespace.MySub.IMyInterface");
 该扩展直接使用传入的 provider，不缓存类型或实例，也不会隐式创建作用域。解析 scoped 服务时必须传入当前
 `IServiceScope.ServiceProvider`；服务及其依赖仍由对应 scope/container 释放，不应由调用方单独释放。从根 provider
 解析 scoped 服务时，行为与原生 `GetService(Type)` 相同（启用 scope 校验的容器会抛出异常）。
+
+纯 JavaScript/TypeScript 插件使用同级目录中的 `typescript` SDK。该 SDK 描述隔离 iframe 生命周期、路由挂载、
+资源、导航、环境信息以及受权限约束的 .NET 服务调用；详细说明见插件开发文档中的 Web 插件章节。

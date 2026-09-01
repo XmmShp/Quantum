@@ -14,7 +14,14 @@
 }
 else
 {
-    <DynamicComponent @key="_plugin?.RuntimeId" Type="_route.ComponentType" />
+    @if (_route.ComponentType is not null)
+    {
+        <DynamicComponent @key="_plugin?.RuntimeId" Type="_route.ComponentType" />
+    }
+    else if (_plugin is not null)
+    {
+        <WebPluginView @key="_plugin.RuntimeId" Plugin="_plugin" Route="_route" />
+    }
 }
 
 @code {

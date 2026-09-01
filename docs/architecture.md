@@ -8,7 +8,7 @@ Quantum (NOF MAUI Host)
     │       └── Quantum.Application
     │               └── Quantum.Domain
     ├── Quantum.Plugin.Abstraction
-    └── plugin runtimes (isolated ALC + DI container)
+    └── plugin runtimes (isolated ALC + DI container / sandboxed iframe)
 ```
 
 - Domain 只表达插件标识、SemVer、依赖、权限、页面声明与安装状态。
@@ -25,12 +25,16 @@ Quantum (NOF MAUI Host)
 2. 扫描 `Modules/*/plugin.json`，执行 schema 与文件预校验。
 3. 按 `dependencies` 删除强前置缺失、版本不满足和硬循环的候选及其下游。
 4. 对剩余插件拓扑排序；兼容且已安装的 `integrations` 形成软排序偏好，但不形成加载门槛。
-5. 把每个候选复制到本次进程专属的影子目录；每代运行时创建独立的 collectible `PluginLoadContext`，入口 DLL 以流方式加载，依赖仍按影子路径解析。
-6. 读取 NOF 生成的 `IAssemblyInitializer`，把 `AutoInject` 服务注册到插件私有 DI 容器；宿主根容器不保存插件 `Type`。
-7. 为候选代建立私有环境快照并按依赖顺序执行 `IQuantumPlugin.StartAsync`；全部成功后再原子发布到宿主 `PluginCatalog`。
-8. MAUI 创建 `BlazorWebView`；路由、菜单、静态文件提供器和 Web 注入订阅同一份动态 `PluginCatalog`。
+5. 把每个候选复制到本次进程专属的影子目录；.NET runtime 创建独立的 collectible `PluginLoadContext`，Web runtime 则生成独立 iframe descriptor。
+6. .NET runtime 读取 NOF 生成的 `IAssemblyInitializer` 并建立私有 DI 容器；Web runtime 先验证 `wwwroot` 下的单文件 ESM 并生成 descriptor。
+7. 为候选代建立私有环境快照并按依赖顺序执行 .NET `IQuantumPlugin.StartAsync`；全部成功后再原子发布到宿主 `PluginCatalog`。
+8. MAUI 创建 `BlazorWebView`；路由、菜单、静态文件提供器和 Web 注入订阅同一份动态 `PluginCatalog`。Web descriptor 发布后，宿主才在 opaque-origin iframe 内通过 Blob Module 激活入口。
 
 加载失败按插件隔离；强前置失败的下游插件不会继续加载。弱联动缺失、版本不兼容或形成软循环时，插件仍然加载，规划器只放弃无法满足的顺序偏好。最终状态通过 SDK 的 `IQuantumPluginEnvironment` 暴露，插件可在启动时选择独立模式或联动模式。
+
+Web runtime 不把宿主对象直接暴露给 iframe。iframe 只能通过经来源校验的 `postMessage` 与宿主通信；父页面再通过
+`DotNetObjectReference` 转发到 capability RPC。`.NET` 调用按次创建 DI scope，只允许 manifest 声明的目标和服务 FQN，
+并在异步结果完成且序列化之后释放 scope。销毁 iframe 会强制终止未正确清理的定时器、事件和模块全局状态。
 
 ## ALC 边界
 

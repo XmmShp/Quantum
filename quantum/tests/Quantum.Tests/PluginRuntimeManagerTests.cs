@@ -3,6 +3,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using Quantum.Application.Plugins;
+using Quantum.Domain.Plugins;
 using Quantum.Infrastructure.Plugins;
 using Quantum.Plugin.Abstraction;
 
@@ -23,6 +24,54 @@ public sealed class PluginRuntimeManagerTests
         var failure = Assert.Single(fixture.Catalog.Failures);
         Assert.Equal("quantum.plugin.example", failure.PluginId?.Value);
         Assert.Contains("failed to start", failure.Reason, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
+    public async Task InitializeAsync_LoadsWebPluginWithoutAssemblyOrServiceProvider()
+    {
+        using var fixture = new RuntimeFixture();
+        fixture.AddWebPlugin();
+        await using var manager = fixture.CreateManager();
+
+        await manager.InitializeAsync(fixture.HostServices);
+
+        var plugin = fixture.Catalog.FindPlugin("quantum.plugin.web");
+        Assert.NotNull(plugin);
+        Assert.Equal(PluginRuntimeKind.Web, plugin.Manifest.Runtime.Kind);
+        Assert.Null(plugin.EntryAssembly);
+        Assert.Null(plugin.Services);
+        var route = Assert.Single(plugin.Routes);
+        Assert.Null(route.ComponentType);
+        Assert.Equal("main", route.Definition.View);
+        Assert.True(File.Exists(Path.Combine(plugin.RootPath, "wwwroot", "dist", "plugin.js")));
+    }
+
+    [Fact]
+    public async Task InitializeAsync_ExampleServiceSupportsWebHandshakeThroughFqn()
+    {
+        using var fixture = new RuntimeFixture();
+        await using var manager = fixture.CreateManager();
+        await manager.InitializeAsync(fixture.HostServices);
+        var plugin = Assert.Single(fixture.Catalog.Plugins);
+        var serviceTypeName = "Quantum.ExamplePlugin.IExamplePluginState";
+        var service = plugin.Services!.GetService(serviceTypeName);
+        Assert.NotNull(service);
+        var contract = Assert.Single(service.GetType().GetInterfaces(), type =>
+            string.Equals(type.FullName, serviceTypeName, StringComparison.Ordinal));
+        var method = contract.GetMethod("CreateWebHandshakeAsync");
+        Assert.NotNull(method);
+
+        var invocation = method.Invoke(service, ["quantum.plugin.example-web", CancellationToken.None]);
+        var task = Assert.IsAssignableFrom<Task>(invocation);
+        await task;
+        var handshake = task.GetType().GetProperty("Result")!.GetValue(task);
+
+        Assert.NotNull(handshake);
+        Assert.Equal(1, handshake.GetType().GetProperty("Sequence")!.GetValue(handshake));
+        Assert.Contains(
+            "quantum.plugin.example-web",
+            Assert.IsType<string>(handshake.GetType().GetProperty("Message")!.GetValue(handshake)),
+            StringComparison.Ordinal);
     }
 
     [Fact]
@@ -203,7 +252,7 @@ public sealed class PluginRuntimeManagerTests
         await using var manager = fixture.CreateManager();
         await manager.InitializeAsync(fixture.HostServices);
         var original = Assert.Single(fixture.Catalog.Plugins);
-        var loadContext = AssemblyLoadContext.GetLoadContext(original.EntryAssembly);
+        var loadContext = AssemblyLoadContext.GetLoadContext(original.EntryAssembly!);
         Assert.NotNull(loadContext);
         var weakReference = new WeakReference(loadContext, trackResurrection: false);
 
@@ -308,6 +357,30 @@ public sealed class PluginRuntimeManagerTests
                     "id": "quantum.plugin.example",
                     "minVersion": "1.0.0"
                   }]
+                }
+                """);
+        }
+
+        public void AddWebPlugin()
+        {
+            var webRoot = Path.Combine(ModulesRoot, "quantum.plugin.web");
+            Directory.CreateDirectory(Path.Combine(webRoot, "wwwroot", "dist"));
+            File.WriteAllText(
+                Path.Combine(webRoot, "wwwroot", "dist", "plugin.js"),
+                "export default { mount() {} };");
+            File.WriteAllText(
+                Path.Combine(webRoot, "plugin.json"),
+                """
+                {
+                  "id": "quantum.plugin.web",
+                  "version": "1.0.0",
+                  "runtime": { "kind": "web", "entry": "dist/plugin.js" },
+                  "ui": {
+                    "routes": [{
+                      "path": "/plugins/web",
+                      "view": "main"
+                    }]
+                  }
                 }
                 """);
         }

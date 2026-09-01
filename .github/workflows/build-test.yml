@@ -24,6 +24,24 @@ jobs:
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
 
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "24"
+          cache: npm
+          cache-dependency-path: |
+            sdk/typescript/package-lock.json
+            samples/Quantum.ExampleWebPlugin/package-lock.json
+
+      - name: Build and test TypeScript SDK
+        run: npm ci --prefix sdk/typescript && npm test --prefix sdk/typescript
+
+      - name: Build and test example Web plugin
+        run: npm ci --prefix samples/Quantum.ExampleWebPlugin && npm test --prefix samples/Quantum.ExampleWebPlugin
+
+      - name: Test Web plugin host protocol
+        run: node --test quantum/tests/web-plugin-host.test.mjs
+
       - name: Install MAUI workload
         run: dotnet workload install maui --skip-manifest-update
 

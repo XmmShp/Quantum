@@ -1,0 +1,35 @@
+{
+  "name": "@quantum/plugin-sdk",
+  "version": "0.1.0-alpha.1",
+  "description": "TypeScript SDK for isolated Quantum Web plugins",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "test": "npm run build && node --test test/*.test.mjs"
+  },
+  "keywords": [
+    "quantum",
+    "plugin",
+    "typescript"
+  ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/XmmShp/Quantum"
+  },
+  "devDependencies": {
+    "typescript": "5.9.2"
+  }
+}

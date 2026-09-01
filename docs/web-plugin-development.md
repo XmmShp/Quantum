@@ -1,0 +1,147 @@
+# Quantum TypeScript 插件开发
+
+Quantum Web 插件不需要 DLL。宿主把每代插件复制到影子目录，在一个 `sandbox="allow-scripts"`、
+opaque-origin 的独立 iframe 中执行入口模块；卸载或热更新时销毁整个 iframe。
+
+## 1. 项目结构
+
+```text
+MyPlugin/
+├── package.json
+├── plugin.json
+├── src/
+│   └── index.ts
+└── wwwroot/
+    └── dist/
+        └── plugin.js
+```
+
+安装 SDK 和 bundler：
+
+```bash
+npm install @quantum/plugin-sdk
+npm install --save-dev typescript esbuild
+```
+
+入口必须是单文件 ESM bundle。iframe 不允许运行时导入 npm 包，因此所有依赖必须打进入口：
+
+```json
+{
+  "scripts": {
+    "build": "esbuild src/index.ts --bundle --format=esm --platform=browser --target=es2022 --outfile=wwwroot/dist/plugin.js"
+  }
+}
+```
+
+## 2. Manifest
+
+```json
+{
+  "id": "quantum.plugin.notes",
+  "version": "1.0.0",
+  "runtime": {
+    "kind": "web",
+    "entry": "dist/plugin.js"
+  },
+  "integrations": [],
+  "permissions": [
+    { "name": "ui.navigation", "required": true },
+    {
+      "name": "dotnet.invoke:host:My.Contracts.INotesService",
+      "required": true
+    }
+  ],
+  "ui": {
+    "routes": [{
+      "path": "/plugins/notes",
+      "view": "main",
+      "title": "Notes",
+      "icon": "N"
+    }]
+  }
+}
+```
+
+`runtime.entry` 相对于 `wwwroot`，必须以 `.js` 或 `.mjs` 结尾，不能包含反斜杠、冒号、绝对路径或 `..`。
+Web 插件不能使用 `web.head`/`web.postBlazor` 向宿主页面注入 HTML；样式和页面只能写入自己的 iframe。
+
+## 3. 生命周期与页面
+
+```ts
+import { definePlugin } from "@quantum/plugin-sdk";
+
+export default definePlugin({
+  async activate(context) {
+    await context.log.info("started");
+    return () => context.log.info("stopped");
+  },
+
+  async mount({ element, route, signal }) {
+    element.textContent = route.view;
+    signal.addEventListener("abort", () => element.replaceChildren(), { once: true });
+    return () => element.replaceChildren();
+  }
+});
+```
+
+- `activate` 每代 runtime 调用一次；其返回的 cleanup 在 `deactivate` 前调用。
+- `mount` 在路由展示时调用；切走路由时先 abort `signal`，再调用 cleanup 和 `unmount`。
+- `context.signal` 在整个 runtime 停止时 abort。
+- 即使插件没有正确清理，宿主最终也会删除 iframe，浏览上下文中的 DOM、定时器和事件随之释放。
+
+## 4. 宿主能力
+
+SDK 提供日志、导航、环境快照、资源读取和通用 RPC：
+
+```ts
+const environment = await context.environment.snapshot();
+await context.navigation.navigate("/");
+const text = await context.assets.readText("data/default.json", { signal });
+const imageUrl = context.assets.url("images/icon.png");
+```
+
+iframe 的 CSP 禁止直接网络连接。文本资源可通过 `assets.readText` 读取，单次上限 2 MiB；图片、字体和样式可以使用
+`assets.url()` 返回的宿主 URL。
+
+## 5. 调用 .NET 服务
+
+```ts
+const result = await context.dotnet.invoke<MyResult>({
+  target: "host",
+  service: "My.Contracts.INotesService",
+  method: "FindAsync",
+  arguments: [{ text: "quantum" }],
+  parameterTypes: ["My.Contracts.NoteQuery"]
+}, { signal });
+```
+
+权限名为 `dotnet.invoke:<target>:<service-fqn>`。`target` 可以是 `host`，也可以是 manifest 中已激活的 .NET
+integration 插件 id；后者从目标插件的私有容器解析服务。也支持 `dotnet.invoke:<target>:*` 和
+`dotnet.invoke:*`，但宽泛权限应由安装和市场审核流程重点提示。
+
+互操作约束：
+
+- 服务名和 `parameterTypes` 使用不带程序集名与 `global::` 的 `Type.FullName`。
+- 只允许调用服务契约上的 public instance method；不允许泛型方法、指针或 `ref`/`out` 参数。
+- 参数和结果必须可由 `System.Text.Json` 序列化；重载无法唯一匹配时必须填写 `parameterTypes`。
+- `CancellationToken` 参数由宿主注入。JS Abort 会请求取消，宿主同时有 30 秒超时。
+- 每次调用创建独立 DI scope；返回值序列化完成后释放 scope，不能返回需要继续使用的 scoped 对象或句柄。
+  如果异步方法忽略取消，RPC 会按时结束，但宿主会把 scope 保留到实际任务结束，避免提前释放 scoped 服务。
+
+## 6. 构建与调试
+
+```bash
+npm run build
+```
+
+把 `plugin.json` 和 `wwwroot` 复制到 `Modules/<plugin-id>` 后执行“重新扫描 Modules”。仓库内的
+`samples/Quantum.ExampleWebPlugin` 展示了 iframe 页面、环境查询、导航，以及与
+`samples/Quantum.ExamplePlugin` 的双向 integration 声明和 .NET FQN 异步握手调用；打开 .NET 示例页可以看到
+JS 发起的累计握手次数。
+
+当前自动化环境验证 manifest、运行时、市场包、TypeScript 类型和 bundle 语法。Windows WebView2 与 Mac Catalyst
+WKWebView 仍应各做一次实机验证，尤其关注 sandbox iframe 加载和 `postMessage` 行为。
+
+Web runtime 的 .NET 快照切换和 iframe 激活分属两个异步阶段：新 iframe 激活失败时宿主会报告错误并停止授予旧
+runtime RPC 权限，但当前版本还不能把 .NET 侧已经提交的插件快照自动回滚。入口 bundle 应尽量把可失败的初始化放在
+`activate`，并在发布前同时验证 WebView2 与 WKWebView。

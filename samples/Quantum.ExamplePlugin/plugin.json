@@ -5,7 +5,7 @@
   "dependencies": [],
   "integrations": [
     {
-      "id": "quantum.plugin.theme",
+      "id": "quantum.plugin.example-web",
       "minVersion": "0.1.0"
     }
   ],

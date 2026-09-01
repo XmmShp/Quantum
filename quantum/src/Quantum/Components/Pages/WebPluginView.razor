@@ -1,0 +1,98 @@
+@implements IAsyncDisposable
+@inject IJSRuntime JavaScript
+
+<div class="web-plugin-view" @ref="_hostElement">
+    @if (!string.IsNullOrWhiteSpace(_failureMessage))
+    {
+        <div class="empty-state">
+            <p class="eyebrow">WEB PLUGIN ERROR</p>
+            <h1>插件页面启动失败</h1>
+            <p>@_failureMessage</p>
+        </div>
+    }
+</div>
+
+@code {
+    [Parameter, EditorRequired]
+    public LoadedPlugin Plugin { get; set; } = null!;
+
+    [Parameter, EditorRequired]
+    public PluginRouteRegistration Route { get; set; } = null!;
+
+    private ElementReference _hostElement;
+    private string? _attachedKey;
+    private string? _attemptedKey;
+    private string? _failureMessage;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        var key = $"{Plugin.RuntimeId:N}:{Route.Definition.Path}";
+        if (string.Equals(_attemptedKey, key, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _attemptedKey = key;
+        try
+        {
+            if (_attachedKey is not null)
+            {
+                await JavaScript.InvokeVoidAsync(
+                    "quantum.plugins.detachWebPlugin",
+                    Plugin.Manifest.Id.Value,
+                    _hostElement);
+                _attachedKey = null;
+            }
+
+            await JavaScript.InvokeVoidAsync(
+                "quantum.plugins.attachWebPlugin",
+                Plugin.Manifest.Id.Value,
+                _hostElement,
+                new
+                {
+                    Route.Definition.Path,
+                    Route.Definition.View,
+                    Route.Definition.Title
+                });
+            _attachedKey = key;
+            _failureMessage = null;
+        }
+        catch (Exception exception) when (exception is not OutOfMemoryException)
+        {
+            _failureMessage = exception.Message;
+            WriteDiagnostics(
+                $"Web plugin view mount failed for {Plugin.Manifest.Id.Value}: {exception.Message}");
+            await InvokeAsync(StateHasChanged);
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_attachedKey is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await JavaScript.InvokeVoidAsync(
+                "quantum.plugins.detachWebPlugin",
+                Plugin.Manifest.Id.Value,
+                _hostElement);
+        }
+        catch (Exception exception) when (exception is JSException or TaskCanceledException)
+        {
+        }
+    }
+
+    private static void WriteDiagnostics(string message)
+    {
+        if (string.Equals(
+                Environment.GetEnvironmentVariable("QUANTUM_PLUGIN_DIAGNOSTICS"),
+                "1",
+                StringComparison.Ordinal))
+        {
+            Console.WriteLine($"[Quantum] {message}");
+        }
+    }
+}
