@@ -15,6 +15,7 @@ public sealed class JsonPluginManifestReaderTests
               "id": "quantum.plugin.test",
               "version": "1.2.0-beta.1",
               "entryAssembly": "Test.dll",
+              "database": { "migrations": "./migrations" },
               "dependencies": [{ "id": "core", "minVersion": "1.0.0" }],
               "integrations": [{ "id": "optional-addon", "minVersion": "2.0.0" }],
               "ui": {
@@ -31,6 +32,10 @@ public sealed class JsonPluginManifestReaderTests
             }
             """);
         File.WriteAllBytes(Path.Combine(directory.Path, "Test.dll"), []);
+        Directory.CreateDirectory(Path.Combine(directory.Path, "migrations"));
+        File.WriteAllText(
+            Path.Combine(directory.Path, "migrations", "001_init.sql"),
+            "CREATE TABLE test_items (id TEXT PRIMARY KEY);");
 
         var candidate = new JsonPluginManifestReader().Read(directory.Path);
 
@@ -42,6 +47,7 @@ public sealed class JsonPluginManifestReaderTests
         Assert.Equal("2.0.0", integration.MinimumVersion.ToString());
         Assert.Single(candidate.Manifest.Routes);
         Assert.Single(candidate.Manifest.Web.Head);
+        Assert.Equal("migrations", candidate.Manifest.Database?.Migrations);
     }
 
     [Fact]
@@ -152,6 +158,51 @@ public sealed class JsonPluginManifestReaderTests
             """);
 
         Assert.Throws<ArgumentException>(() => new JsonPluginManifestReader().Read(directory.Path));
+    }
+
+    [Theory]
+    [InlineData("../migrations")]
+    [InlineData("migrations\\nested")]
+    [InlineData("/migrations")]
+    public void Read_RejectsUnsafeDatabaseMigrationPath(string migrations)
+    {
+        using var directory = TemporaryDirectory.Create();
+        File.WriteAllBytes(Path.Combine(directory.Path, "Test.dll"), []);
+        File.WriteAllText(
+            Path.Combine(directory.Path, "plugin.json"),
+            $$"""
+            {
+              "id": "quantum.plugin.test",
+              "version": "1.0.0",
+              "entryAssembly": "Test.dll",
+              "database": { "migrations": "{{migrations.Replace("\\", "\\\\", StringComparison.Ordinal)}}" }
+            }
+            """);
+
+        Assert.Throws<ArgumentException>(() => new JsonPluginManifestReader().Read(directory.Path));
+    }
+
+    [Fact]
+    public void Read_RejectsMissingOrInvalidMigrationArtifact()
+    {
+        using var directory = TemporaryDirectory.Create();
+        File.WriteAllBytes(Path.Combine(directory.Path, "Test.dll"), []);
+        File.WriteAllText(
+            Path.Combine(directory.Path, "plugin.json"),
+            """
+            {
+              "id": "quantum.plugin.test",
+              "version": "1.0.0",
+              "entryAssembly": "Test.dll",
+              "database": { "migrations": "migrations" }
+            }
+            """);
+
+        Assert.Throws<DirectoryNotFoundException>(() => new JsonPluginManifestReader().Read(directory.Path));
+
+        Directory.CreateDirectory(Path.Combine(directory.Path, "migrations"));
+        File.WriteAllText(Path.Combine(directory.Path, "migrations", "init.sql"), "SELECT 1;");
+        Assert.Throws<InvalidDataException>(() => new JsonPluginManifestReader().Read(directory.Path));
     }
 
     private sealed class TemporaryDirectory : IDisposable

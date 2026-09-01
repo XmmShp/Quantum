@@ -15,9 +15,50 @@ function createHost(overrides = {}) {
     framesByWindow: new Map(),
     dotNetReference: null,
     parkingElement: null,
-    messageListenerInstalled: false
+    messageListenerInstalled: false,
+    reconcileOperation: null
   }, overrides);
 }
+
+test("concurrent Web plugin reconciliations are serialized and converge to the latest runtime", async () => {
+  const pluginId = "quantum.plugin.web";
+  let releaseFirst;
+  let firstStarted;
+  const firstStartedPromise = new Promise(resolve => { firstStarted = resolve; });
+  const events = [];
+  const host = createHost({
+    ensureMessageListener() {},
+    async createRecord(descriptor) {
+      events.push(`create:${descriptor.runtimeId}`);
+      if (descriptor.runtimeId === "first") {
+        firstStarted();
+        await new Promise(resolve => { releaseFirst = resolve; });
+      }
+      return {
+        pluginId,
+        runtimeId: descriptor.runtimeId,
+        mounted: false,
+        disposed: false
+      };
+    },
+    async disposeRecord(record) {
+      events.push(`dispose:${record.runtimeId}`);
+      record.disposed = true;
+    }
+  });
+
+  const first = host.reconcileWebPlugins([{ pluginId, runtimeId: "first" }], {});
+  await firstStartedPromise;
+  const second = host.reconcileWebPlugins([{ pluginId, runtimeId: "second" }], {});
+  await Promise.resolve();
+
+  assert.deepEqual(events, ["create:first"]);
+  releaseFirst();
+  await Promise.all([first, second]);
+
+  assert.deepEqual(events, ["create:first", "create:second", "dispose:first"]);
+  assert.equal(host.records.get(pluginId).runtimeId, "second");
+});
 
 test("failed replacement disposes the candidate and restores the previous mounted runtime", async () => {
   const current = { pluginId: "quantum.plugin.web", runtimeId: "old", mounted: true, disposed: false };

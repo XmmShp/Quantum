@@ -1,13 +1,15 @@
 using System.IO.Compression;
+using System.Numerics;
 using System.Security.Cryptography;
 using System.Text.Json;
+using System.Text.RegularExpressions;
 using Microsoft.Extensions.Options;
 using Quantum.ExtensionMarket.Application;
 using Quantum.ExtensionMarket.Domain;
 
 namespace Quantum.ExtensionMarket;
 
-public sealed class PhysicalPluginPackageStore : IPluginPackageStore
+public sealed partial class PhysicalPluginPackageStore : IPluginPackageStore
 {
     private readonly string rootPath;
     private readonly PluginStorageOptions options;
@@ -195,6 +197,77 @@ public sealed class PhysicalPluginPackageStore : IPluginPackageStore
                     throw new InvalidDataException($"Unknown plugin runtime kind '{manifest.Runtime.Kind}'.");
             }
         }
+
+        if (manifest.Database is not null)
+        {
+            ValidateDatabaseMigrations(manifest.Database.Migrations, archive.Entries);
+        }
+    }
+
+    private static void ValidateDatabaseMigrations(
+        string? configuredPath,
+        IReadOnlyCollection<ZipArchiveEntry> entries)
+    {
+        if (string.IsNullOrWhiteSpace(configuredPath)
+            || !string.Equals(configuredPath, configuredPath.Trim(), StringComparison.Ordinal))
+        {
+            throw new InvalidDataException("plugin.json database.migrations must name a relative directory.");
+        }
+
+        var directory = configuredPath.StartsWith("./", StringComparison.Ordinal)
+            ? configuredPath[2..]
+            : configuredPath;
+        var normalizedDirectory = NormalizeArchivePath(directory);
+        if (normalizedDirectory.EndsWith("/", StringComparison.Ordinal))
+        {
+            throw new InvalidDataException("plugin.json database.migrations must not end with a slash.");
+        }
+
+        var prefix = normalizedDirectory + "/";
+        var migrationEntries = entries
+            .Where(entry =>
+            {
+                var path = NormalizeArchivePath(entry.FullName);
+                return !path.EndsWith("/", StringComparison.Ordinal)
+                    && path.StartsWith(prefix, StringComparison.OrdinalIgnoreCase);
+            })
+            .ToArray();
+        if (migrationEntries.Length == 0)
+        {
+            throw new InvalidDataException(
+                $"Database migrations directory '{configuredPath}' must contain at least one SQL migration.");
+        }
+
+        var sequences = new HashSet<BigInteger>();
+        foreach (var entry in migrationEntries)
+        {
+            var relativePath = NormalizeArchivePath(entry.FullName)[prefix.Length..];
+            if (relativePath.Contains('/', StringComparison.Ordinal))
+            {
+                throw new InvalidDataException("Database migrations directory cannot contain nested directories.");
+            }
+
+            var match = MigrationFileName().Match(relativePath);
+            if (!match.Success)
+            {
+                throw new InvalidDataException(
+                    $"Migration file '{relativePath}' must use '<number>_<description>.sql'.");
+            }
+
+            if (entry.Length == 0)
+            {
+                throw new InvalidDataException($"Migration file '{relativePath}' is empty.");
+            }
+
+            var sequence = BigInteger.Parse(
+                match.Groups["sequence"].Value,
+                System.Globalization.CultureInfo.InvariantCulture);
+            if (!sequences.Add(sequence))
+            {
+                throw new InvalidDataException(
+                    $"Database migrations contain duplicate sequence '{match.Groups["sequence"].Value}'.");
+            }
+        }
     }
 
     private static void ValidateDotNetEntry(string entry, IReadOnlySet<string> files)
@@ -256,6 +329,8 @@ public sealed class PhysicalPluginPackageStore : IPluginPackageStore
         public string? EntryAssembly { get; init; }
 
         public PluginRuntimeEnvelope? Runtime { get; init; }
+
+        public PluginDatabaseEnvelope? Database { get; init; }
     }
 
     private sealed record PluginRuntimeEnvelope
@@ -264,4 +339,12 @@ public sealed class PhysicalPluginPackageStore : IPluginPackageStore
 
         public string? Entry { get; init; }
     }
+
+    private sealed record PluginDatabaseEnvelope
+    {
+        public string? Migrations { get; init; }
+    }
+
+    [GeneratedRegex("^(?<sequence>[0-9]+)_[A-Za-z0-9][A-Za-z0-9._-]*\\.sql$", RegexOptions.CultureInvariant)]
+    private static partial Regex MigrationFileName();
 }

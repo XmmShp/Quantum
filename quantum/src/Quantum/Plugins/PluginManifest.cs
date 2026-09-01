@@ -9,7 +9,8 @@ public sealed class PluginManifest
         IEnumerable<PluginDependency>? dependencies = null,
         IEnumerable<PluginIntegration>? integrations = null,
         IEnumerable<PluginRouteDefinition>? routes = null,
-        PluginWebContributions? web = null)
+        PluginWebContributions? web = null,
+        PluginDatabaseDefinition? database = null)
         : this(
             id,
             version,
@@ -17,7 +18,8 @@ public sealed class PluginManifest
             dependencies,
             integrations,
             routes,
-            web)
+            web,
+            database)
     {
     }
 
@@ -28,7 +30,8 @@ public sealed class PluginManifest
         IEnumerable<PluginDependency>? dependencies = null,
         IEnumerable<PluginIntegration>? integrations = null,
         IEnumerable<PluginRouteDefinition>? routes = null,
-        PluginWebContributions? web = null)
+        PluginWebContributions? web = null,
+        PluginDatabaseDefinition? database = null)
     {
         Id = id;
         Version = version ?? throw new ArgumentNullException(nameof(version));
@@ -37,6 +40,7 @@ public sealed class PluginManifest
         Integrations = (integrations ?? []).ToArray();
         Routes = (routes ?? []).ToArray();
         Web = web ?? PluginWebContributions.Empty;
+        Database = database;
 
         foreach (var route in Routes)
         {
@@ -88,6 +92,8 @@ public sealed class PluginManifest
 
     public PluginWebContributions Web { get; }
 
+    public PluginDatabaseDefinition? Database { get; }
+
     private static void EnsureUnique<T>(IEnumerable<T> values, string name)
         where T : notnull
     {
@@ -97,6 +103,32 @@ public sealed class PluginManifest
             throw new ArgumentException($"Plugin manifest contains a duplicate {name}.");
         }
     }
+}
+
+public sealed record PluginDatabaseDefinition
+{
+    public PluginDatabaseDefinition(string migrations)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(migrations);
+        var normalized = migrations.StartsWith("./", StringComparison.Ordinal)
+            ? migrations[2..]
+            : migrations;
+        if (!string.Equals(migrations, migrations.Trim(), StringComparison.Ordinal)
+            || string.IsNullOrWhiteSpace(normalized)
+            || Path.IsPathRooted(normalized)
+            || normalized.Contains('\\', StringComparison.Ordinal)
+            || normalized.Contains(':', StringComparison.Ordinal)
+            || normalized.Split('/').Any(static segment => segment.Length == 0 || segment is "." or ".."))
+        {
+            throw new ArgumentException(
+                "Database migrations must be a normalized relative directory using forward slashes.",
+                nameof(migrations));
+        }
+
+        Migrations = normalized;
+    }
+
+    public string Migrations { get; }
 }
 
 public enum PluginRuntimeKind

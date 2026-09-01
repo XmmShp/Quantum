@@ -91,6 +91,57 @@ public sealed class HostServicesTests : IDisposable
     }
 
     [Fact]
+    public async Task PackageStore_AcceptsLanguageIndependentSqlMigrations()
+    {
+        var store = CreateStore();
+        var archive = CreateArchive(
+            ("plugin.json", """
+                {
+                  "id":"quantum.plugin.web",
+                  "version":"1.0.0",
+                  "runtime":{"kind":"web","entry":"dist/plugin.js"},
+                  "database":{"migrations":"./migrations"}
+                }
+                """),
+            ("wwwroot/dist/plugin.js", "export default {};"),
+            ("migrations/001_init.sql", "CREATE TABLE notes (id TEXT PRIMARY KEY);"),
+            ("migrations/002_add_index.sql", "CREATE INDEX notes_id ON notes (id);"));
+
+        var stored = await store.SaveAsync(
+            "quantum.plugin.web",
+            "1.0.0",
+            Convert.ToBase64String(archive),
+            null,
+            CancellationToken.None);
+
+        Assert.Equal("quantum.plugin.web/1.0.0.zip", stored.RelativePath);
+    }
+
+    [Fact]
+    public async Task PackageStore_RejectsInvalidMigrationArtifact()
+    {
+        var store = CreateStore();
+        var archive = CreateArchive(
+            ("plugin.json", """
+                {
+                  "id":"quantum.plugin.example",
+                  "version":"1.0.0",
+                  "entryAssembly":"Example.dll",
+                  "database":{"migrations":"migrations"}
+                }
+                """),
+            ("Example.dll", "not-a-real-assembly"),
+            ("migrations/init.sql", "SELECT 1;"));
+
+        await Assert.ThrowsAsync<InvalidDataException>(() => store.SaveAsync(
+            "quantum.plugin.example",
+            "1.0.0",
+            Convert.ToBase64String(archive),
+            null,
+            CancellationToken.None));
+    }
+
+    [Fact]
     public async Task PackageStore_RejectsPlatformSpecificWebEntryPath()
     {
         var store = CreateStore();

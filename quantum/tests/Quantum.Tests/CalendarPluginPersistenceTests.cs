@@ -179,13 +179,19 @@ public sealed class CalendarPluginPersistenceTests
         File.Copy(
             Path.Combine(AppContext.BaseDirectory, "Quantum.ExampleCalendarPlugin.dll"),
             Path.Combine(pluginRoot, "Quantum.ExampleCalendarPlugin.dll"));
+        var migrationsRoot = Path.Combine(pluginRoot, "migrations");
+        Directory.CreateDirectory(migrationsRoot);
+        File.Copy(
+            Path.Combine(AppContext.BaseDirectory, "migrations", "001_init.sql"),
+            Path.Combine(migrationsRoot, "001_init.sql"));
         File.WriteAllText(
             Path.Combine(pluginRoot, "plugin.json"),
             """
             {
               "id": "quantum.plugin.example-calendar",
               "version": "1.0.0",
-              "entryAssembly": "Quantum.ExampleCalendarPlugin.dll"
+              "entryAssembly": "Quantum.ExampleCalendarPlugin.dll",
+              "database": { "migrations": "./migrations" }
             }
             """);
 
@@ -198,7 +204,10 @@ public sealed class CalendarPluginPersistenceTests
             catalog,
             new PluginRuntimeOptions(modulesRoot, shadowRoot, fixture.DatabasePath));
         await manager.InitializeAsync(hostServices);
-        var plugin = Assert.Single(catalog.Plugins);
+        Assert.True(
+            catalog.Plugins.Count == 1,
+            string.Join(Environment.NewLine, catalog.Failures.Select(static failure => failure.ToString())));
+        var plugin = catalog.Plugins[0];
         var loadContext = AssemblyLoadContext.GetLoadContext(plugin.EntryAssembly!);
         Assert.NotNull(loadContext);
         var weakReference = new WeakReference(loadContext, trackResurrection: false);

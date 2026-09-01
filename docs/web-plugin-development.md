@@ -7,6 +7,8 @@ opaque-origin 的独立 iframe 中执行入口模块；卸载或热更新时销�
 
 ```text
 MyPlugin/
+├── migrations/
+│   └── 001_init.sql
 ├── package.json
 ├── plugin.json
 ├── src/
@@ -43,6 +45,9 @@ npm install --save-dev typescript esbuild
     "kind": "web",
     "entry": "dist/plugin.js"
   },
+  "database": {
+    "migrations": "./migrations"
+  },
   "integrations": [],
   "ui": {
     "routes": [{
@@ -57,6 +62,13 @@ npm install --save-dev typescript esbuild
 
 `runtime.entry` 相对于 `wwwroot`，必须以 `.js` 或 `.mjs` 结尾，不能包含反斜杠、冒号、绝对路径或 `..`。
 Web 插件不能使用 `web.head`/`web.postBlazor` 向宿主页面注入 HTML；样式和页面只能写入自己的 iframe。
+
+`database.migrations` 是 Host 能力，不是 JavaScript API。它与 .NET 插件使用完全相同的发布 artifact：把 Prisma、
+Drizzle 或其他开发期 ORM 的最终升级路径导出为 SQLite SQL，按 `001_init.sql`、`002_add_index.sql` 的形式放入声明目录。
+每个版本携带完整的追加式历史；Host 在 `activate` 之前用事务执行待应用文件，并校验已应用文件的 SHA-256。
+Web iframe 不会获得数据库连接；需要读写业务数据时仍应通过 Host capability 或声明的 .NET integration RPC。
+
+完整的命名、事务和 forward-only 升级规则见 [.NET 插件开发指南的持久化章节](plugin-development.md#6-提供静态资源和-web-贡献)。
 
 ## 3. 生命周期与页面
 

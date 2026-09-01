@@ -283,15 +283,37 @@ public sealed class WebPluginInteropBridge(
         QuantumEvent @event,
         CancellationToken cancellationToken)
     {
-        await javaScript.InvokeVoidAsync(
-                "quantum.plugins.dispatchEvent",
-                cancellationToken,
+        try
+        {
+            await javaScript.InvokeVoidAsync(
+                    "quantum.plugins.dispatchEvent",
+                    cancellationToken,
+                    pluginId,
+                    runtimeId,
+                    subscriptionId,
+                    @event)
+                .ConfigureAwait(false);
+        }
+        catch (JSException exception) when (!IsCurrentRuntime(pluginId, runtimeId))
+        {
+            // A replacement runtime is activated before the old iframe is disposed so the UI
+            // can fall back if activation fails. During that overlap, a new publisher can reach
+            // an old EventBus subscription whose handler is already forbidden from making RPCs.
+            // The obsolete delivery must not make the replacement runtime fail activation.
+            logger.LogDebug(
+                exception,
+                "Ignored EventBus delivery failure from stale Web plugin runtime {PluginId}@{RuntimeId}.",
                 pluginId,
-                runtimeId,
-                subscriptionId,
-                @event)
-            .ConfigureAwait(false);
+                runtimeId);
+            WriteDiagnostics(
+                $"Ignored EventBus delivery failure from stale Web plugin runtime "
+                + $"{pluginId}@{runtimeId}: {exception.Message}");
+        }
     }
+
+    private bool IsCurrentRuntime(string pluginId, string runtimeId)
+        => catalog.FindPlugin(pluginId) is { } plugin
+            && string.Equals(plugin.RuntimeId.ToString("N"), runtimeId, StringComparison.Ordinal);
 
     private static async Task<JsonElement> InvokeAssetsAsync(
         LoadedPlugin plugin,

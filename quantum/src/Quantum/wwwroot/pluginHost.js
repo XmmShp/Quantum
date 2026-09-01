@@ -8,6 +8,7 @@ window.quantum.plugins = {
   dotNetReference: null,
   parkingElement: null,
   frameBootstrapPromise: null,
+  reconcileOperation: null,
 
   replaceContributions(contributions) {
     const items = Array.isArray(contributions)
@@ -56,6 +57,11 @@ window.quantum.plugins = {
   },
 
   async reconcileWebPlugins(descriptors, dotNetReference) {
+    return this.runReconciliation(() =>
+      this.reconcileWebPluginsCore(descriptors, dotNetReference));
+  },
+
+  async reconcileWebPluginsCore(descriptors, dotNetReference) {
     this.dotNetReference = dotNetReference;
     this.ensureMessageListener();
     const desired = new Map((descriptors ?? []).map(descriptor => [descriptor.pluginId, descriptor]));
@@ -114,6 +120,21 @@ window.quantum.plugins = {
     }
   },
 
+  async runReconciliation(callback) {
+    const previous = this.reconcileOperation ?? Promise.resolve();
+    const operation = previous
+      .catch(() => undefined)
+      .then(callback);
+    this.reconcileOperation = operation;
+    try {
+      return await operation;
+    } finally {
+      if (this.reconcileOperation === operation) {
+        this.reconcileOperation = null;
+      }
+    }
+  },
+
   async attachWebPlugin(pluginId, hostElement, route) {
     const binding = { hostElement, route };
     this.bindings.set(pluginId, binding);
@@ -153,6 +174,10 @@ window.quantum.plugins = {
   },
 
   async shutdownWebPlugins() {
+    return this.runReconciliation(() => this.shutdownWebPluginsCore());
+  },
+
+  async shutdownWebPluginsCore() {
     this.bindings.clear();
     for (const record of [...this.records.values()].reverse()) {
       await this.disposeRecord(record);

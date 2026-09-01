@@ -19,6 +19,7 @@
 
   <ItemGroup>
     <Content Update="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="migrations\**\*.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <ItemGroup>

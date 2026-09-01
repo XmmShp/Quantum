@@ -12,6 +12,7 @@ Quantum 是基于 .NET 10、NOF 与 .NET MAUI Blazor Hybrid 的本地优先插�
 - NOF `AutoInject` 生成的注册元数据在插件私有容器内执行，不会让宿主根 DI 持有插件类型。
 - .NET 与 TypeScript 插件共享 Topic EventBus；Host 使用 NOF 内存事件和 JSON envelope 在 ALC、iframe 运行代之间转发，并等待异步订阅者完成。
 - manifest 页面通过 `DynamicComponent`（.NET）或 iframe view（Web）注入路由和菜单。
+- `.NET` 与 Web 插件通过同一个 `database.migrations` manifest 能力发布追加式 SQLite SQL migrations；Host 统一排序、事务执行并校验历史 checksum。
 - 插件 `wwwroot` 通过自定义 `IFileProvider` 映射为 `_content/{pluginId}/...`。
 - `head` 与 `postBlazor` Web 贡献在 Blazor 启动后注入；脚本节点会被重新创建以确保执行。
 
@@ -84,7 +85,7 @@ dotnet build quantum/src/Quantum/Quantum.csproj -t:Run -f net10.0-maccatalyst
 ```
 
 目录中的每个直接子目录代表一个插件，至少包含 `plugin.json`，以及 manifest 指定的 .NET 入口 DLL 或
-`wwwroot` 下的 Web 入口 ESM bundle。
+`wwwroot` 下的 Web 入口 ESM bundle；声明数据库能力时还必须包含完整的 SQL migration artifact。
 
 运行时可在首页对单个插件执行“热升级”或“卸载”，也可重新扫描整个 `Modules`。卸载会释放 .NET 生命周期、私有 DI 容器和 ALC，或销毁 Web iframe，但不删除插件源目录；热升级先从源目录创建未激活的候选影子副本，切换时按依赖逆序停用所有下游强依赖插件，成功后按正序恢复，.NET 启动失败会自动回滚旧版本。Web 入口在快照提交后由 WebView 激活，失败时会隔离并报告，但当前不能反向回滚已经提交的 .NET 快照。卸载有下游强依赖的插件时，界面会列出所有直接和传递依赖插件并要求确认，确认后将它们一并卸载。
 

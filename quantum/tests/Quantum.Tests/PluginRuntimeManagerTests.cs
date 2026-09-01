@@ -1,4 +1,5 @@
 using System.Runtime.Loader;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -42,6 +43,98 @@ public sealed class PluginRuntimeManagerTests
         Assert.Null(route.ComponentType);
         Assert.Equal("main", route.Definition.View);
         Assert.True(File.Exists(Path.Combine(plugin.RootPath, "wwwroot", "dist", "plugin.js")));
+    }
+
+    [Fact]
+    public async Task WebPluginSqlMigrationsApplyOnceAndUpgradeInOrder()
+    {
+        using var fixture = new RuntimeFixture();
+        fixture.AddMigratingWebPlugin();
+        await using var manager = fixture.CreateManager();
+
+        await manager.InitializeAsync(fixture.HostServices);
+
+        Assert.NotNull(fixture.Catalog.FindPlugin("quantum.plugin.web"));
+        Assert.Equal(
+            1L,
+            await ExecuteScalarInt64Async(
+                fixture.DatabasePath,
+                "SELECT COUNT(*) FROM web_migration_items;"));
+        Assert.Equal(
+            1L,
+            await ExecuteScalarInt64Async(
+                fixture.DatabasePath,
+                "SELECT COUNT(*) FROM __quantum_plugin_migrations WHERE plugin_id = 'quantum.plugin.web';"));
+
+        var unchangedRefresh = await manager.RefreshAsync();
+        Assert.True(unchangedRefresh.Succeeded, unchangedRefresh.Message);
+        Assert.Equal(
+            1L,
+            await ExecuteScalarInt64Async(
+                fixture.DatabasePath,
+                "SELECT COUNT(*) FROM web_migration_items;"));
+
+        fixture.WriteWebMigration(
+            "002_add_status.sql",
+            "ALTER TABLE web_migration_items ADD COLUMN status TEXT NOT NULL DEFAULT 'ready';");
+        fixture.WriteWebManifest("1.1.0", usesDatabase: true);
+        var upgraded = await manager.RefreshAsync();
+
+        Assert.True(upgraded.Succeeded, upgraded.Message);
+        Assert.Equal(
+            2L,
+            await ExecuteScalarInt64Async(
+                fixture.DatabasePath,
+                "SELECT COUNT(*) FROM __quantum_plugin_migrations WHERE plugin_id = 'quantum.plugin.web';"));
+        Assert.Equal(
+            1L,
+            await ExecuteScalarInt64Async(
+                fixture.DatabasePath,
+                "SELECT COUNT(*) FROM pragma_table_info('web_migration_items') WHERE name = 'status';"));
+    }
+
+    [Fact]
+    public async Task RefreshRejectsModifiedAppliedMigrationAndKeepsCurrentRuntime()
+    {
+        using var fixture = new RuntimeFixture();
+        fixture.AddMigratingWebPlugin();
+        await using var manager = fixture.CreateManager();
+        await manager.InitializeAsync(fixture.HostServices);
+        var current = fixture.Catalog.FindPlugin("quantum.plugin.web");
+        Assert.NotNull(current);
+
+        fixture.WriteWebMigration(
+            "001_init.sql",
+            "CREATE TABLE web_migration_items (id TEXT PRIMARY KEY, changed TEXT); INSERT INTO web_migration_items (id) VALUES ('changed');");
+        fixture.WriteWebManifest("1.1.0", usesDatabase: true);
+        var result = await manager.RefreshAsync();
+
+        Assert.False(result.Succeeded);
+        Assert.Contains("modified", result.Message, StringComparison.OrdinalIgnoreCase);
+        Assert.Equal(current.RuntimeId, fixture.Catalog.FindPlugin("quantum.plugin.web")?.RuntimeId);
+        Assert.Equal(
+            1L,
+            await ExecuteScalarInt64Async(
+                fixture.DatabasePath,
+                "SELECT COUNT(*) FROM web_migration_items WHERE id = 'initial';"));
+    }
+
+    [Fact]
+    public async Task FailedMigrationRollsBackTheWholePluginArtifact()
+    {
+        using var fixture = new RuntimeFixture();
+        fixture.AddMigratingWebPlugin();
+        fixture.WriteWebMigration("002_invalid.sql", "THIS IS NOT VALID SQL;");
+        await using var manager = fixture.CreateManager();
+
+        await manager.InitializeAsync(fixture.HostServices);
+
+        Assert.Null(fixture.Catalog.FindPlugin("quantum.plugin.web"));
+        Assert.Equal(
+            0L,
+            await ExecuteScalarInt64Async(
+                fixture.DatabasePath,
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'table' AND name IN ('web_migration_items', '__quantum_plugin_migrations');"));
     }
 
     [Fact]
@@ -331,6 +424,19 @@ public sealed class PluginRuntimeManagerTests
         }
     }
 
+    private static async Task<long> ExecuteScalarInt64Async(string databasePath, string sql)
+    {
+        await using var connection = new SqliteConnection(new SqliteConnectionStringBuilder
+        {
+            DataSource = databasePath,
+            Pooling = false
+        }.ToString());
+        await connection.OpenAsync();
+        await using var command = connection.CreateCommand();
+        command.CommandText = sql;
+        return Convert.ToInt64(await command.ExecuteScalarAsync(), System.Globalization.CultureInfo.InvariantCulture);
+    }
+
     private sealed record RuntimeEvent(string State);
 
     private sealed class RuntimeFixture : IDisposable
@@ -366,6 +472,8 @@ public sealed class PluginRuntimeManagerTests
 
         public string SourceAssemblyPath { get; }
 
+        public string DatabasePath => Path.Combine(_root, "quantum.db");
+
         public string DependentManifestPath => Path.Combine(
             ModulesRoot,
             "quantum.plugin.dependent",
@@ -381,7 +489,7 @@ public sealed class PluginRuntimeManagerTests
                 new PluginRuntimeOptions(
                     ModulesRoot,
                     ShadowRoot,
-                    Path.Combine(_root, "quantum.db")),
+                    DatabasePath),
                 logger: logger ?? NullLogger<PluginRuntimeManager>.Instance);
 
         public void WriteManifest(string version)
@@ -430,13 +538,36 @@ public sealed class PluginRuntimeManagerTests
             File.WriteAllText(
                 Path.Combine(webRoot, "wwwroot", "dist", "plugin.js"),
                 "export default { mount() {} };");
+            WriteWebManifest("1.0.0", usesDatabase: false);
+        }
+
+        public void AddMigratingWebPlugin()
+        {
+            AddWebPlugin();
+            WriteWebMigration(
+                "001_init.sql",
+                "CREATE TABLE web_migration_items (id TEXT PRIMARY KEY); INSERT INTO web_migration_items (id) VALUES ('initial');");
+            WriteWebManifest("1.0.0", usesDatabase: true);
+        }
+
+        public void WriteWebMigration(string fileName, string sql)
+        {
+            var migrationsRoot = Path.Combine(ModulesRoot, "quantum.plugin.web", "migrations");
+            Directory.CreateDirectory(migrationsRoot);
+            File.WriteAllText(Path.Combine(migrationsRoot, fileName), sql);
+        }
+
+        public void WriteWebManifest(string version, bool usesDatabase)
+        {
+            var webRoot = Path.Combine(ModulesRoot, "quantum.plugin.web");
             File.WriteAllText(
                 Path.Combine(webRoot, "plugin.json"),
-                """
+                $$"""
                 {
                   "id": "quantum.plugin.web",
-                  "version": "1.0.0",
+                  "version": "{{version}}",
                   "runtime": { "kind": "web", "entry": "dist/plugin.js" },
+                  {{(usesDatabase ? "\"database\": { \"migrations\": \"./migrations\" }," : string.Empty)}}
                   "ui": {
                     "routes": [{
                       "path": "/plugins/web",

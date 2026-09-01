@@ -18,15 +18,26 @@ Quantum (单一 NOF MAUI Host 项目)
 ## 启动顺序
 
 1. `NOFMauiAppBuilder.Create()` 创建 NOF/MAUI composition root。
-2. 扫描 `Modules/*/plugin.json`，执行 schema 与文件预校验。
+2. 扫描 `Modules/*/plugin.json`，执行 schema、runtime 入口与 SQL migration artifact 预校验。
 3. 按 `dependencies` 删除强前置缺失、版本不满足和硬循环的候选及其下游。
 4. 对剩余插件拓扑排序；兼容且已安装的 `integrations` 形成软排序偏好，但不形成加载门槛。
 5. 把每个候选复制到本次进程专属的影子目录；.NET runtime 创建独立的 collectible `PluginLoadContext`，Web runtime 则生成独立 iframe descriptor。
 6. .NET runtime 读取 NOF 生成的 `IAssemblyInitializer` 并建立私有 DI 容器；Web runtime 先验证 `wwwroot` 下的单文件 ESM 并生成 descriptor。
-7. 为候选代建立私有环境快照和运行期 DI scope，从入口程序集发现静态 .NET `IQuantumPlugin` bootstrap 并按依赖顺序执行 `StartAsync`；bootstrap 不进入 DI，全部成功后再原子发布到宿主 `PluginCatalog`。
+7. 为候选代建立私有环境快照和运行期 DI scope；Host 按依赖顺序先应用该插件尚未执行的 SQL migrations，再从入口程序集发现静态 .NET `IQuantumPlugin` bootstrap 并执行 `StartAsync`。bootstrap 不进入 DI，全部成功后再原子发布到宿主 `PluginCatalog`。
 8. MAUI 创建 `BlazorWebView`；路由、菜单、静态文件提供器和 Web 注入订阅同一份动态 `PluginCatalog`。Web descriptor 发布后，宿主才在 opaque-origin iframe 内通过 Blob Module 激活入口。
 
 加载失败按插件隔离；强前置失败的下游插件不会继续加载。弱联动缺失、版本不兼容或形成软循环时，插件仍然加载，规划器只放弃无法满足的顺序偏好。最终状态通过 SDK 的 `IQuantumPluginEnvironment` 暴露，插件可在启动时选择独立模式或联动模式。
+
+## 插件数据库 migration
+
+`.NET` 和 Web runtime 共享 manifest 的 `database.migrations` 能力。Host 只消费插件包中的 SQLite SQL，不加载 EF、
+Prisma 或 Drizzle migration runtime。文件用数字前缀确定顺序，每个发布包必须保留完整的追加式历史。Host 的
+`__quantum_plugin_migrations` 表以 `plugin_id + migration_name` 为键保存 SHA-256、发布版本和时间；已应用前缀与当前
+artifact 不一致时拒绝启动插件。
+
+一个插件本次所有待应用脚本与历史写入处于同一个 SQLite 事务中，并发生在插件 runtime 生命周期启动之前。migration
+提交后是 forward-only 的：后续插件生命周期或其他候选启动失败时，运行时代可以切回旧代码，但数据库不会执行降级。
+因此发布者必须使用向后兼容的 expand/migrate/contract 方案。Host 管理事务边界，artifact 不能包含事务控制语句。
 
 Web runtime 不把宿主对象直接暴露给 iframe。iframe 只能通过经来源校验的 `postMessage` 与宿主通信；父页面再通过
 `DotNetObjectReference` 转发到 capability RPC。`.NET` 调用按次创建 DI scope，只允许 manifest 声明的目标和服务 FQN，
@@ -75,9 +86,9 @@ metadata，以及 System.Text.Json 用于动态 DTO 的 member-accessor 缓存�
 1. 从当前 `Modules` 重新读取所有 manifest，并创建完整的新影子快照、ALC 和私有 DI 容器。
 2. 新快照无法完整装载时直接丢弃，旧运行时不受影响。
 3. 旧生命周期按依赖逆序停止，因此目标插件的所有下游强依赖会先于目标停用；任一停止钩子失败则取消切换，并重新启动已停止的旧生命周期。
-4. 新生命周期针对候选环境快照按依赖顺序启动；此时宿主路由与 UI 仍指向旧目录。
+4. 新 runtime 针对候选环境快照按依赖顺序应用待执行 migration 并启动生命周期；此时宿主路由与 UI 仍指向旧目录。
 5. 任一新启动钩子失败时丢弃候选代并重新启动旧快照；全部成功后才原子发布新目录。
-6. 提交成功后释放旧容器、请求旧 ALC 卸载，并延迟清理仍被 GC 引用的影子目录。
+6. 提交成功后释放旧容器、请求旧 ALC 卸载，并延迟清理仍被 GC 引用的影子目录。SQL migration 一旦提交不会随 runtime 回滚而降级。
 
 单插件热升级会重建并重启完整插件快照，使强依赖和弱联动在新版本下重新求值；下游强依赖插件总是在目标之前停止、在目标之后恢复。运行时卸载不删除源文件。卸载目标存在直接或传递强依赖时，运行时先返回完整影响清单，只有显式确认后才级联卸载目标和清单中的插件；重新扫描可以恢复它们。
 

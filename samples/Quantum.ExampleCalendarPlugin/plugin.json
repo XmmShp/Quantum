@@ -2,6 +2,9 @@
   "id": "quantum.plugin.example-calendar",
   "version": "0.3.0",
   "entryAssembly": "Quantum.ExampleCalendarPlugin.dll",
+  "database": {
+    "migrations": "./migrations"
+  },
   "dependencies": [],
   "integrations": [],
   "ui": {

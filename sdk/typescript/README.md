@@ -31,6 +31,11 @@ The emitted plugin entry must be a single self-contained ESM file. Bundle depend
 esbuild, Rollup, Vite, or another ESM-capable bundler; runtime imports are intentionally unavailable inside the
 opaque-origin frame.
 
+Database schema migrations are package metadata rather than an iframe API. A Web plugin may use Prisma, Drizzle,
+or another ORM during development, but its release declares `database.migrations` in `plugin.json` and ships an
+append-only SQLite SQL history. The Host applies pending scripts before `activate`; the iframe receives no direct
+database connection. See the repository Web plugin guide for the artifact and upgrade rules.
+
 Installed plugins run as trusted, controlled code. Host navigation and .NET invocation are directly available.
 `target` is `host` or the id of an active .NET plugin integration. Each invocation owns a DI scope, injects
 `CancellationToken` parameters, awaits `Task`/`ValueTask`, serializes the result, and then disposes the scope.

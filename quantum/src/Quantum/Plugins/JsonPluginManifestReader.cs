@@ -1,5 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using Quantum.Plugins.Persistence;
 namespace Quantum.Plugins;
 
 public sealed class JsonPluginManifestReader
@@ -51,7 +52,10 @@ public sealed class JsonPluginManifestReader
                     route.Title,
                     route.Icon,
                     route.Order)),
-            new PluginWebContributions(document.Web.Head, document.Web.PostBlazor));
+            new PluginWebContributions(document.Web.Head, document.Web.PostBlazor),
+            document.Database is null
+                ? null
+                : new PluginDatabaseDefinition(document.Database.Migrations));
 
         var entryPath = ResolveEntryPath(fullRootPath, runtime);
         if (!File.Exists(entryPath))
@@ -59,6 +63,11 @@ public sealed class JsonPluginManifestReader
             throw new FileNotFoundException(
                 $"Runtime entry '{runtime.Entry}' was not found for plugin '{manifest.Id}'.",
                 entryPath);
+        }
+
+        if (manifest.Database is not null)
+        {
+            PluginMigrationArtifact.Discover(fullRootPath, manifest.Database);
         }
 
         return new PluginCandidate(manifest, fullRootPath);
@@ -112,6 +121,8 @@ public sealed class JsonPluginManifestReader
         public PluginUiDocument Ui { get; init; } = new();
 
         public PluginWebDocument Web { get; init; } = new();
+
+        public PluginDatabaseDocument? Database { get; init; }
     }
 
     private sealed class PluginRuntimeDocument
@@ -162,5 +173,10 @@ public sealed class JsonPluginManifestReader
         public IReadOnlyList<string> Head { get; init; } = [];
 
         public IReadOnlyList<string> PostBlazor { get; init; } = [];
+    }
+
+    private sealed class PluginDatabaseDocument
+    {
+        public string Migrations { get; init; } = string.Empty;
     }
 }

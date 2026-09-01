@@ -98,11 +98,15 @@
       <ExampleCalendarPluginBinary Include="$(ExampleCalendarPluginOutput)\Quantum.ExampleCalendarPlugin.pdb" Condition="Exists('$(ExampleCalendarPluginOutput)\Quantum.ExampleCalendarPlugin.pdb')" />
       <ExampleCalendarPluginBinary Include="$(ExampleCalendarPluginOutput)\plugin.json" />
       <ExampleCalendarPluginAsset Include="$(ExampleCalendarPluginOutput)\wwwroot\**\*" />
+      <ExampleCalendarPluginMigration Include="$(ExampleCalendarPluginOutput)\migrations\**\*.sql" />
     </ItemGroup>
-    <MakeDir Directories="$(ExampleCalendarPluginTarget)\wwwroot" />
+    <MakeDir Directories="$(ExampleCalendarPluginTarget)\wwwroot;$(ExampleCalendarPluginTarget)\migrations" />
     <Copy SourceFiles="@(ExampleCalendarPluginBinary)" DestinationFolder="$(ExampleCalendarPluginTarget)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(ExampleCalendarPluginAsset)"
           DestinationFolder="$(ExampleCalendarPluginTarget)\wwwroot\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(ExampleCalendarPluginMigration)"
+          DestinationFolder="$(ExampleCalendarPluginTarget)\migrations\%(RecursiveDir)"
           SkipUnchangedFiles="true" />
   </Target>
 

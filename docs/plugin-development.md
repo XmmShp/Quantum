@@ -21,6 +21,7 @@ Quantum 插件可以使用 .NET DLL 或 Web runtime。本篇介绍 .NET 插件�
 
   <ItemGroup>
     <Content Update="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="migrations\**\*.sql" CopyToOutputDirectory="PreserveNewest" />
     <Content Update="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>
@@ -35,6 +36,9 @@ Quantum 插件可以使用 .NET DLL 或 Web runtime。本篇介绍 .NET 插件�
   "id": "quantum.plugin.example",
   "version": "0.1.0",
   "entryAssembly": "Quantum.ExamplePlugin.dll",
+  "database": {
+    "migrations": "./migrations"
+  },
   "dependencies": [
     { "id": "quantum.plugin.core", "minVersion": "0.1.0" }
   ],
@@ -76,6 +80,7 @@ Quantum 插件可以使用 .NET DLL 或 Web runtime。本篇介绍 .NET 插件�
 - `version` 与 `minVersion` 使用 SemVer；预发布版本参与正确的先后比较。
 - 旧版 `entryAssembly` 继续受支持，等价于 `{ "runtime": { "kind": "dotnet", "entry": "..." } }`；DLL 入口只能是插件根目录下的文件名。
 - .NET 路由的 `component` 必须是入口程序集内实现 `IComponent` 的完整类型名；Web 路由改用 `view`。
+- `database.migrations` 对 .NET 和 Web 插件含义相同，指向插件根目录内的 SQL migration artifact。
 - 同一目标不能同时出现在 `dependencies` 和 `integrations`，各类关系和路由不能重复；未知 manifest 字段会被拒绝，避免拼写错误静默失效。
 
 ## 3. 注册服务和启动逻辑
@@ -261,9 +266,43 @@ var subscription = events.Subscribe(
 `Calendar.razor.css` 构建为 `Quantum.ExampleCalendarPlugin.bundle.scp.css`，组件的 scope attribute 与 bundle
 选择器仍由 Razor SDK 自动生成。
 
-同一个日历示例也演示了宿主托管的共享持久化。`Application/CalendarItemApplicationService` 只依赖
-`NOF.Domain.IRepository<CalendarItem>` 与 `NOF.Application.IDbContext`；插件自身最多引用 `NOF.Infrastructure`，
-不引用 EF Core、SQLite provider 或宿主持久化项目。插件通过纯 NOF 抽象贡献模型：
+同一个日历示例也演示了宿主托管的共享持久化。发布包以 manifest 声明唯一、语言无关的 migration 能力：
+
+```json
+{
+  "database": {
+    "migrations": "./migrations"
+  }
+}
+```
+
+artifact 是插件根目录下的累积 SQL 历史，与运行时和开发 ORM 无关：
+
+```text
+migrations/
+├── 001_init.sql
+├── 002_add_index.sql
+└── 003_add_status.sql
+```
+
+当前 Host 数据库是 SQLite，因此发布 SQL 必须使用 SQLite 方言。开发阶段可以自由使用 EF Core、Prisma、
+Drizzle 或其他工具管理模型，但发布前必须把最终升级路径导出为这些 SQL 文件，随插件包一起交付。Host 不加载
+ORM migration assembly，也不执行 Prisma/Drizzle 的运行时 migration metadata。
+
+artifact 约束如下：
+
+- 目录相对于插件根目录；`./migrations` 与 `migrations` 等价，不能使用绝对路径、反斜杠或 `..`。
+- 目录不允许嵌套，至少包含一个非空 UTF-8 文件；文件名使用 `<数字>_<描述>.sql`，数字序号必须唯一并按数值排序。
+- 每个新版本必须携带从第一条开始的完整历史，只能在末尾追加文件。已经发布的文件不得改名、删除或修改内容。
+- Host 在插件 `StartAsync` 之前执行待应用文件，并把该插件的整批待应用 SQL 和历史记录放在同一个事务中；SQL 文件不要自行执行 `BEGIN`、`COMMIT` 或 `ROLLBACK`。
+- Host 在 `__quantum_plugin_migrations` 中按插件记录文件名、SHA-256、发布版本和应用时间。checksum 漂移、历史缺失或中间插入会阻止新 runtime 启动。
+
+migration 是 forward-only 的持久化提交。新 runtime 后续启动失败时 Host 可以恢复旧代码运行，但不会执行 `Down`
+或撤销已经成功提交的 schema；升级 SQL 应采用 expand/migrate/contract，先添加兼容结构，等不再需要旧版本后再删除旧结构。
+
+`Application/CalendarItemApplicationService` 只依赖 `NOF.Domain.IRepository<CalendarItem>` 与
+`NOF.Application.IDbContext`；插件自身最多引用 `NOF.Infrastructure`，不引用 EF Core、SQLite provider 或宿主持久化项目。
+运行期仍可通过纯 NOF 抽象贡献 EF 模型：
 
 ```csharp
 internal sealed class CalendarDbContextModelCreatingContributor
@@ -282,9 +321,9 @@ internal sealed class CalendarDbContextModelCreatingContributor
 }
 ```
 
-插件初始化器将 contributor 注册为 `IDbContextModelCreatingContributor`。Quantum 宿主检测到该注册后，才向该插件的
-私有 DI 容器加入 NOF EF adapter，并在调用 `IQuantumPlugin.StartAsync` 前创建缺失的表；页面通过构造注入的应用服务
-读写事项，`StartAsync` 只负责首次示例数据。所有插件连接同一个宿主数据库：
+插件初始化器将 contributor 注册为 `IDbContextModelCreatingContributor`。Quantum 宿主检测到该注册后，向该插件的
+私有 DI 容器加入 NOF EF adapter；contributor 定义运行期对象映射，发布 SQL artifact 定义版本间 schema 演进。
+页面通过构造注入的应用服务读写事项，`StartAsync` 只负责首次示例数据。所有插件连接同一个宿主数据库：
 
 ```text
 <ApplicationData>/quantum.db
@@ -317,6 +356,8 @@ Modules/
     ├── plugin.json
     ├── Quantum.ExamplePlugin.dll
     ├── ThirdParty.Dependency.dll
+    ├── migrations/
+    │   └── 001_init.sql
     └── wwwroot/
         ├── site.css
         └── main.js
@@ -329,7 +370,7 @@ Modules/
 1. 在 `Modules/<plugin-id>` 中替换 DLL、manifest 和 `wwwroot`；正在运行的入口 DLL 来自影子目录，因此源文件可直接覆盖。
 2. 推荐同步提升 manifest `version`，便于确认切换结果。
 3. 在 Quantum 首页点击“热升级”；也可以点击“重新扫描 Modules”重建整个插件快照。
-4. 新快照的装载或 `StartAsync` 失败时，宿主保留/恢复旧快照并显示失败原因。
+4. 新快照的装载、SQL migration 或 `StartAsync` 失败时，宿主保留/恢复旧 runtime 并显示失败原因；已经成功提交的 forward-only migration 不回滚。
 
 首页“卸载”仅释放运行时，不删除 `Modules` 文件。若其他插件直接或传递地强依赖目标，宿主会先列出完整级联卸载清单并要求确认；确认后，下游插件按依赖逆序先于目标停止并一同卸载。重新扫描可再次加载这些插件。为了让 collectible ALC 真正被 GC 回收，插件必须在 `StopAsync` 后消除所有后台任务、事件、委托、JS interop 和共享静态缓存对插件对象或类型的引用。
 

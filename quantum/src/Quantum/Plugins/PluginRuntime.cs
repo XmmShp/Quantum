@@ -15,30 +15,38 @@ internal sealed class PluginRuntime
     private readonly PluginEnvironmentProxy? _environment;
     private readonly PluginEventBus? _eventBus;
     private readonly IReadOnlyList<PluginBootstrap> _bootstraps;
+    private readonly string _databasePath;
+    private readonly bool _usesDatabase;
     private readonly ILogger _logger;
     private readonly bool[] _started;
+    private bool _migrationsApplied;
+    private bool _servicesInitialized;
     private bool _disposed;
 
     private PluginRuntime(
         PluginCandidate candidate,
         string shadowRootPath,
+        string databasePath,
         PluginLoadContext? loadContext,
         ServiceProvider? services,
         AsyncServiceScope? lifecycleScope,
         PluginEnvironmentProxy? environment,
         PluginEventBus? eventBus,
         IReadOnlyList<PluginBootstrap> bootstraps,
+        bool usesDatabase,
         LoadedPlugin loadedPlugin,
         ILogger logger)
     {
         Candidate = candidate;
         ShadowRootPath = shadowRootPath;
+        _databasePath = databasePath;
         _loadContext = loadContext;
         _services = services;
         _lifecycleScope = lifecycleScope;
         _environment = environment;
         _eventBus = eventBus;
         _bootstraps = bootstraps;
+        _usesDatabase = usesDatabase;
         _started = new bool[bootstraps.Count];
         LoadedPlugin = loadedPlugin;
         _logger = logger;
@@ -65,10 +73,35 @@ internal sealed class PluginRuntime
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
+        if (!_migrationsApplied)
+        {
+            await PluginDatabaseMigrator.ApplyAsync(
+                    Candidate.Manifest,
+                    ShadowRootPath,
+                    _databasePath,
+                    cancellationToken)
+                .ConfigureAwait(false);
+            _migrationsApplied = true;
+        }
+
         var services = _lifecycleScope?.ServiceProvider;
         if (services is null)
         {
             return;
+        }
+
+        if (!_servicesInitialized)
+        {
+            services.ResolveDaemonServices();
+            if (_usesDatabase && Candidate.Manifest.Database is null)
+            {
+                await services
+                    .GetRequiredService<PluginDatabaseInitializer>()
+                    .InitializeAsync(cancellationToken)
+                    .ConfigureAwait(false);
+            }
+
+            _servicesInitialized = true;
         }
 
         _eventBus?.Resume();
@@ -236,12 +269,14 @@ internal sealed class PluginRuntime
                 return new PluginRuntime(
                     candidate,
                     shadowRoot,
+                    databasePath,
                     loadContext: null,
                     services: null,
                     lifecycleScope: null,
                     environment: null,
                     eventBus: null,
                     bootstraps: [],
+                    usesDatabase: false,
                     loadedPlugin: webPlugin,
                     logger: logger);
             }
@@ -283,15 +318,7 @@ internal sealed class PluginRuntime
             var eventBus = (PluginEventBus)services.GetRequiredService<IQuantumEventBus>();
 
             var ownedScope = services.CreateAsyncScope();
-            ownedScope.ServiceProvider.ResolveDaemonServices();
-            lifecycleScope = ownedScope;
-            if (usesDatabase)
-            {
-                await ownedScope.ServiceProvider
-                    .GetRequiredService<PluginDatabaseInitializer>()
-                    .InitializeAsync(CancellationToken.None)
-                    .ConfigureAwait(false);
-            }
+            ownedScope.ServiceProvider.ResolveDaemonServices(); lifecycleScope = ownedScope;
             var loadedPlugin = new LoadedPlugin(
                 candidate.Manifest,
                 shadowRoot,
@@ -302,12 +329,14 @@ internal sealed class PluginRuntime
             return new PluginRuntime(
                 candidate,
                 shadowRoot,
+                databasePath,
                 loadContext,
                 services,
                 lifecycleScope,
                 environment,
                 eventBus,
                 bootstraps,
+                usesDatabase,
                 loadedPlugin,
                 logger);
         }
