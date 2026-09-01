@@ -1,6 +1,6 @@
 using Microsoft.AspNetCore.Components.WebView.Maui;
 using Quantum.Components;
-using Quantum.Infrastructure.Plugins;
+using Quantum.Plugins;
 
 namespace Quantum;
 

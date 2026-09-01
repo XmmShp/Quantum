@@ -186,6 +186,7 @@ window.quantum.plugins = {
       frame,
       bootstrapUrl,
       signals: new Map(),
+      eventDeliveries: new Map(),
       lifecycleOperation: null,
       placementCleanup: null,
       mounted: false,
@@ -305,6 +306,19 @@ window.quantum.plugins = {
         signal.reject(new Error(`Web plugin '${record.pluginId}' was disposed.`));
       }
       record.signals.clear();
+      for (const delivery of record.eventDeliveries?.values() ?? []) {
+        clearTimeout(delivery.timer);
+        delivery.reject(new Error(`Web plugin '${record.pluginId}' was disposed.`));
+      }
+      record.eventDeliveries?.clear();
+      try {
+        await this.dotNetReference?.invokeMethodAsync(
+          "ReleaseRuntimeAsync",
+          record.pluginId,
+          record.runtimeId);
+      } catch (error) {
+        console.warn(`Could not release EventBus for Web plugin '${record.pluginId}'.`, error);
+      }
       this.framesByWindow.delete(record.frame.contentWindow);
       if (record.bootstrapUrl) {
         URL.revokeObjectURL(record.bootstrapUrl);
@@ -399,6 +413,21 @@ window.quantum.plugins = {
       return;
     }
 
+    if (message.type === "eventbus-result" || message.type === "eventbus-error") {
+      const delivery = record.eventDeliveries?.get(message.deliveryId);
+      if (!delivery) {
+        return;
+      }
+      clearTimeout(delivery.timer);
+      record.eventDeliveries.delete(message.deliveryId);
+      if (message.type === "eventbus-result") {
+        delivery.resolve();
+      } else {
+        delivery.reject(new Error(message.message ?? "EventBus handler failed."));
+      }
+      return;
+    }
+
     const signal = record.signals.get(message.type);
     if (signal) {
       clearTimeout(signal.timer);
@@ -428,6 +457,34 @@ window.quantum.plugins = {
         message: this.errorMessage(error)
       });
     }
+  },
+
+  dispatchEvent(pluginId, runtimeId, subscriptionId, event) {
+    const current = this.records.get(pluginId);
+    const record = current?.runtimeId === runtimeId
+      ? current
+      : [...this.framesByWindow.values()].find(candidate =>
+        candidate.pluginId === pluginId && candidate.runtimeId === runtimeId);
+    if (!record || record.runtimeId !== runtimeId || record.disposed) {
+      return Promise.reject(
+        new Error(`Web plugin runtime '${pluginId}@${runtimeId}' is not active.`));
+    }
+
+    const deliveryId = globalThis.crypto?.randomUUID?.()
+      ?? `delivery-${Date.now()}-${Math.random()}`;
+    record.eventDeliveries ??= new Map();
+    return new Promise((resolve, reject) => {
+      const timer = setTimeout(() => {
+        record.eventDeliveries.delete(deliveryId);
+        reject(new Error(`Timed out delivering EventBus message to '${pluginId}'.`));
+      }, 30000);
+      record.eventDeliveries.set(deliveryId, { resolve, reject, timer });
+      this.post(record, "eventbus-event", {
+        deliveryId,
+        subscriptionId,
+        event
+      });
+    });
   },
 
   parkFrame(frame) {

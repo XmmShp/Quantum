@@ -1,6 +1,6 @@
 using System.Text.RegularExpressions;
 
-namespace Quantum.Domain.Plugins;
+namespace Quantum.Plugins;
 
 public readonly partial record struct PluginId
 {

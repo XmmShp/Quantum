@@ -1,29 +1,31 @@
 using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
-using Quantum.Application.Plugins;
-using Quantum.Domain.Plugins;
 using Quantum.Plugin.Abstraction;
 
-namespace Quantum.Infrastructure.Plugins;
+namespace Quantum.Plugins;
 
 internal sealed class PluginRuntime
 {
     private readonly PluginLoadContext? _loadContext;
     private readonly ServiceProvider? _services;
-    private readonly IReadOnlyList<IQuantumPlugin> _lifecycles;
+    private readonly AsyncServiceScope? _lifecycleScope;
     private readonly PluginEnvironmentProxy? _environment;
-    private readonly bool[] _started;
+    private readonly PluginEventBus? _eventBus;
+    private readonly IReadOnlyList<PluginBootstrap> _bootstraps;
     private readonly ILogger _logger;
+    private readonly bool[] _started;
     private bool _disposed;
 
-    public PluginRuntime(
+    private PluginRuntime(
         PluginCandidate candidate,
         string shadowRootPath,
         PluginLoadContext? loadContext,
         ServiceProvider? services,
-        IReadOnlyList<IQuantumPlugin> lifecycles,
+        AsyncServiceScope? lifecycleScope,
         PluginEnvironmentProxy? environment,
+        PluginEventBus? eventBus,
+        IReadOnlyList<PluginBootstrap> bootstraps,
         LoadedPlugin loadedPlugin,
         ILogger logger)
     {
@@ -31,9 +33,11 @@ internal sealed class PluginRuntime
         ShadowRootPath = shadowRootPath;
         _loadContext = loadContext;
         _services = services;
-        _lifecycles = lifecycles;
+        _lifecycleScope = lifecycleScope;
         _environment = environment;
-        _started = new bool[lifecycles.Count];
+        _eventBus = eventBus;
+        _bootstraps = bootstraps;
+        _started = new bool[bootstraps.Count];
         LoadedPlugin = loadedPlugin;
         _logger = logger;
     }
@@ -59,30 +63,58 @@ internal sealed class PluginRuntime
     public async Task StartAsync(CancellationToken cancellationToken)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        var services = _services;
-        for (var index = 0; index < _lifecycles.Count; index++)
+        var services = _lifecycleScope?.ServiceProvider;
+        if (services is null)
         {
-            if (_started[index])
-            {
-                continue;
-            }
+            return;
+        }
 
-            await _lifecycles[index]
-                .StartAsync(services!, cancellationToken)
-                .ConfigureAwait(false);
-            _started[index] = true;
-            _logger.LogInformation(
-                "Started lifecycle {PluginLifecycle} for plugin {PluginId}.",
-                _lifecycles[index].GetType().FullName,
-                Candidate.Manifest.Id);
+        _eventBus?.Resume();
+        try
+        {
+            for (var index = 0; index < _bootstraps.Count; index++)
+            {
+                if (_started[index])
+                {
+                    continue;
+                }
+
+                await _bootstraps[index]
+                    .StartAsync(services, cancellationToken)
+                    .ConfigureAwait(false);
+                _started[index] = true;
+                _logger.LogInformation(
+                    "Started lifecycle bootstrap {PluginBootstrap} for plugin {PluginId}.",
+                    _bootstraps[index].Type.FullName,
+                    Candidate.Manifest.Id);
+            }
+        }
+        catch
+        {
+            _eventBus?.Pause();
+            throw;
         }
     }
 
     public async Task<IReadOnlyList<Exception>> StopAsync(CancellationToken cancellationToken)
     {
         var failures = new List<Exception>();
-        var services = _services;
-        for (var index = _lifecycles.Count - 1; index >= 0; index--)
+        var services = _lifecycleScope?.ServiceProvider;
+        if (services is null)
+        {
+            _eventBus?.Pause();
+            return failures;
+        }
+
+        if (_started.Any(static started => started))
+        {
+            // A failed StartAsync pauses the candidate while it waits for rollback cleanup.
+            // Reactivate it only for the already-started lifecycle hooks so they can publish
+            // their normal shutdown events.
+            _eventBus?.Resume();
+        }
+
+        for (var index = _bootstraps.Count - 1; index >= 0; index--)
         {
             if (!_started[index])
             {
@@ -91,13 +123,13 @@ internal sealed class PluginRuntime
 
             try
             {
-                await _lifecycles[index]
-                    .StopAsync(services!, cancellationToken)
+                await _bootstraps[index]
+                    .StopAsync(services, cancellationToken)
                     .ConfigureAwait(false);
                 _started[index] = false;
                 _logger.LogInformation(
-                    "Stopped lifecycle {PluginLifecycle} for plugin {PluginId}.",
-                    _lifecycles[index].GetType().FullName,
+                    "Stopped lifecycle bootstrap {PluginBootstrap} for plugin {PluginId}.",
+                    _bootstraps[index].Type.FullName,
                     Candidate.Manifest.Id);
             }
             catch (Exception exception)
@@ -105,10 +137,15 @@ internal sealed class PluginRuntime
                 failures.Add(exception);
                 _logger.LogError(
                     exception,
-                    "Lifecycle {PluginLifecycle} for plugin {PluginId} failed to stop.",
-                    _lifecycles[index].GetType().FullName,
+                    "Lifecycle bootstrap {PluginBootstrap} for plugin {PluginId} failed to stop.",
+                    _bootstraps[index].Type.FullName,
                     Candidate.Manifest.Id);
             }
+        }
+
+        if (failures.Count == 0)
+        {
+            _eventBus?.Pause();
         }
 
         return failures;
@@ -125,9 +162,19 @@ internal sealed class PluginRuntime
         await StopAsync(CancellationToken.None).ConfigureAwait(false);
         try
         {
-            if (_services is not null)
+            try
             {
-                await _services.DisposeAsync().ConfigureAwait(false);
+                if (_lifecycleScope is { } lifecycleScope)
+                {
+                    await lifecycleScope.DisposeAsync().ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                if (_services is not null)
+                {
+                    await _services.DisposeAsync().ConfigureAwait(false);
+                }
             }
         }
         finally
@@ -136,7 +183,7 @@ internal sealed class PluginRuntime
         }
     }
 
-    public static PluginRuntime Create(
+    public static async Task<PluginRuntime> CreateAsync(
         PluginCandidate candidate,
         string sessionShadowRoot,
         PluginCatalog catalog,
@@ -156,6 +203,7 @@ internal sealed class PluginRuntime
 
         PluginLoadContext? loadContext = null;
         ServiceProvider? services = null;
+        AsyncServiceScope? lifecycleScope = null;
         try
         {
             if (candidate.Manifest.Runtime.Kind == PluginRuntimeKind.Web)
@@ -186,8 +234,10 @@ internal sealed class PluginRuntime
                     shadowRoot,
                     loadContext: null,
                     services: null,
-                    lifecycles: [],
+                    lifecycleScope: null,
                     environment: null,
+                    eventBus: null,
+                    bootstraps: [],
                     loadedPlugin: webPlugin,
                     logger: logger);
             }
@@ -195,18 +245,23 @@ internal sealed class PluginRuntime
             var entryAssemblyPath = Path.Combine(shadowRoot, candidate.Manifest.Runtime.Entry);
             loadContext = new PluginLoadContext(entryAssemblyPath);
             var assembly = loadContext.LoadEntryAssembly();
+            var bootstraps = DiscoverPluginBootstraps(assembly);
             var routes = candidate.Manifest.Routes
                 .Select(route => PluginRouteRegistration.Create(candidate.Manifest.Id, route, assembly))
                 .ToArray();
 
             var serviceCollection = new ServiceCollection();
             var environment = new PluginEnvironmentProxy(catalog);
+            var pluginInfo = new QuantumPluginInfo(
+                candidate.Manifest.Id.Value,
+                candidate.Manifest.Version.ToString());
+            var eventHub = hostServices.GetRequiredService<PluginEventHub>();
             serviceCollection.AddSingleton<IQuantumPluginEnvironment>(environment);
             serviceCollection.AddSingleton<IQuantumPluginRuntimeContext>(new PluginRuntimeContext(
-                new QuantumPluginInfo(
-                    candidate.Manifest.Id.Value,
-                    candidate.Manifest.Version.ToString()),
+                pluginInfo,
                 shadowRoot));
+            serviceCollection.AddSingleton<IQuantumEventBus>(
+                _ => new PluginEventBus(pluginInfo, eventHub));
             CopyHostService<ILoggerFactory>(hostServices, serviceCollection);
             serviceCollection.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
             InitializePluginServices(assembly, serviceCollection);
@@ -215,30 +270,55 @@ internal sealed class PluginRuntime
                 ValidateOnBuild = true,
                 ValidateScopes = true
             });
+            var eventBus = (PluginEventBus)services.GetRequiredService<IQuantumEventBus>();
 
-            var lifecycles = services.GetServices<IQuantumPlugin>().Distinct().ToArray();
+            var ownedScope = services.CreateAsyncScope();
+            ownedScope.ServiceProvider.ResolveDaemonServices();
+            lifecycleScope = ownedScope;
             var loadedPlugin = new LoadedPlugin(
                 candidate.Manifest,
                 shadowRoot,
                 assembly,
                 routes,
                 runtimeId,
-                services);
+                ownedScope.ServiceProvider);
             return new PluginRuntime(
                 candidate,
                 shadowRoot,
                 loadContext,
                 services,
-                lifecycles,
+                lifecycleScope,
                 environment,
+                eventBus,
+                bootstraps,
                 loadedPlugin,
                 logger);
         }
         catch
         {
-            services?.Dispose();
-            loadContext?.Unload();
-            PluginShadowCopy.TryDelete(shadowRoot);
+            try
+            {
+                if (lifecycleScope is { } ownedScope)
+                {
+                    await ownedScope.DisposeAsync().ConfigureAwait(false);
+                }
+            }
+            finally
+            {
+                try
+                {
+                    if (services is not null)
+                    {
+                        await services.DisposeAsync().ConfigureAwait(false);
+                    }
+                }
+                finally
+                {
+                    loadContext?.Unload();
+                    PluginShadowCopy.TryDelete(shadowRoot);
+                }
+            }
+
             throw;
         }
     }
@@ -292,6 +372,13 @@ internal sealed class PluginRuntime
         }
     }
 
+    private static IReadOnlyList<PluginBootstrap> DiscoverPluginBootstraps(Assembly assembly)
+        => GetLoadableTypes(assembly)
+            .Where(static type => !type.IsInterface && typeof(IQuantumPlugin).IsAssignableFrom(type))
+            .OrderBy(static type => type.FullName, StringComparer.Ordinal)
+            .Select(PluginBootstrap.Create)
+            .ToArray();
+
     private static IEnumerable<Type> GetLoadableTypes(Assembly assembly)
     {
         try
@@ -309,6 +396,42 @@ internal sealed class PluginRuntime
     private sealed record PluginRuntimeContext(
         QuantumPluginInfo Plugin,
         string RootPath) : IQuantumPluginRuntimeContext;
+
+    private sealed record PluginBootstrap(
+        Type Type,
+        Func<IServiceProvider, CancellationToken, Task> StartAsync,
+        Func<IServiceProvider, CancellationToken, Task> StopAsync)
+    {
+        public static PluginBootstrap Create(Type type)
+        {
+            var invokerType = typeof(PluginBootstrapInvoker<>).MakeGenericType(type);
+            return new PluginBootstrap(
+                type,
+                CreateDelegate(invokerType, nameof(StartAsync)),
+                CreateDelegate(invokerType, nameof(StopAsync)));
+        }
+
+        private static Func<IServiceProvider, CancellationToken, Task> CreateDelegate(
+            Type invokerType,
+            string methodName)
+            => (Func<IServiceProvider, CancellationToken, Task>)invokerType
+                .GetMethod(methodName, BindingFlags.Public | BindingFlags.Static)!
+                .CreateDelegate(typeof(Func<IServiceProvider, CancellationToken, Task>));
+    }
+
+    private static class PluginBootstrapInvoker<TPlugin>
+        where TPlugin : IQuantumPlugin
+    {
+        public static Task StartAsync(
+            IServiceProvider services,
+            CancellationToken cancellationToken)
+            => TPlugin.StartAsync(services, cancellationToken);
+
+        public static Task StopAsync(
+            IServiceProvider services,
+            CancellationToken cancellationToken)
+            => TPlugin.StopAsync(services, cancellationToken);
+    }
 }
 
 internal sealed class PluginEnvironmentProxy(IQuantumPluginEnvironment target)

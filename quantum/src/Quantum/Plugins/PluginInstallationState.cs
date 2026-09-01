@@ -1,4 +1,4 @@
-namespace Quantum.Domain.Plugins;
+namespace Quantum.Plugins;
 
 public enum PluginInstallationState
 {

@@ -1,10 +1,7 @@
 using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
-using Quantum.Application.Plugins;
-using Quantum.Domain.Plugins;
-
-namespace Quantum.Infrastructure.Plugins;
+namespace Quantum.Plugins;
 
 public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposable
 {
@@ -397,12 +394,13 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
 
                 try
                 {
-                    var runtime = PluginRuntime.Create(
-                        candidate,
-                        SessionShadowRoot,
-                        _catalog,
-                        _hostServices!,
-                        _logger);
+                    var runtime = await PluginRuntime.CreateAsync(
+                            candidate,
+                            SessionShadowRoot,
+                            _catalog,
+                            _hostServices!,
+                            _logger)
+                        .ConfigureAwait(false);
                     runtimes.Add(runtime);
                     loadedIds.Add(candidate.Manifest.Id);
                 }

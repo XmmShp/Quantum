@@ -8,8 +8,9 @@ Quantum 是基于 .NET 10、NOF 与 .NET MAUI Blazor Hybrid 的本地优先插�
 - 插件按 `plugin.json` 发现；`dependencies` 提供强前置约束，`integrations` 提供缺失时不阻塞加载的弱联动与软排序。
 - 每个 .NET 插件使用独立、可回收的 `AssemblyLoadContext` 和 DI 容器；入口 DLL 从影子目录以流方式加载，源文件可随时替换。
 - Web 插件使用独立的 opaque-origin iframe；入口以单文件 ESM 加载，销毁 iframe 即可释放 DOM、定时器和模块运行环境。
-- `IQuantumPlugin.StartAsync` / `StopAsync` 驱动可逆 .NET 生命周期；卸载与热升级无需重启宿主，.NET 启动失败会自动回滚旧快照。
+- 静态 `IQuantumPlugin` bootstrap 无需注册到 DI 或创建实例，通过插件运行期 scope 驱动可逆 .NET 生命周期；卸载与热升级无需重启宿主，.NET 启动失败会自动回滚旧快照。
 - NOF `AutoInject` 生成的注册元数据在插件私有容器内执行，不会让宿主根 DI 持有插件类型。
+- .NET 与 TypeScript 插件共享 Topic EventBus；Host 使用 NOF 内存事件和 JSON envelope 在 ALC、iframe 运行代之间转发，并等待异步订阅者完成。
 - manifest 页面通过 `DynamicComponent`（.NET）或 iframe view（Web）注入路由和菜单。
 - 插件 `wwwroot` 通过自定义 `IFileProvider` 映射为 `_content/{pluginId}/...`。
 - `head` 与 `postBlazor` Web 贡献在 Blazor 启动后注入；脚本节点会被重新创建以确保执行。
@@ -19,13 +20,12 @@ Quantum 是基于 .NET 10、NOF 与 .NET MAUI Blazor Hybrid 的本地优先插�
 ```text
 quantum/
 ├── src/
-│   ├── Quantum.Domain/          插件模型、版本、依赖、权限和安装状态
-│   ├── Quantum.Contract/        对外契约
-│   ├── Quantum.Application/     依赖规划、运行目录与路由注册
-│   ├── Quantum.Infrastructure/  manifest、ALC、文件系统与静态资源实现
-│   └── Quantum/                 NOF MAUI Blazor Hybrid 桌面宿主
+│   └── Quantum/                 桌面宿主、插件模型、依赖规划与运行时实现
+│       ├── Plugins/             manifest、ALC、EventBus、目录与生命周期
+│       ├── Components/          Blazor Hybrid UI
+│       └── Platforms/           macOS 与 Windows 启动入口
 └── tests/
-    └── Quantum.Tests/           领域和插件加载基础设施测试
+    └── Quantum.Tests/           插件模型与运行时测试
 quantum-extension-market/
 ├── src/                         NOF 分层的插件市场与 JSON-RPC Host
 └── tests/                       市场领域与安全存储测试

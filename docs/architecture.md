@@ -3,20 +3,16 @@
 ## 组件结构
 
 ```text
-Quantum (NOF MAUI Host)
-    ├── Quantum.Infrastructure
-    │       └── Quantum.Application
-    │               └── Quantum.Domain
+Quantum (单一 NOF MAUI Host 项目)
+    ├── Plugins (模型、依赖规划、运行时、EventBus)
+    ├── Components / WebPlugins / Platforms
     ├── Quantum.Plugin.Abstraction
     └── plugin runtimes (isolated ALC + DI container / sandboxed iframe)
 ```
 
-- Domain 只表达插件标识、SemVer、依赖、权限、页面声明与安装状态。
-- Contract 放置市场、账号、版本和管理接口使用的传输模型。
-- Application 负责依赖计划、加载结果和运行目录，不依赖 MAUI 或文件系统实现。
-- Infrastructure 是可独立测试的 `net10.0` 层，负责 JSON、目录扫描、程序集解析和 WebView 文件提供器，不依赖 MAUI。
-- `Quantum` 是 NOF MAUI 可执行宿主和组合根，负责桌面生命周期与 Blazor UI。
-- `sdk/dotnet/src/Quantum.Plugin.Abstraction` 是宿主与插件共享的唯一 .NET SDK 和稳定 ABI，独立于宿主与 Infrastructure；程序集名、包名和命名空间均为单数形式 `Quantum.Plugin.Abstraction`，是插件兼容性边界。
+- `Quantum` 在一个项目内包含桌面组合根、Blazor UI，以及 `Quantum.Plugins` 下的插件模型、依赖规划、manifest、ALC、文件系统和 EventBus 实现；这些内部职责以目录组织，不再拆成独立程序集。
+- 同一个 `Quantum.csproj` 提供桌面 MAUI 目标和供测试、API 文档使用的普通 `net10.0` 核心目标；核心目标排除平台启动文件，但编译相同的插件实现源码。
+- `sdk/dotnet/src/Quantum.Plugin.Abstraction` 是宿主与插件共享的唯一 .NET SDK 和稳定 ABI，独立于宿主实现；程序集名、包名和命名空间均为单数形式 `Quantum.Plugin.Abstraction`，是插件兼容性边界。
 - `quantum-extension-market` 是独立部署的 NOF Web Host，密码哈希、文件存储、JWT 与 EF Core 持久化均由该宿主组合；其 Contract 通过 `/rpc` 的 JSON-RPC 2.0 暴露，不进入桌面插件 ABI。
 
 ## 启动顺序
@@ -27,7 +23,7 @@ Quantum (NOF MAUI Host)
 4. 对剩余插件拓扑排序；兼容且已安装的 `integrations` 形成软排序偏好，但不形成加载门槛。
 5. 把每个候选复制到本次进程专属的影子目录；.NET runtime 创建独立的 collectible `PluginLoadContext`，Web runtime 则生成独立 iframe descriptor。
 6. .NET runtime 读取 NOF 生成的 `IAssemblyInitializer` 并建立私有 DI 容器；Web runtime 先验证 `wwwroot` 下的单文件 ESM 并生成 descriptor。
-7. 为候选代建立私有环境快照并按依赖顺序执行 .NET `IQuantumPlugin.StartAsync`；全部成功后再原子发布到宿主 `PluginCatalog`。
+7. 为候选代建立私有环境快照和运行期 DI scope，从入口程序集发现静态 .NET `IQuantumPlugin` bootstrap 并按依赖顺序执行 `StartAsync`；bootstrap 不进入 DI，全部成功后再原子发布到宿主 `PluginCatalog`。
 8. MAUI 创建 `BlazorWebView`；路由、菜单、静态文件提供器和 Web 注入订阅同一份动态 `PluginCatalog`。Web descriptor 发布后，宿主才在 opaque-origin iframe 内通过 Blob Module 激活入口。
 
 加载失败按插件隔离；强前置失败的下游插件不会继续加载。弱联动缺失、版本不兼容或形成软循环时，插件仍然加载，规划器只放弃无法满足的顺序偏好。最终状态通过 SDK 的 `IQuantumPluginEnvironment` 暴露，插件可在启动时选择独立模式或联动模式。
@@ -36,11 +32,35 @@ Web runtime 不把宿主对象直接暴露给 iframe。iframe 只能通过经来
 `DotNetObjectReference` 转发到 capability RPC。`.NET` 调用按次创建 DI scope，只允许 manifest 声明的目标和服务 FQN，
 并在异步结果完成且序列化之后释放 scope。销毁 iframe 会强制终止未正确清理的定时器、事件和模块全局状态。
 
+## 插件 EventBus
+
+.NET 插件容器与 TypeScript iframe 都获得带当前插件身份的 EventBus。Topic 在 .NET 中是 NOF
+`IValueObject<string>`，在 TypeScript 中是由 `QuantumTopic.of()` 创建的 branded string；两端使用相同的点分层级、
+255 长度上限和 `^[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z0-9][A-Za-z0-9_-]*)*$` 格式校验。Host envelope 与路由表
+始终持有 .NET `QuantumTopic`。EventBus 不是 ROS wire protocol，也不提供进程外传输、持久化、队列深度或历史重放。
+
+发布时，插件消息立即序列化成只包含 JSON、Topic、事件 ID、时间与发布插件身份的稳定 Host envelope。Host 在新的
+DI scope 内通过 NOF `IEventPublisher` 发布 envelope，由单一的
+`InMemoryEventHandler<PluginEventTransportMessage>` 转发给 Topic 当前订阅者。NOF registry 因而只持有 Host
+稳定类型，不持有动态插件类型。订阅端统一取得只含原始 `JsonElement` 的 `QuantumEvent`，再在自己的运行代边界内
+按需反序列化成目标消息类型。publisher 的 `TMessage` 不参与路由，也不会作为 CLR 类型标识写入 envelope。这允许
+不同 ALC 使用结构兼容、但 CLR 类型身份不同的 DTO，同时避免破坏 collectible ALC。
+
+Web adapter 通过 capability RPC 完成 publish/subscribe/unsubscribe。Host 为每个 `pluginId + runtimeId` 创建一个带
+所有权的 EventBus，并通过父页面把 `QuantumEvent` 推送到对应 sandbox iframe；每次投递带独立 delivery id，Host 会
+等待 iframe handler 返回成功或失败确认，因此仍保持 `PublishAsync` 的等待和错误聚合语义。正常 deactivate 会主动
+退订，父页面销毁 iframe 时还会调用 Host 释放整个 runtime EventBus，覆盖插件脚本异常退出的情况。
+
+插件运行代在 `StartAsync` 前恢复 EventBus，在成功 `StopAsync` 后暂停；停止失败时保持旧运行代状态，候选启动失败时
+暂停候选总线，回滚启动会再次恢复旧总线。最终释放插件 DI 容器会清除该运行代全部 Host 订阅委托。插件生命周期仍应
+主动释放 subscription，以免一次运行代内的 stop/start 回滚产生重复订阅。总线释放时还会清除该运行代的 JSON
+metadata，以及 System.Text.Json 用于动态 DTO 的 member-accessor 缓存，避免缓存委托阻止 collectible ALC 回收。
+
 ## ALC 边界
 
 每个插件拥有自己的 collectible ALC。Windows 使用 `AssemblyDependencyResolver`；Mac Catalyst 不提供该 API，因此按插件目录中的同名 DLL/本机库进行确定性解析。两种平台遵循相同边界：
 
-1. `System.*`、`Microsoft.*`、`NOF.*`、`Quantum.Plugin.Abstraction` 和 `Quantum.Contract` 委托给默认上下文。
+1. `System.*`、`Microsoft.*`、`NOF.*` 和 `Quantum.Plugin.Abstraction` 委托给默认上下文。
 2. 其余托管依赖优先由插件目录解析。
 3. 本机库由插件自己的 resolver 解析。
 

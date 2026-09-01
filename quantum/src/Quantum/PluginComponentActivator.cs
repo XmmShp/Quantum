@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Components;
-using Quantum.Application.Plugins;
+using Microsoft.Extensions.DependencyInjection;
+using Quantum.Plugins;
 
 namespace Quantum;
 

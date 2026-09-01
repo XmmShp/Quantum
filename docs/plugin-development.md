@@ -83,7 +83,9 @@ Quantum 插件可以使用 .NET DLL 或 Web runtime。本篇介绍 .NET 插件�
 
 ## 3. 注册服务和启动逻辑
 
-插件装载时，宿主执行 NOF 为程序集生成的初始化器。推荐使用 `AutoInject` 注册到插件私有容器，并同时实现可逆的启动/停止逻辑：
+插件装载时，宿主执行 NOF 为程序集生成的初始化器。`IQuantumPlugin` 是由入口程序集静态发现的
+bootstrap，不需要用 `AutoInject` 注册，也不会创建实例。业务状态、后台任务与可观察数据应放在普通服务中；
+bootstrap 直接使用宿主传入的插件运行期 scope 完成启动和停止编排：
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
@@ -96,41 +98,135 @@ public interface IExampleState
 
 [AutoInject(
     ServiceLifetime.Singleton,
-    RegisterTypes = [typeof(IQuantumPlugin), typeof(IExampleState)])]
-public sealed class ExampleState : IQuantumPlugin, IExampleState
+    RegisterTypes = [typeof(ExampleState)])]
+public sealed class ExampleState
 {
     public DateTimeOffset? StartedAt { get; private set; }
 
-    private CancellationTokenSource? _workerCancellation;
+    internal void MarkStarted() => StartedAt = DateTimeOffset.Now;
+}
 
-    public Task StartAsync(IServiceProvider services, CancellationToken cancellationToken = default)
+[AutoInject(
+    ServiceLifetime.Singleton,
+    RegisterTypes = [typeof(IExampleState)])]
+public sealed class ExampleStateView(ExampleState state) : IExampleState
+{
+    public DateTimeOffset? StartedAt => state.StartedAt;
+}
+
+public sealed class ExamplePlugin : IQuantumPlugin
+{
+    public static Task StartAsync(
+        IServiceProvider services,
+        CancellationToken cancellationToken = default)
     {
-        StartedAt = DateTimeOffset.Now;
-        _workerCancellation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+        cancellationToken.ThrowIfCancellationRequested();
+
+        services.GetRequiredService<ExampleState>().MarkStarted();
         var environment = services.GetRequiredService<IQuantumPluginEnvironment>();
         if (environment.IsIntegrationActive("quantum.plugin.example", "quantum.plugin.theme"))
         {
-            // 注册或启动只在联动目标可用时才需要的适配逻辑。
+            // 启动只在联动目标可用时才需要的适配逻辑。
         }
 
         return Task.CompletedTask;
     }
 
-    public Task StopAsync(IServiceProvider services, CancellationToken cancellationToken = default)
+    public static Task StopAsync(
+        IServiceProvider services,
+        CancellationToken cancellationToken = default)
     {
-        _workerCancellation?.Cancel();
-        _workerCancellation?.Dispose();
-        _workerCancellation = null;
+        cancellationToken.ThrowIfCancellationRequested();
         return Task.CompletedTask;
     }
 }
 ```
 
-`IQuantumPlugin.StartAsync` 针对候选环境快照按依赖顺序调用，全部成功后宿主才发布新目录；`StopAsync` 在卸载或热切换前按逆序调用。旧版插件未实现 `StopAsync` 时会使用 SDK 的默认空实现，但这类插件只有在没有后台任务、事件订阅或外部句柄时才能安全热卸载。
+每代 .NET 插件拥有一个由宿主管理的 DI scope。宿主从入口程序集发现 `IQuantumPlugin` 实现类型，通过静态接口
+分派调用 bootstrap；bootstrap 本身不进入 DI。`StartAsync` 与 `StopAsync` 收到同一个 scoped
+`IServiceProvider`，runtime 销毁时 scope 才会释放。这与 Blazor WebAssembly
+中的 scope 很接近：在主插件 scope 内 `Singleton` 与 `Scoped` 通常各只有一个实例，但使用 `Scoped` 能阻止
+代码意外从根 provider 解析 scoped 服务。需要跨 Web RPC 调用共享的状态仍应注册为 `Singleton`，因为每次 RPC
+会建立自己的调用 scope。
+
+`IQuantumPlugin.StartAsync` 针对候选环境快照按依赖顺序调用，全部成功后宿主才发布新目录；`StopAsync` 在卸载或热切换前按逆序调用。两个静态方法都必须实现；即使无需清理，`StopAsync` 也应明确返回 `Task.CompletedTask`。
 
 `IQuantumPluginEnvironment` 提供实时的 `LoadedPlugins` 和 `IsPluginLoaded`；只有 manifest 中声明且版本兼容的关系才会被 `IsIntegrationActive` 认可。`IQuantumPluginRuntimeContext` 可用于读取当前插件版本与本代只读影子目录。插件容器会执行 NOF 生成的 `AutoInject` 初始化器，但动态插件不会加入宿主根 Application Part；依赖宿主级全局扫描的 Handler 或 Initialization Step 不属于可热卸载边界，应由稳定的宿主 Contract 显式桥接。
 
-## 4. 提供页面
+## 4. 使用 Topic EventBus
+
+宿主向每个 .NET 插件注入 `IQuantumEventBus`。调用 `CreatePublisher<TMessage>` 创建 Topic publisher，调用
+`Subscribe` 创建 subscription：
+
+```csharp
+public sealed record DeviceStatus(string DeviceId, string State);
+
+[AutoInject(
+    ServiceLifetime.Scoped,
+    RegisterTypes = [typeof(DeviceEventLifecycle)])]
+internal sealed class DeviceEventLifecycle(IQuantumEventBus events)
+{
+    private IQuantumSubscription? _subscription;
+    private IQuantumPublisher<DeviceStatus>? _publisher;
+
+    public async Task StartAsync(CancellationToken cancellationToken)
+    {
+        _subscription = events.Subscribe(
+            QuantumTopic.Of("devices.status"),
+            (@event, _) =>
+            {
+                var message = @event.DeserializeRequired<DeviceStatus>();
+                Console.WriteLine(
+                    $"{@event.Publisher.Id} published {message.State} to {@event.Topic}");
+                return Task.CompletedTask;
+            });
+        _publisher = events.CreatePublisher<DeviceStatus>(
+            QuantumTopic.Of("devices.status"));
+        await _publisher.PublishAsync(
+            new DeviceStatus("camera-1", "ready"),
+            cancellationToken);
+    }
+
+    public async Task StopAsync()
+    {
+        if (_subscription is not null)
+        {
+            await _subscription.DisposeAsync();
+            _subscription = null;
+        }
+    }
+}
+```
+
+Topic 是 NOF 的 `IValueObject<string>` 值对象，必须通过 `QuantumTopic.Of(...)` 构造；它使用点分层级，例如
+`devices.camera.status`，最大长度 255，且必须匹配
+`^[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z0-9][A-Za-z0-9_-]*)*$`。EventBus 的 API、事件 metadata 与 Host 路由表都
+持有 `QuantumTopic`，字符串只存在于系统输入边界和底层值中。当前实现是 Host 进程内的即时分发，不持久化、不重放；
+`PublishAsync` 会等待当前订阅者完成。消息通过 JSON envelope 穿过 Host。
+
+publisher 的 `TMessage` 是插件侧的序列化契约，不参与 Topic 路由，envelope 也不携带 CLR 类型标识。因此发布与
+订阅插件可以声明不同但 JSON 结构兼容的 CLR DTO。订阅端只有一种 `QuantumEvent`，它始终保留原始 `JsonElement`
+Payload，并提供 `Deserialize<T>()`、`DeserializeRequired<T>()`、`Deserialize(Type)` 和 `TryDeserialize<T>()`
+按需转换：
+
+```csharp
+var subscription = events.Subscribe(
+    QuantumTopic.Of("devices.status"),
+    (@event, _) =>
+    {
+        var state = @event.Payload.GetProperty("state").GetString();
+        var message = @event.DeserializeRequired<DeviceStatus>();
+        return Task.CompletedTask;
+    });
+```
+
+不要在消息中依赖对象引用、私有类型身份或无法序列化的状态。
+
+插件停止时 Host 会暂停该运行代的发布和回调，容器释放时也会兜底移除全部订阅。生命周期仍应在 `StopAsync`
+主动释放 `IQuantumSubscription`，以支持热切换失败后的旧运行代回滚启动。一个订阅失败不会阻止同 Topic 的其他订阅，
+所有失败会在发布端合并为 `AggregateException`。
+
+## 5. 提供页面
 
 页面不需要 `@page`，路由以 manifest 为准：
 
@@ -152,7 +248,7 @@ public sealed class ExampleState : IQuantumPlugin, IExampleState
 
 宿主校验类型后使用 `DynamicComponent` 渲染，并根据 manifest 的 `title`、`icon` 和 `order` 生成菜单。插件私有服务必须使用构造注入；Blazor 的 `@inject` 属性仍由宿主渲染器处理，只适合注入宿主公开的稳定服务。为避免 Router 缓存旧程序集，动态插件页面只使用 manifest 路由，不支持插件程序集内的 `@page` 自动发现。
 
-## 5. 提供静态资源和 Web 贡献
+## 6. 提供静态资源和 Web 贡献
 
 将资源放在插件输出目录的 `wwwroot` 下。宿主映射规则为：
 
@@ -165,7 +261,7 @@ public sealed class ExampleState : IQuantumPlugin, IExampleState
 
 目录热切换时，宿主会移除旧 DOM 节点并应用新片段；已经执行的脚本副作用不会因删除 `<script>` 自动撤销。插件若注册了全局事件、定时器或 JS/.NET 引用，必须通过 `StopAsync` 调用自己的清理逻辑。
 
-## 6. 调试
+## 7. 调试
 
 先构建插件，再让宿主扫描包含插件子目录且宿主有权访问的根路径：
 

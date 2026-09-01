@@ -2,10 +2,8 @@ using System.Runtime.Loader;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Quantum.Application.Plugins;
-using Quantum.Domain.Plugins;
-using Quantum.Infrastructure.Plugins;
 using Quantum.Plugin.Abstraction;
+using Quantum.Plugins;
 
 namespace Quantum.Tests;
 
@@ -52,10 +50,16 @@ public sealed class PluginRuntimeManagerTests
         using var fixture = new RuntimeFixture();
         await using var manager = fixture.CreateManager();
         await manager.InitializeAsync(fixture.HostServices);
-        var plugin = Assert.Single(fixture.Catalog.Plugins);
+        Assert.True(
+            fixture.Catalog.Plugins.Count == 1,
+            string.Join(Environment.NewLine, fixture.Catalog.Failures.Select(static failure => failure.ToString())));
+        var plugin = fixture.Catalog.Plugins[0];
         var serviceTypeName = "Quantum.ExamplePlugin.IExamplePluginState";
         var service = plugin.Services!.GetService(serviceTypeName);
         Assert.NotNull(service);
+        Assert.DoesNotContain(
+            service.GetType().GetInterfaces(),
+            static type => type == typeof(IQuantumPlugin));
         var contract = Assert.Single(service.GetType().GetInterfaces(), type =>
             string.Equals(type.FullName, serviceTypeName, StringComparison.Ordinal));
         var method = contract.GetMethod("CreateWebHandshakeAsync");
@@ -75,6 +79,25 @@ public sealed class PluginRuntimeManagerTests
     }
 
     [Fact]
+    public async Task InitializeAsync_DiscoversStaticBootstrapWithoutRegisteringIt()
+    {
+        using var fixture = new RuntimeFixture();
+        await using var manager = fixture.CreateManager();
+
+        await manager.InitializeAsync(fixture.HostServices);
+
+        var plugin = Assert.Single(fixture.Catalog.Plugins);
+        var services = plugin.Services!;
+        var eventBus = services.GetRequiredService<IQuantumEventBus>();
+        var state = services.GetService("Quantum.ExamplePlugin.IExamplePluginState");
+
+        Assert.NotNull(eventBus);
+        Assert.Null(services.GetService(typeof(IQuantumPlugin)));
+        Assert.NotNull(state);
+        Assert.True((bool)state.GetType().GetProperty("IsRunning")!.GetValue(state)!);
+    }
+
+    [Fact]
     public async Task UnloadAsync_StopsLifecycleAndReleasesSourceFiles()
     {
         using var fixture = new RuntimeFixture();
@@ -82,19 +105,51 @@ public sealed class PluginRuntimeManagerTests
         await manager.InitializeAsync(fixture.HostServices);
 
         var loaded = Assert.Single(fixture.Catalog.Plugins);
-        var lifecycle = Assert.IsAssignableFrom<IQuantumPlugin>(
-            loaded.Services!.GetRequiredService<IQuantumPlugin>());
-        Assert.True((bool)lifecycle.GetType().GetProperty("IsRunning")!.GetValue(lifecycle)!);
+        var state = loaded.Services!.GetService("Quantum.ExamplePlugin.IExamplePluginState");
+        Assert.NotNull(state);
+        Assert.True((bool)state.GetType().GetProperty("IsRunning")!.GetValue(state)!);
 
         var result = await manager.UnloadAsync("quantum.plugin.example");
 
         Assert.True(result.Succeeded, result.Message);
         Assert.Empty(fixture.Catalog.Plugins);
-        Assert.False((bool)lifecycle.GetType().GetProperty("IsRunning")!.GetValue(lifecycle)!);
+        Assert.False((bool)state.GetType().GetProperty("IsRunning")!.GetValue(state)!);
         File.Copy(
             fixture.SourceAssemblyPath,
             Path.Combine(fixture.PluginRoot, "replacement.dll"),
             overwrite: true);
+    }
+
+    [Fact]
+    public async Task UnloadAsync_RemovesRuntimeEventBusSubscriptions()
+    {
+        using var fixture = new RuntimeFixture();
+        await using var manager = fixture.CreateManager();
+        await manager.InitializeAsync(fixture.HostServices);
+        var plugin = Assert.Single(fixture.Catalog.Plugins);
+        var pluginBus = plugin.Services!.GetRequiredService<IQuantumEventBus>();
+        var calls = 0;
+        var subscription = pluginBus.Subscribe(
+            QuantumTopic.Of("runtime.status"),
+            (_, _) =>
+            {
+                calls++;
+                return Task.CompletedTask;
+            });
+        await using var publisherBus = new PluginEventBus(
+            new QuantumPluginInfo("quantum.test.publisher", "1.0.0"),
+            fixture.HostServices.GetRequiredService<PluginEventHub>());
+        publisherBus.Resume();
+        var publisher = publisherBus.CreatePublisher<RuntimeEvent>(
+            QuantumTopic.Of("runtime.status"));
+        await publisher.PublishAsync(new RuntimeEvent("before-unload"));
+
+        var result = await manager.UnloadAsync("quantum.plugin.example");
+        await publisher.PublishAsync(new RuntimeEvent("after-unload"));
+        await subscription.DisposeAsync();
+
+        Assert.True(result.Succeeded, result.Message);
+        Assert.Equal(1, calls);
     }
 
     [Fact]
@@ -124,8 +179,9 @@ public sealed class PluginRuntimeManagerTests
         var rolledBack = Assert.Single(fixture.Catalog.Plugins);
         Assert.Equal("1.0.0", rolledBack.Manifest.Version.ToString());
         Assert.Equal(original.RuntimeId, rolledBack.RuntimeId);
-        var lifecycle = rolledBack.Services!.GetRequiredService<IQuantumPlugin>();
-        Assert.True((bool)lifecycle.GetType().GetProperty("IsRunning")!.GetValue(lifecycle)!);
+        var state = rolledBack.Services!.GetService("Quantum.ExamplePlugin.IExamplePluginState");
+        Assert.NotNull(state);
+        Assert.True((bool)state.GetType().GetProperty("IsRunning")!.GetValue(state)!);
     }
 
     [Fact]
@@ -275,6 +331,8 @@ public sealed class PluginRuntimeManagerTests
         }
     }
 
+    private sealed record RuntimeEvent(string State);
+
     private sealed class RuntimeFixture : IDisposable
     {
         private readonly string _root = Path.Combine(
@@ -296,6 +354,7 @@ public sealed class PluginRuntimeManagerTests
             Catalog = new PluginCatalog([]);
             HostServices = new ServiceCollection()
                 .AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance)
+                .AddQuantumPluginEventBus()
                 .BuildServiceProvider();
         }
 

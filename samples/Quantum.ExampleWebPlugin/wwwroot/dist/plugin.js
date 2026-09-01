@@ -1,4 +1,16 @@
 // ../../sdk/typescript/dist/index.js
+var QuantumTopic = Object.freeze({
+  of(value) {
+    if (typeof value !== "string" || value.length === 0 || value.length > 255) {
+      throw new TypeError("A topic must contain between 1 and 255 characters.");
+    }
+    const match = /^[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z0-9][A-Za-z0-9_-]*)*$/.exec(value);
+    if (match?.[0] !== value) {
+      throw new TypeError("A topic must match ^[A-Za-z][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*$/.");
+    }
+    return value;
+  }
+});
 function definePlugin(definition) {
   return definition;
 }
@@ -7,7 +19,19 @@ function definePlugin(definition) {
 var index_default = definePlugin({
   async activate(context) {
     await context.log.info("TypeScript example activated");
-    return () => context.log.info("TypeScript example deactivated");
+    const topic = QuantumTopic.of("example.web.status");
+    const subscription = await context.eventBus.subscribe(topic, (event) => {
+      const payload = event.payload;
+      return context.log.info(
+        `${event.publisher.id} published ${payload.state ?? "unknown"} to ${event.topic}`
+      );
+    });
+    const publisher = context.eventBus.createPublisher(topic);
+    await publisher.publish({ state: "activated" });
+    return async () => {
+      await subscription.dispose();
+      await context.log.info("TypeScript example deactivated");
+    };
   },
   async mount(context) {
     context.element.innerHTML = `

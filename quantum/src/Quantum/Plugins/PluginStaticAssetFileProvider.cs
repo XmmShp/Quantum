@@ -1,8 +1,6 @@
 using Microsoft.Extensions.FileProviders;
 using Microsoft.Extensions.Primitives;
-using Quantum.Application.Plugins;
-
-namespace Quantum.Infrastructure.Plugins;
+namespace Quantum.Plugins;
 
 public sealed class PluginStaticAssetFileProvider : IFileProvider, IDisposable
 {

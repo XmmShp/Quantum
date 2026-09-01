@@ -21,6 +21,59 @@ export interface QuantumPluginInfo {
   readonly version: string;
 }
 
+declare const quantumTopicBrand: unique symbol;
+
+/** A validated, dot-delimited EventBus topic. */
+export type QuantumTopic = string & {
+  readonly [quantumTopicBrand]: "QuantumTopic";
+};
+
+/** Runtime factory and validator for QuantumTopic values. */
+export const QuantumTopic = Object.freeze({
+  of(value: string): QuantumTopic {
+    if (typeof value !== "string" || value.length === 0 || value.length > 255) {
+      throw new TypeError("A topic must contain between 1 and 255 characters.");
+    }
+    const match = /^[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z0-9][A-Za-z0-9_-]*)*$/.exec(value);
+    if (match?.[0] !== value) {
+      throw new TypeError(
+        "A topic must match ^[A-Za-z][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*$/."
+      );
+    }
+    return value as QuantumTopic;
+  }
+});
+
+export interface QuantumEvent {
+  readonly id: string;
+  readonly topic: QuantumTopic;
+  readonly payload: unknown;
+  readonly publisher: QuantumPluginInfo;
+  /** ISO-8601 timestamp assigned by the Host. */
+  readonly publishedAt: string;
+}
+
+export interface QuantumEventPublisher<TMessage> {
+  readonly topic: QuantumTopic;
+  publish(message: TMessage, options?: QuantumRpcOptions): Promise<void>;
+}
+
+export interface QuantumEventSubscription {
+  readonly topic: QuantumTopic;
+  dispose(): Promise<void>;
+}
+
+export type QuantumEventHandler = (event: QuantumEvent) => MaybePromise<void>;
+
+export interface QuantumEventBus {
+  createPublisher<TMessage>(topic: QuantumTopic): QuantumEventPublisher<TMessage>;
+  subscribe(
+    topic: QuantumTopic,
+    handler: QuantumEventHandler,
+    options?: QuantumRpcOptions
+  ): Promise<QuantumEventSubscription>;
+}
+
 export interface QuantumPluginIntegration {
   readonly pluginId: string;
   readonly minimumVersion: string;
@@ -63,6 +116,7 @@ export interface QuantumPluginContext {
   readonly environment: {
     snapshot(): Promise<QuantumEnvironmentSnapshot>;
   };
+  readonly eventBus: QuantumEventBus;
   readonly assets: {
     url(path: string): string;
     readText(path: string, options?: QuantumRpcOptions): Promise<string>;

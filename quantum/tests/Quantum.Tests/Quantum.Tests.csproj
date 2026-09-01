@@ -17,9 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\src\Quantum.Application\Quantum.Application.csproj" />
-    <ProjectReference Include="..\..\src\Quantum.Domain\Quantum.Domain.csproj" />
-    <ProjectReference Include="..\..\src\Quantum.Infrastructure\Quantum.Infrastructure.csproj" />
+    <ProjectReference Include="..\..\src\Quantum\Quantum.csproj" />
     <ProjectReference Include="..\..\..\samples\Quantum.ExamplePlugin\Quantum.ExamplePlugin.csproj" />
   </ItemGroup>
 </Project>

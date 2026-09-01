@@ -1,5 +1,3 @@
-using Quantum.Domain.Plugins;
-
-namespace Quantum.Application.Plugins;
+namespace Quantum.Plugins;
 
 public sealed record PluginCandidate(PluginManifest Manifest, string RootPath);

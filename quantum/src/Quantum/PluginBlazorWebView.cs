@@ -1,7 +1,7 @@
 using Microsoft.AspNetCore.Components.WebView;
 using Microsoft.AspNetCore.Components.WebView.Maui;
 using Microsoft.Extensions.FileProviders;
-using Quantum.Infrastructure.Plugins;
+using Quantum.Plugins;
 
 namespace Quantum;
 

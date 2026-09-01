@@ -1,6 +1,5 @@
 using System.Runtime.Loader;
-using Quantum.Domain.Plugins;
-using Quantum.Infrastructure.Plugins;
+using Quantum.Plugins;
 
 namespace Quantum.Tests;
 

@@ -1,4 +1,4 @@
-namespace Quantum.Infrastructure.Plugins;
+namespace Quantum.Plugins;
 
 public sealed record PluginRuntimeOptions(string ModulesRootPath, string ShadowRootPath)
 {

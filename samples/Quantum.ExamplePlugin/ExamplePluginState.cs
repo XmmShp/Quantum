@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Quantum.Plugin.Abstraction;
 
 namespace Quantum.ExamplePlugin;
 
@@ -28,8 +27,8 @@ public sealed record ExamplePluginHandshake(
 
 [AutoInject(
     ServiceLifetime.Singleton,
-    RegisterTypes = [typeof(IQuantumPlugin), typeof(IExamplePluginState)])]
-public sealed class ExamplePluginState : IQuantumPlugin, IExamplePluginState
+    RegisterTypes = [typeof(ExamplePluginState)])]
+public sealed class ExamplePluginState
 {
     private int _webHandshakeCount;
     private string? _lastWebPluginId;
@@ -44,30 +43,19 @@ public sealed class ExamplePluginState : IQuantumPlugin, IExamplePluginState
 
     public string? LastWebPluginId => Volatile.Read(ref _lastWebPluginId);
 
-    public Task StartAsync(IServiceProvider services, CancellationToken cancellationToken = default)
+    internal void Start(DateTimeOffset startedAt, bool webIntegrationActive)
     {
-        var runtime = services.GetRequiredService<IQuantumPluginRuntimeContext>();
-        if (File.Exists(Path.Combine(runtime.RootPath, "fail-start")))
-        {
-            throw new InvalidOperationException("Example plugin startup failure was requested by a marker file.");
-        }
-
-        StartedAt = DateTimeOffset.Now;
+        StartedAt = startedAt;
         IsRunning = true;
-        var environment = services.GetRequiredService<IQuantumPluginEnvironment>();
-        WebIntegrationActive = environment.IsIntegrationActive(
-            "quantum.plugin.example",
-            "quantum.plugin.example-web");
-        return Task.CompletedTask;
+        WebIntegrationActive = webIntegrationActive;
     }
 
-    public Task StopAsync(IServiceProvider services, CancellationToken cancellationToken = default)
+    internal void Stop()
     {
         IsRunning = false;
-        return Task.CompletedTask;
     }
 
-    public Task<ExamplePluginHandshake> CreateWebHandshakeAsync(
+    internal Task<ExamplePluginHandshake> CreateWebHandshakeAsync(
         string webPluginId,
         CancellationToken cancellationToken = default)
     {

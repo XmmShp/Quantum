@@ -1,10 +1,10 @@
 <Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">net10.0-maccatalyst</TargetFrameworks>
-    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">net10.0-windows10.0.19041.0</TargetFrameworks>
-    <OutputType>Exe</OutputType>
-    <UseMaui>true</UseMaui>
-    <SingleProject>true</SingleProject>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('osx'))">net10.0;net10.0-maccatalyst</TargetFrameworks>
+    <TargetFrameworks Condition="$([MSBuild]::IsOSPlatform('windows'))">net10.0;net10.0-windows10.0.19041.0</TargetFrameworks>
+    <OutputType Condition="'$(TargetFramework)' != 'net10.0'">Exe</OutputType>
+    <UseMaui Condition="'$(TargetFramework)' != 'net10.0'">true</UseMaui>
+    <SingleProject Condition="'$(TargetFramework)' != 'net10.0'">true</SingleProject>
     <ImplicitUsings>enable</ImplicitUsings>
     <Nullable>enable</Nullable>
     <ApplicationTitle>Quantum</ApplicationTitle>
@@ -20,26 +20,41 @@
     <WindowsAppSDKSelfContained Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows' And '$(Configuration)' == 'Debug'">true</WindowsAppSDKSelfContained>
   </PropertyGroup>
 
-  <ItemGroup>
+  <ItemGroup Condition="'$(TargetFramework)' != 'net10.0'">
     <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#6D5DFB" />
     <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#171528" BaseSize="128,128" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\Quantum.Application\Quantum.Application.csproj" />
-    <ProjectReference Include="..\Quantum.Infrastructure\Quantum.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\sdk\dotnet\src\Quantum.Plugin.Abstraction\Quantum.Plugin.Abstraction.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
+    <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="NOF.Abstraction" />
+    <PackageReference Include="NOF.Contract" />
+    <PackageReference Include="NOF.Infrastructure" />
+  </ItemGroup>
+
+  <ItemGroup Condition="'$(TargetFramework)' != 'net10.0'">
     <PackageReference Include="Microsoft.AspNetCore.Components.WebView.Maui" />
     <PackageReference Include="Microsoft.Extensions.Logging.Debug" />
     <PackageReference Include="NOF.Hosting.Maui" />
   </ItemGroup>
 
+  <ItemGroup Condition="'$(TargetFramework)' == 'net10.0'">
+    <Compile Remove="App.cs;MainPage.cs;MauiProgram.cs;PluginBlazorWebView.cs;PluginLifecycleInitializationStep.cs;Platforms\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Quantum.Tests" />
+  </ItemGroup>
+
   <Target Name="BuildExamplePlugin"
           BeforeTargets="Build"
-          Condition="'$(Configuration)' == 'Debug' And '$(TargetFramework)' != ''">
+          Condition="'$(Configuration)' == 'Debug' And '$(TargetFramework)' != '' And '$(TargetFramework)' != 'net10.0'">
     <MSBuild Projects="$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExamplePlugin\Quantum.ExamplePlugin.csproj"
              Targets="Restore;Build"
              Properties="Configuration=$(Configuration);TargetFramework=net10.0"
@@ -48,7 +63,7 @@
 
   <Target Name="StageExamplePlugin"
           AfterTargets="Build"
-          Condition="'$(Configuration)' == 'Debug' And '$(TargetFramework)' != ''">
+          Condition="'$(Configuration)' == 'Debug' And '$(TargetFramework)' != '' And '$(TargetFramework)' != 'net10.0'">
     <PropertyGroup>
       <ExamplePluginOutput>$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExamplePlugin\bin\$(Configuration)\net10.0</ExamplePluginOutput>
       <ExamplePluginTarget>$(TargetDir)Modules\quantum.plugin.example</ExamplePluginTarget>
@@ -68,7 +83,7 @@
 
   <Target Name="StageExampleWebPlugin"
           AfterTargets="Build"
-          Condition="'$(Configuration)' == 'Debug' And '$(TargetFramework)' != '' And Exists('$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExampleWebPlugin\wwwroot\dist\plugin.js')">
+          Condition="'$(Configuration)' == 'Debug' And '$(TargetFramework)' != '' And '$(TargetFramework)' != 'net10.0' And Exists('$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExampleWebPlugin\wwwroot\dist\plugin.js')">
     <PropertyGroup>
       <ExampleWebPluginRoot>$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExampleWebPlugin</ExampleWebPluginRoot>
       <ExampleWebPluginTarget>$(TargetDir)Modules\quantum.plugin.example-web</ExampleWebPluginTarget>

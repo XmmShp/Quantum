@@ -1,6 +1,6 @@
 using System.Reflection;
 
-namespace Quantum.Application.Plugins;
+namespace Quantum.Plugins;
 
 public interface IPluginRuntimeManager
 {

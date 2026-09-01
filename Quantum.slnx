@@ -7,10 +7,6 @@
     <File Path="global.json" />
     <File Path="NuGet.config" />
   </Folder>
-  <Project Path="quantum/src/Quantum.Domain/Quantum.Domain.csproj" />
-  <Project Path="quantum/src/Quantum.Contract/Quantum.Contract.csproj" />
-  <Project Path="quantum/src/Quantum.Application/Quantum.Application.csproj" />
-  <Project Path="quantum/src/Quantum.Infrastructure/Quantum.Infrastructure.csproj" />
   <Project Path="quantum/src/Quantum/Quantum.csproj" />
   <Project Path="quantum/tests/Quantum.Tests/Quantum.Tests.csproj" />
   <Project Path="quantum-extension-market/src/Quantum.ExtensionMarket.Domain/Quantum.ExtensionMarket.Domain.csproj" />

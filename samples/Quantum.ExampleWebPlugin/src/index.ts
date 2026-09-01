@@ -1,4 +1,4 @@
-import { definePlugin } from "@quantum/plugin-sdk";
+import { definePlugin, QuantumTopic } from "@quantum/plugin-sdk";
 
 interface ExamplePluginHandshake {
   message: string;
@@ -10,7 +10,18 @@ interface ExamplePluginHandshake {
 export default definePlugin({
   async activate(context) {
     await context.log.info("TypeScript example activated");
-    return () => context.log.info("TypeScript example deactivated");
+    const topic = QuantumTopic.of("example.web.status");
+    const subscription = await context.eventBus.subscribe(topic, event => {
+      const payload = event.payload as { state?: string };
+      return context.log.info(
+        `${event.publisher.id} published ${payload.state ?? "unknown"} to ${event.topic}`);
+    });
+    const publisher = context.eventBus.createPublisher<{ state: string }>(topic);
+    await publisher.publish({ state: "activated" });
+    return async () => {
+      await subscription.dispose();
+      await context.log.info("TypeScript example deactivated");
+    };
   },
 
   async mount(context) {

@@ -1,10 +1,9 @@
 using System.Diagnostics;
 using System.Reflection;
 using Microsoft.AspNetCore.Components;
-using Quantum.Domain.Plugins;
 using Quantum.Plugin.Abstraction;
 
-namespace Quantum.Application.Plugins;
+namespace Quantum.Plugins;
 
 public sealed class PluginCatalog : IQuantumPluginEnvironment
 {

@@ -1,6 +1,6 @@
 using System.Reflection;
 using Microsoft.AspNetCore.Components;
-using Quantum.Application.Plugins;
+using Quantum.Plugins;
 
 namespace Quantum;
 

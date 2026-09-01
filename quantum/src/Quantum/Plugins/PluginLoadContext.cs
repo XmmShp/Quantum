@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Runtime.Loader;
 
-namespace Quantum.Infrastructure.Plugins;
+namespace Quantum.Plugins;
 
 public sealed class PluginLoadContext : AssemblyLoadContext
 {
@@ -84,7 +84,6 @@ public sealed class PluginLoadContext : AssemblyLoadContext
     private static bool MustShareWithHost(string? assemblyName)
         => assemblyName is not null
             && (assemblyName.Equals("Quantum.Plugin.Abstraction", StringComparison.Ordinal)
-                || assemblyName.Equals("Quantum.Contract", StringComparison.Ordinal)
                 || assemblyName.StartsWith("NOF.", StringComparison.Ordinal)
                 || assemblyName.StartsWith("Microsoft.", StringComparison.Ordinal)
                 || assemblyName.StartsWith("System.", StringComparison.Ordinal)

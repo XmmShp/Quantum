@@ -1,10 +1,8 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Quantum.Application.Plugins;
-using Quantum.Domain.Plugins;
 using System.Text.Json;
 
-namespace Quantum.Infrastructure.Plugins;
+namespace Quantum.Plugins;
 
 public sealed class PluginCatalogBootstrapper
 {

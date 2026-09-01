@@ -1,4 +1,4 @@
-namespace Quantum.Contract.Plugins;
+namespace Quantum.Plugins;
 
 public sealed record PluginSummaryResponse(
     string Id,

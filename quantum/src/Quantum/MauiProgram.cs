@@ -2,9 +2,8 @@ using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Components;
 using NOF.Hosting;
 using NOF.Hosting.Maui;
-using Quantum.Application.Plugins;
-using Quantum.Infrastructure.Plugins;
 using Quantum.Plugin.Abstraction;
+using Quantum.Plugins;
 using Quantum.WebPlugins;
 
 namespace Quantum;
@@ -31,6 +30,7 @@ public static class MauiProgram
 #endif
         builder.Services.AddSingleton(catalog);
         builder.Services.AddSingleton<IQuantumPluginEnvironment>(catalog);
+        builder.Services.AddQuantumPluginEventBus();
         builder.Services.AddSingleton(runtimeOptions);
         builder.Services.AddSingleton<IPluginReferenceRelease, BlazorPluginReferenceRelease>();
         builder.Services.AddSingleton<PluginRuntimeManager>(services => new PluginRuntimeManager(

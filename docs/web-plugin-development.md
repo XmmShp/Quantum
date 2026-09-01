@@ -91,7 +91,7 @@ export default definePlugin({
 
 ## 4. 宿主能力
 
-SDK 提供日志、导航、环境快照、资源读取和通用 RPC：
+SDK 提供日志、导航、环境快照、Topic EventBus、资源读取和通用 RPC：
 
 ```ts
 const environment = await context.environment.snapshot();
@@ -103,7 +103,38 @@ const imageUrl = context.assets.url("images/icon.png");
 iframe 的 CSP 禁止直接网络连接。文本资源可通过 `assets.readText` 读取，单次上限 2 MiB；图片、字体和样式可以使用
 `assets.url()` 返回的宿主 URL。
 
-## 5. 调用 .NET 服务
+## 5. 使用 Topic EventBus
+
+Web 插件与 .NET 插件共享同一套 Host EventBus，不需要额外 manifest permission。Topic 必须通过 branded factory
+创建，校验规则与 .NET 的 NOF `QuantumTopic` 值对象一致：最大长度 255，并且必须匹配
+`^[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z0-9][A-Za-z0-9_-]*)*$`。
+
+```ts
+import { QuantumTopic } from "@quantum/plugin-sdk";
+
+const topic = QuantumTopic.of("devices.status");
+const subscription = await context.eventBus.subscribe(topic, async event => {
+  const payload = event.payload as { deviceId?: string; state?: string };
+  await context.log.info(
+    `${event.publisher.id} published ${payload.state ?? "unknown"} to ${event.topic}`);
+});
+
+const publisher = context.eventBus.createPublisher<{
+  deviceId: string;
+  state: string;
+}>(topic);
+await publisher.publish({ deviceId: "camera-1", state: "ready" });
+
+// 在 activate cleanup 或不再需要监听时释放。
+await subscription.dispose();
+```
+
+`QuantumEvent.payload` 是从 Host JSON envelope 得到的原始 JavaScript 值，类型为 `unknown`；handler 应用类型守卫、
+schema validator 或显式收窄后再使用。发布会等待当前所有 .NET 与 Web handler 完成，Web handler 抛错也会返回发布端。
+消息不持久化、不重放。runtime deactivate 会自动退订，iframe 非正常销毁时 Host 也会按 `pluginId + runtimeId` 释放全部
+订阅，防止旧运行代继续收到消息。
+
+## 6. 调用 .NET 服务
 
 ```ts
 const result = await context.dotnet.invoke<MyResult>({
@@ -128,7 +159,7 @@ integration 插件 id；后者从目标插件的私有容器解析服务。也�
 - 每次调用创建独立 DI scope；返回值序列化完成后释放 scope，不能返回需要继续使用的 scoped 对象或句柄。
   如果异步方法忽略取消，RPC 会按时结束，但宿主会把 scope 保留到实际任务结束，避免提前释放 scoped 服务。
 
-## 6. 构建与调试
+## 7. 构建与调试
 
 ```bash
 npm run build

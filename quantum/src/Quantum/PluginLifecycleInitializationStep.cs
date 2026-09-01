@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
 using NOF.Hosting;
-using Quantum.Application.Plugins;
+using Quantum.Plugins;
 
 namespace Quantum;
 

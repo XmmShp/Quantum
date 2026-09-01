@@ -20,6 +20,7 @@
       const runtimeId = "__QUANTUM_RUNTIME_ID__";
       const root = document.getElementById("quantum-root");
       const pendingRpc = new Map();
+      const eventSubscriptions = new Map();
       let definition = null;
       let context = null;
       let lifecycleController = null;
@@ -36,6 +37,19 @@
       }, "*");
 
       const errorMessage = error => error instanceof Error ? error.message : String(error);
+
+      const quantumTopic = value => {
+        if (typeof value !== "string" || value.length === 0 || value.length > 255) {
+          throw new TypeError("A topic must contain between 1 and 255 characters.");
+        }
+        const match = /^[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z0-9][A-Za-z0-9_-]*)*$/.exec(value);
+        if (match?.[0] !== value) {
+          throw new TypeError(
+            "A topic must match ^[A-Za-z][A-Za-z0-9_-]*(\\.[A-Za-z0-9][A-Za-z0-9_-]*)*$/."
+          );
+        }
+        return value;
+      };
 
       const runCleanup = async cleanup => {
         if (typeof cleanup === "function") {
@@ -92,6 +106,71 @@
         return resolved.href;
       };
 
+      const createEventBus = () => Object.freeze({
+        createPublisher: topic => {
+          const validatedTopic = quantumTopic(topic);
+          return Object.freeze({
+            topic: validatedTopic,
+            publish: (message, options) => {
+              if (message === undefined) {
+                return Promise.reject(new TypeError("An EventBus payload cannot be undefined."));
+              }
+              return rpc("eventBus", "publish", {
+                topic: validatedTopic,
+                payload: message
+              }, options);
+            }
+          });
+        },
+        subscribe: async (topic, handler, options) => {
+          const validatedTopic = quantumTopic(topic);
+          if (typeof handler !== "function") {
+            throw new TypeError("An EventBus subscription handler must be a function.");
+          }
+
+          const subscriptionId = globalThis.crypto?.randomUUID?.()
+            ?? `event-${Date.now()}-${++requestSequence}`;
+          let disposed = false;
+          const subscription = Object.freeze({
+            topic: validatedTopic,
+            async dispose() {
+              if (disposed) {
+                return;
+              }
+              disposed = true;
+              try {
+                await rpc("eventBus", "unsubscribe", { subscriptionId });
+              } finally {
+                eventSubscriptions.delete(subscriptionId);
+              }
+            }
+          });
+          eventSubscriptions.set(subscriptionId, { handler, subscription });
+          try {
+            await rpc("eventBus", "subscribe", {
+              topic: validatedTopic,
+              subscriptionId
+            }, options);
+            return subscription;
+          } catch (error) {
+            eventSubscriptions.delete(subscriptionId);
+            try {
+              await rpc("eventBus", "unsubscribe", { subscriptionId });
+            } catch {
+              // Runtime release is the final fallback when subscribe and cancellation race.
+            }
+            throw error;
+          }
+        }
+      });
+
+      const disposeEventSubscriptions = async () => {
+        const subscriptions = [...eventSubscriptions.values()]
+          .map(entry => entry.subscription);
+        await Promise.allSettled(subscriptions.map(subscription => subscription.dispose()));
+        eventSubscriptions.clear();
+      };
+
       const createContext = metadata => Object.freeze({
         plugin: Object.freeze({
           id: metadata.pluginId,
@@ -114,6 +193,7 @@
         environment: Object.freeze({
           snapshot: () => rpc("environment", "snapshot")
         }),
+        eventBus: createEventBus(),
         assets: Object.freeze({
           url: path => assetUrl(metadata.assetBaseUrl, path),
           readText: (path, options) => rpc("assets", "readText", { path }, options)
@@ -153,6 +233,33 @@
             pending.resolve(message.result);
           } else {
             pending.reject(new Error(message.message ?? "RPC failed."));
+          }
+          return;
+        }
+
+        if (message.type === "eventbus-event") {
+          const entry = eventSubscriptions.get(message.subscriptionId);
+          if (!entry) {
+            post("eventbus-error", {
+              deliveryId: message.deliveryId,
+              message: `EventBus subscription '${message.subscriptionId}' is not active.`
+            });
+            return;
+          }
+
+          try {
+            const quantumEvent = Object.freeze({
+              ...message.event,
+              topic: quantumTopic(message.event?.topic),
+              publisher: Object.freeze({ ...message.event?.publisher })
+            });
+            await entry.handler(quantumEvent);
+            post("eventbus-result", { deliveryId: message.deliveryId });
+          } catch (error) {
+            post("eventbus-error", {
+              deliveryId: message.deliveryId,
+              message: errorMessage(error)
+            });
           }
           return;
         }
@@ -210,6 +317,7 @@
             if (typeof definition?.deactivate === "function") {
               await definition.deactivate(context);
             }
+            await disposeEventSubscriptions();
             for (const [requestId, pending] of pendingRpc) {
               post("rpc-cancel", { requestId });
               pending.reject(new Error("Plugin runtime was deactivated."));

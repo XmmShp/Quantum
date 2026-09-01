@@ -1,9 +1,6 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using Quantum.Application.Plugins;
-using Quantum.Domain.Plugins;
-
-namespace Quantum.Infrastructure.Plugins;
+namespace Quantum.Plugins;
 
 public sealed class JsonPluginManifestReader
 {

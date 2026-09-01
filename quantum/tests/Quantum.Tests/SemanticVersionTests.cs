@@ -1,4 +1,4 @@
-using Quantum.Domain.Plugins;
+using Quantum.Plugins;
 
 namespace Quantum.Tests;
 

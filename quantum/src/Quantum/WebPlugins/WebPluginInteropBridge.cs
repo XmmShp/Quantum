@@ -3,11 +3,11 @@ using System.Diagnostics;
 using System.Reflection;
 using System.Text.Json;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
-using Quantum.Application.Plugins;
-using Quantum.Domain.Plugins;
 using Quantum.Plugin.Abstraction;
+using Quantum.Plugins;
 
 namespace Quantum.WebPlugins;
 
@@ -15,11 +15,14 @@ public sealed class WebPluginInteropBridge(
     PluginCatalog catalog,
     IServiceProvider hostServices,
     NavigationManager navigation,
+    IJSRuntime javaScript,
+    QuantumPluginEventBusFactory eventBusFactory,
     ILogger<WebPluginInteropBridge> logger) : IDisposable
 {
     private static readonly JsonSerializerOptions SerializerOptions = new(JsonSerializerDefaults.Web);
     private static readonly TimeSpan InvocationTimeout = TimeSpan.FromSeconds(30);
     private readonly ConcurrentDictionary<string, CancellationTokenSource> _invocations = new();
+    private readonly ConcurrentDictionary<string, Lazy<WebEventBusRuntime>> _eventBuses = new();
     private bool _disposed;
 
     [JSInvokable]
@@ -63,6 +66,13 @@ public sealed class WebPluginInteropBridge(
                 "log" => InvokeLog(pluginId, method, arguments),
                 "environment" => InvokeEnvironment(plugin, method),
                 "navigation" => InvokeNavigation(plugin, method, arguments),
+                "eventBus" => await InvokeEventBusAsync(
+                        plugin,
+                        runtimeId,
+                        method,
+                        arguments,
+                        cancellation.Token)
+                    .ConfigureAwait(false),
                 "assets" => await InvokeAssetsAsync(plugin, method, arguments, cancellation.Token)
                     .ConfigureAwait(false),
                 "dotnet" => await InvokeDotNetAsync(plugin, method, arguments, cancellation.Token)
@@ -97,6 +107,16 @@ public sealed class WebPluginInteropBridge(
         return Task.CompletedTask;
     }
 
+    [JSInvokable]
+    public async ValueTask ReleaseRuntimeAsync(string pluginId, string runtimeId)
+    {
+        if (_eventBuses.TryRemove(CreateRuntimeKey(pluginId, runtimeId), out var runtime)
+            && runtime.IsValueCreated)
+        {
+            await runtime.Value.DisposeAsync().ConfigureAwait(false);
+        }
+    }
+
     public void Dispose()
     {
         if (_disposed)
@@ -111,6 +131,15 @@ public sealed class WebPluginInteropBridge(
         }
 
         _invocations.Clear();
+        foreach (var runtime in _eventBuses.Values)
+        {
+            if (runtime.IsValueCreated)
+            {
+                runtime.Value.Dispose();
+            }
+        }
+
+        _eventBuses.Clear();
     }
 
     private JsonElement InvokeLog(string pluginId, string method, JsonElement arguments)
@@ -177,6 +206,92 @@ public sealed class WebPluginInteropBridge(
 
         navigation.NavigateTo(href);
         return Serialize(null);
+    }
+
+    private async Task<JsonElement> InvokeEventBusAsync(
+        LoadedPlugin plugin,
+        string runtimeId,
+        string method,
+        JsonElement arguments,
+        CancellationToken cancellationToken)
+    {
+        var runtime = GetOrCreateEventBusRuntime(plugin, runtimeId);
+        if (string.Equals(method, "publish", StringComparison.Ordinal))
+        {
+            var topic = QuantumTopic.Of(RequireString(arguments, "topic"));
+            var payload = RequireProperty(arguments, "payload");
+            await runtime.Bus.CreatePublisher<JsonElement>(topic)
+                .PublishAsync(payload, cancellationToken)
+                .ConfigureAwait(false);
+            return Serialize(null);
+        }
+
+        var subscriptionId = RequireString(arguments, "subscriptionId");
+        if (string.Equals(method, "subscribe", StringComparison.Ordinal))
+        {
+            cancellationToken.ThrowIfCancellationRequested();
+            var topic = QuantumTopic.Of(RequireString(arguments, "topic"));
+            var subscription = runtime.Bus.Subscribe(
+                topic,
+                (@event, eventCancellationToken) => DispatchEventAsync(
+                    plugin.Manifest.Id.Value,
+                    runtimeId,
+                    subscriptionId,
+                    @event,
+                    eventCancellationToken));
+            if (!runtime.TryAdd(subscriptionId, subscription))
+            {
+                subscription.Dispose();
+                throw new InvalidOperationException(
+                    $"EventBus subscription '{subscriptionId}' already exists.");
+            }
+
+            if (cancellationToken.IsCancellationRequested)
+            {
+                runtime.Remove(subscriptionId);
+                cancellationToken.ThrowIfCancellationRequested();
+            }
+
+            return Serialize(null);
+        }
+
+        if (string.Equals(method, "unsubscribe", StringComparison.Ordinal))
+        {
+            runtime.Remove(subscriptionId);
+            return Serialize(null);
+        }
+
+        throw new InvalidOperationException($"Unknown EventBus method '{method}'.");
+    }
+
+    private WebEventBusRuntime GetOrCreateEventBusRuntime(LoadedPlugin plugin, string runtimeId)
+    {
+        var runtime = _eventBuses.GetOrAdd(
+            CreateRuntimeKey(plugin.Manifest.Id.Value, runtimeId),
+            _ => new Lazy<WebEventBusRuntime>(
+                () => new WebEventBusRuntime(eventBusFactory.Create(
+                    new QuantumPluginInfo(
+                        plugin.Manifest.Id.Value,
+                        plugin.Manifest.Version.ToString()))),
+                LazyThreadSafetyMode.ExecutionAndPublication));
+        return runtime.Value;
+    }
+
+    private async Task DispatchEventAsync(
+        string pluginId,
+        string runtimeId,
+        string subscriptionId,
+        QuantumEvent @event,
+        CancellationToken cancellationToken)
+    {
+        await javaScript.InvokeVoidAsync(
+                "quantum.plugins.dispatchEvent",
+                cancellationToken,
+                pluginId,
+                runtimeId,
+                subscriptionId,
+                @event)
+            .ConfigureAwait(false);
     }
 
     private static async Task<JsonElement> InvokeAssetsAsync(
@@ -512,6 +627,17 @@ public sealed class WebPluginInteropBridge(
                 ? value.GetString()
                 : null;
 
+    private static JsonElement RequireProperty(JsonElement arguments, string propertyName)
+    {
+        if (arguments.ValueKind != JsonValueKind.Object
+            || !arguments.TryGetProperty(propertyName, out var value))
+        {
+            throw new InvalidOperationException($"RPC argument '{propertyName}' is required.");
+        }
+
+        return value.Clone();
+    }
+
     private static IReadOnlyList<string>? ReadStringArray(JsonElement arguments, string propertyName)
     {
         if (arguments.ValueKind != JsonValueKind.Object
@@ -537,6 +663,9 @@ public sealed class WebPluginInteropBridge(
 
     private static string CreateInvocationKey(string pluginId, string runtimeId, string requestId)
         => $"{pluginId}\n{runtimeId}\n{requestId}";
+
+    private static string CreateRuntimeKey(string pluginId, string runtimeId)
+        => $"{pluginId}\n{runtimeId}";
 
     private static void TryCancel(CancellationTokenSource cancellation)
     {
@@ -565,4 +694,45 @@ public sealed class WebPluginInteropBridge(
     private sealed record BoundInvocation(MethodInfo Method, object?[] Arguments);
 
     private sealed record NormalizedResult(Task? Completion, Func<object?> GetResult);
+
+    private sealed class WebEventBusRuntime(QuantumPluginEventBusHandle bus)
+        : IDisposable, IAsyncDisposable
+    {
+        private readonly ConcurrentDictionary<string, IQuantumSubscription> _subscriptions = new();
+
+        public QuantumPluginEventBusHandle Bus { get; } = bus;
+
+        public bool TryAdd(string id, IQuantumSubscription subscription)
+            => _subscriptions.TryAdd(id, subscription);
+
+        public void Remove(string id)
+        {
+            if (_subscriptions.TryRemove(id, out var subscription))
+            {
+                subscription.Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            foreach (var subscription in _subscriptions.Values)
+            {
+                subscription.Dispose();
+            }
+
+            _subscriptions.Clear();
+            Bus.Dispose();
+        }
+
+        public async ValueTask DisposeAsync()
+        {
+            foreach (var subscription in _subscriptions.Values)
+            {
+                await subscription.DisposeAsync().ConfigureAwait(false);
+            }
+
+            _subscriptions.Clear();
+            await Bus.DisposeAsync().ConfigureAwait(false);
+        }
+    }
 }

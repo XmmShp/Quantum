@@ -1,6 +1,6 @@
 using System.Globalization;
 
-namespace Quantum.Domain.Plugins;
+namespace Quantum.Plugins;
 
 public sealed class SemanticVersion : IComparable<SemanticVersion>, IEquatable<SemanticVersion>
 {

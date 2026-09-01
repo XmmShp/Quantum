@@ -277,6 +277,78 @@ test("messages must match both the iframe window and runtime id", () => {
   assert.equal(calls, 1);
 });
 
+test("EventBus delivery reaches an activating iframe and waits for acknowledgement", async () => {
+  const frameWindow = {};
+  const record = {
+    pluginId: "quantum.plugin.web",
+    runtimeId: "runtime",
+    frame: { contentWindow: frameWindow },
+    disposed: false,
+    eventDeliveries: new Map()
+  };
+  let posted;
+  const host = createHost({
+    post(_record, type, payload) {
+      posted = { type, ...payload };
+    }
+  });
+  host.framesByWindow.set(frameWindow, record);
+
+  const delivery = host.dispatchEvent(
+    record.pluginId,
+    record.runtimeId,
+    "subscription-1",
+    { topic: "devices.status", payload: { state: "ready" } });
+  assert.equal(posted.type, "eventbus-event");
+  assert.equal(posted.subscriptionId, "subscription-1");
+
+  host.handleMessage({
+    source: frameWindow,
+    data: {
+      channel: "quantum-web-plugin",
+      runtimeId: record.runtimeId,
+      type: "eventbus-result",
+      deliveryId: posted.deliveryId
+    }
+  });
+
+  await delivery;
+  assert.equal(record.eventDeliveries.size, 0);
+});
+
+test("disposing a Web runtime releases its Host EventBus", async () => {
+  const calls = [];
+  const frame = {
+    contentWindow: null,
+    remove() { calls.push("frame-removed"); }
+  };
+  const record = {
+    pluginId: "quantum.plugin.web",
+    runtimeId: "runtime",
+    frame,
+    bootstrapUrl: null,
+    signals: new Map(),
+    eventDeliveries: new Map(),
+    placementCleanup: null,
+    mounted: false,
+    disposed: false
+  };
+  const host = createHost({
+    dotNetReference: {
+      async invokeMethodAsync(method, pluginId, runtimeId) {
+        calls.push([method, pluginId, runtimeId]);
+      }
+    }
+  });
+
+  await host.disposeRecordCore(record);
+
+  assert.deepEqual(calls, [
+    ["ReleaseRuntimeAsync", record.pluginId, record.runtimeId],
+    "frame-removed"
+  ]);
+});
+
 test("the iframe bootstrap script parses as JavaScript", async () => {
   const html = await readFile(
     new URL("../src/Quantum/wwwroot/webPluginFrame.html", import.meta.url),

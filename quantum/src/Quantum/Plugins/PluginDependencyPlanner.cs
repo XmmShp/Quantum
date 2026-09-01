@@ -1,6 +1,4 @@
-using Quantum.Domain.Plugins;
-
-namespace Quantum.Application.Plugins;
+namespace Quantum.Plugins;
 
 public sealed class PluginDependencyPlanner
 {

@@ -16,7 +16,7 @@
         <article>
             <span>PLUGIN CONTAINER</span>
             <strong>DI</strong>
-            <p>AutoInject 服务位于插件自己的可释放容器中。</p>
+            <p>业务状态是普通 Singleton 服务，不存放在 IQuantumPlugin bootstrap 中。</p>
         </article>
         <article>
             <span>LOAD CONTEXT</span>
@@ -26,7 +26,7 @@
         <article>
             <span>STARTED AT</span>
             <strong>@(State.StartedAt?.ToString("HH:mm:ss") ?? "等待中")</strong>
-            <p>初始化通过 NOF Initialization Step 驱动。</p>
+            <p>静态 bootstrap 使用插件运行期 scope 编排普通服务。</p>
         </article>
         <article>
             <span>WEB INTEGRATION</span>
