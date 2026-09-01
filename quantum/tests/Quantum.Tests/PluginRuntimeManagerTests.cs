@@ -203,6 +203,7 @@ public sealed class PluginRuntimeManagerTests
         await using var manager = fixture.CreateManager();
         await manager.InitializeAsync(fixture.HostServices);
         var original = Assert.Single(fixture.Catalog.Plugins);
+        Assert.NotNull(original.Services!.GetService("Quantum.ExamplePlugin.IExamplePluginState"));
         var loadContext = AssemblyLoadContext.GetLoadContext(original.EntryAssembly);
         Assert.NotNull(loadContext);
         var weakReference = new WeakReference(loadContext, trackResurrection: false);

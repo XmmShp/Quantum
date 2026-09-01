@@ -21,5 +21,6 @@
     <ProjectReference Include="..\..\src\Quantum.Domain\Quantum.Domain.csproj" />
     <ProjectReference Include="..\..\src\Quantum.Infrastructure\Quantum.Infrastructure.csproj" />
     <ProjectReference Include="..\..\..\samples\Quantum.ExamplePlugin\Quantum.ExamplePlugin.csproj" />
+    <ProjectReference Include="..\..\..\sdk\Quantum.Plugin.Abstraction\Quantum.Plugin.Abstraction.csproj" />
   </ItemGroup>
 </Project>
