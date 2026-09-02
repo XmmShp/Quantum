@@ -8,11 +8,16 @@
 - `IQuantumPluginEnvironment` 提供已加载插件列表和查询；联动逻辑可以直接按目标插件是否可用来决定。
 - `IQuantumPluginRuntimeContext` 提供当前运行版本和只读影子目录路径。
 - `IQuantumEventBus` 提供 ROS 风格的 Topic Publisher/Subscription；发布者和订阅者只需使用 JSON 结构兼容的消息模型。
-- `IServiceProvider.GetService(string)` 可按 `Type.FullName`（不含程序集名和 `global::`）解析无法在编译期引用的联动服务：
+- `IServiceProvider.GetService(string)` 可按 `Type.FullName`（不含程序集名和 `global::`）解析无法在编译期引用的联动服务。Host 还会把每个直接 .NET 强依赖的服务容器，以依赖插件的 `PluginId` 注册为 keyed `IServiceProvider`：
 
 ```csharp
-dynamic? service = services.GetService("MyNamespace.MySub.IMyInterface");
+var dependencyServices = services.GetRequiredKeyedService<IServiceProvider>(
+    PluginId.Of("quantum.plugin.example"));
+dynamic? service = dependencyServices.GetService("MyNamespace.MySub.IMyInterface");
+string message = service!.CreateGreeting(PluginId.Of("quantum.plugin.consumer"));
 ```
+
+只有 manifest 中声明的直接强依赖会被注册；若需要访问传递依赖，应把它同时声明为直接依赖。依赖服务仍由提供方容器拥有，调用方不得释放或长期缓存 provider、服务实例及其返回的私有对象。Web 插件的等价能力是 `context.dotnet.invoke({ target, service, method })`。
 
 ## 插件标识与版本值对象
 
@@ -44,7 +49,17 @@ if (current >= minimum)
 }
 ```
 
-两个值对象通过 NOF 生成的 JSON converter 序列化为字符串，所以 EventBus envelope 和 Web Host 协议的字段形状保持不变。
+`VersionRange.Of(...)` 校验 manifest 中 `dependencies`/`integrations` 使用的范围，并通过 `Contains(...)` 判断版本：
+
+```csharp
+var range = VersionRange.Of("{1.2.3} | [1.3.0,1.4.0) | (1.4.0,1.5.0)");
+var compatible = range.Contains(SemanticVersion.Of("1.2.3+linux-x64")); // true
+```
+
+它支持有界或无界区间、有限版本集合以及 `|` 并集；`(,)` 和 `*` 均表示全部版本。预发布版本直接按 SemVer
+precedence 参与范围比较，构建元数据完全不参与比较。
+
+三个值对象通过 NOF 生成的 JSON converter 序列化为字符串，所以 EventBus envelope 和 Web Host 协议的字段形状保持不变。
 
 数据库 schema 演进不属于 .NET ABI。插件可以在开发期使用 EF/NOF 模型，但发布包统一通过
 `plugin.json` 的 `database.migrations` 携带 SQLite SQL artifact；Host 在 `StartAsync` 前应用它。具体规则见

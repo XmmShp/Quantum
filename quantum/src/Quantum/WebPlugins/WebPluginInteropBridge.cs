@@ -189,9 +189,9 @@ public sealed class WebPluginInteropBridge(
             return new
             {
                 PluginId = (string)integration.Id,
-                MinimumVersion = integration.MinimumVersion.ToString(),
+                VersionRange = integration.VersionRange.ToString(),
                 Active = target is not null
-                    && target.Manifest.Version.CompareTo(integration.MinimumVersion) >= 0
+                    && integration.VersionRange.Contains(target.Manifest.Version)
             };
         });
         return Serialize(new

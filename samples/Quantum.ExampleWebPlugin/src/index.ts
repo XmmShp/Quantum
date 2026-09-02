@@ -128,7 +128,7 @@ export default definePlugin({
           service: "Quantum.Plugin.Abstraction.IQuantumPluginEnvironment",
           method: "IsPluginLoaded",
           arguments: [context.plugin.id],
-          parameterTypes: ["System.String"]
+          parameterTypes: ["Quantum.Plugin.Abstraction.PluginId"]
         }, { signal: context.signal });
         if (!context.signal.aborted && hostStatus) {
           hostStatus.textContent = `.NET 宿主识别当前插件：${recognizesItself ? "是" : "否"}。`;

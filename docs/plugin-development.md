@@ -40,10 +40,10 @@ Quantum 插件可以使用 .NET DLL 或 Web runtime。本篇介绍 .NET 插件�
     "migrations": "./migrations"
   },
   "dependencies": [
-    { "id": "quantum.plugin.core", "minVersion": "0.1.0" }
+    { "id": "quantum.plugin.core", "versionRange": "[0.1.0,)" }
   ],
   "integrations": [
-    { "id": "quantum.plugin.theme", "minVersion": "0.1.0" }
+    { "id": "quantum.plugin.theme", "versionRange": "[0.1.0,)" }
   ],
   "ui": {
     "routes": [
@@ -83,20 +83,46 @@ Quantum 插件可以使用 .NET DLL 或 Web runtime。本篇介绍 .NET 插件�
 
 - `id` 最长 128 个字符，使用小写 ASCII 字母、数字、点、下划线或连字符，首尾必须是字母或数字；
   `disabled` 是宿主保留值。SDK 中对应基于 NOF `IValueObject<string>` 生成的 `PluginId` 值对象。
-- `version` 与 `minVersion` 严格使用 SemVer 2.0.0，必须写全 `major.minor.patch`；预发布版本参与正确的
-  先后比较，构建元数据不参与优先级。SDK 中对应基于 NOF `IValueObject<string>` 生成的
-  `SemanticVersion` 值对象。
+- `version` 严格使用 SemVer 2.0.0，必须写全 `major.minor.patch`。`dependencies` 和 `integrations` 使用
+  `versionRange`，不再接受旧的 `minVersion` 字段。SDK 中对应基于 NOF `IValueObject<string>` 生成的
+  `SemanticVersion` 与 `VersionRange` 值对象。
 - 旧版 `entryAssembly` 继续受支持，等价于 `{ "runtime": { "kind": "dotnet", "entry": "..." } }`；DLL 入口只能是插件根目录下的文件名。
 - .NET 路由的 `component` 必须是入口程序集内实现 `IComponent` 的完整类型名；Web 路由改用 `view`。
 - `showInNavigation` 默认为 `true`；设为 `false` 的页面不会出现在主导航中，但仍可通过其路径或导航 API 打开。
 - `database.migrations` 对 .NET 和 Web 插件含义相同，指向插件根目录内的 SQL migration artifact。
 - 同一目标不能同时出现在 `dependencies` 和 `integrations`，各类关系和路由不能重复；未知 manifest 字段会被拒绝，避免拼写错误静默失效。
 
+`versionRange` 可以组合以下版本集合：
+
+- 区间遵循数学边界规则，例如 `[1.0.0,1.2.0)` 表示 `1.0.0 <= version < 1.2.0`。
+- 区间可以无界，例如 `(,1.2.0)`、`(1.3.0,)`；省略边界的一侧必须使用圆括号。`(,)` 表示全部版本，
+  `*` 仅作为 `(,)` 的等价助记写法，不提供其他通配符语义。
+- 花括号表示有限集合，例如 `{1.2.3}`、`{1.2.3,1.2.4}`；`{}` 非法。
+- `|` 表示并集，例如 `{1.2.3} | [1.3.0,1.4.0) | (1.4.0,1.5.0)`。
+
+所有边界与集合元素都必须是 SemVer 2.0.0。预发布版本直接按 SemVer precedence 参与比较，不做额外排除；
+例如 `[1.2.3-alpha,1.2.3)` 包含 `1.2.3-beta`。构建元数据完全不参与比较，因此 `{1.2.3}` 也会匹配
+`1.2.3+abc`。
+
 完整的强依赖示例见
 [`Quantum.ExampleDependentPlugin`](../samples/Quantum.ExampleDependentPlugin/plugin.json)：它要求
-`quantum.plugin.example >= 0.1.0`，并在启动后展示宿主实际解析到的前置插件版本。示例刻意不直接引用
-`Quantum.ExamplePlugin.dll`；manifest 负责运行时排序和可用性约束，跨插件 CLR 契约仍应放入双方共享的稳定
-Contract/SDK 程序集。
+`quantum.plugin.example >= 0.1.0`，并在启动后展示宿主实际解析到的前置插件版本以及一次跨插件方法调用结果。
+Host 会把每个直接 .NET 强依赖的运行期服务容器，以依赖插件的 `PluginId` 注册为 keyed
+`IServiceProvider`。调用方可以从自身 DI 获取该 provider，再通过服务 FQN 和 `dynamic` 调用而无需引用依赖插件 DLL：
+
+```csharp
+var dependencyServices = services.GetRequiredKeyedService<IServiceProvider>(
+    PluginId.Of("quantum.plugin.example"));
+dynamic example = dependencyServices.GetService("Quantum.ExamplePlugin.IExamplePluginState")
+    ?? throw new InvalidOperationException("ExamplePlugin service is unavailable.");
+string greeting = example.CreateDependencyGreeting(
+    PluginId.Of("quantum.plugin.example-dependent"));
+```
+
+只有 manifest 中声明的直接强依赖会注册 keyed provider；访问传递依赖时也必须显式声明直接依赖。provider、服务实例及
+返回的私有对象仍归被依赖插件所有，调用方不能释放或跨生命周期缓存。`dynamic` 方式把服务 FQN、方法名和参数形状变成
+运行时契约；需要编译期类型安全时，应把接口与 DTO 放入双方共享的稳定 Contract/SDK 程序集，不能直接引用另一个插件
+实现 DLL。
 
 ## 3. 注册服务和启动逻辑
 
@@ -385,7 +411,9 @@ Modules/
 `disabled` 是宿主保留的插件 id，任何 .NET 或 Web 插件都不能使用该名称。宿主将
 `Modules/disabled` 专门用于保存已禁用插件，普通扫描不会把它当成插件目录。
 
-插件程序集依赖优先从自身影子目录解析；`System.*`、`Microsoft.*`、`NOF.*` 与 Quantum 插件 ABI 始终与宿主共享。跨插件接口应放在双方共同引用的稳定 Contract/SDK 程序集中，不能依赖两个 ALC 中恰好同名的私有类型。
+插件程序集依赖优先从自身影子目录解析；`System.*`、`Microsoft.*`、`NOF.*` 与 Quantum 插件 ABI 始终与宿主共享。
+需要编译期类型安全的跨插件接口应放在双方共同引用的稳定 Contract/SDK 程序集中，不能依赖两个 ALC 中恰好同名的
+私有类型；按 FQN 和 `dynamic` 调用时，参数和返回值也应限制为共享 ABI 类型或不需要跨生命周期保留的简单值。
 
 调试热升级流程：
 

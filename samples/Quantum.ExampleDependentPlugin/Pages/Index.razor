@@ -26,8 +26,18 @@
         </article>
     </div>
 
+    <article class="dynamic-call">
+        <span>KEYED DI → DYNAMIC</span>
+        <code>IExamplePluginState.CreateDependencyGreeting(...)</code>
+        <strong>@(State.Greeting ?? "等待调用")</strong>
+        <p>
+            本插件从 keyed DI 获取 <code>ExamplePlugin</code> 的服务容器，按 FQN 解析服务；
+            编译期不引用被依赖插件的程序集，方法由 <code>dynamic</code> 分派。
+        </p>
+    </article>
+
     <p class="dependency-note">
-        两个插件仍处于各自独立的加载上下文；这里演示的是运行时依赖顺序，不是直接引用另一个插件的实现 DLL。
+        两个插件仍处于各自独立的加载上下文；强依赖保证服务提供方先启动、后停止。
     </p>
 </section>
 

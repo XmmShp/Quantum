@@ -35,10 +35,10 @@ public sealed class JsonPluginManifestReader
             runtime,
             document.Dependencies.Select(static dependency => new PluginDependency(
                 PluginId.Of(dependency.Id),
-                SemanticVersion.Of(dependency.MinimumVersion))),
+                VersionRange.Of(dependency.VersionRange))),
             document.Integrations.Select(static integration => new PluginIntegration(
                 PluginId.Of(integration.Id),
-                SemanticVersion.Of(integration.MinimumVersion))),
+                VersionRange.Of(integration.VersionRange))),
             document.Ui.Routes.Select(route => runtime.Kind == PluginRuntimeKind.Web
                 ? PluginRouteDefinition.Web(
                     route.Path,
@@ -138,16 +138,16 @@ public sealed class JsonPluginManifestReader
     {
         public string Id { get; init; } = string.Empty;
 
-        [JsonPropertyName("minVersion")]
-        public string MinimumVersion { get; init; } = string.Empty;
+        [JsonPropertyName("versionRange")]
+        public string VersionRange { get; init; } = string.Empty;
     }
 
     private sealed class PluginIntegrationDocument
     {
         public string Id { get; init; } = string.Empty;
 
-        [JsonPropertyName("minVersion")]
-        public string MinimumVersion { get; init; } = string.Empty;
+        [JsonPropertyName("versionRange")]
+        public string VersionRange { get; init; } = string.Empty;
     }
 
     private sealed class PluginUiDocument

@@ -48,15 +48,16 @@ field reports target availability and version compatibility but does not authori
 Construct external values at the boundary instead of casting unchecked strings:
 
 ```ts
-import { PluginId, SemanticVersion } from "@quantum/plugin-sdk";
+import { PluginId, SemanticVersion, VersionRange } from "@quantum/plugin-sdk";
 
 const pluginId = PluginId.of("Quantum.Plugin.Theme");
 const current = SemanticVersion.parse("2.1.0-rc.2+linux.arm64");
 const minimum = SemanticVersion.parse("2.1.0-beta.1");
 const parts = SemanticVersion.components(current);
+const range = VersionRange.parse("{1.2.3} | [2.0.0-alpha,3.0.0)");
 
 if (SemanticVersion.compare(current, minimum) >= 0) {
-  console.log(pluginId, parts.major, parts.preReleaseIdentifiers);
+  console.log(pluginId, parts.major, parts.preReleaseIdentifiers, VersionRange.contains(range, current));
 }
 ```
 
@@ -64,6 +65,11 @@ if (SemanticVersion.compare(current, minimum) >= 0) {
 check as the .NET SDK. `SemanticVersion.parse()` strictly requires SemVer 2.0.0 `major.minor.patch`; its numeric
 components are `bigint`, and `SemanticVersion.compare()` ignores build metadata when determining precedence.
 Both branded values remain strings on the JSON wire, preserving the existing iframe/Host payload shape.
+
+Manifest `dependencies` and `integrations` use `versionRange` rather than the legacy `minVersion`. `VersionRange`
+supports bounded or unbounded mathematical intervals, finite sets in braces, and unions separated by `|`; `(,)`
+and `*` both mean all versions. Prereleases participate directly in SemVer precedence, while build metadata is
+ignored, so `{1.2.3}` contains `1.2.3+linux-x64`. The branded range also remains a string on the JSON wire.
 
 ## Topic EventBus
 

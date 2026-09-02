@@ -4,7 +4,8 @@ import {
   definePlugin,
   PluginId,
   QuantumTopic,
-  SemanticVersion
+  SemanticVersion,
+  VersionRange
 } from "../dist/index.js";
 
 test("definePlugin preserves the lifecycle definition", () => {
@@ -98,5 +99,52 @@ test("SemanticVersion rejects non-SemVer 2.0 values", () => {
   ]) {
     assert.equal(SemanticVersion.tryParse(value), null);
     assert.throws(() => SemanticVersion.parse(value), /Semantic Versioning 2\.0\.0/);
+  }
+});
+
+test("VersionRange supports bounded and unbounded intervals", () => {
+  const bounded = VersionRange.parse("[1.0.0,1.2.0)");
+  const below = VersionRange.parse("(,1.2.0)");
+  const above = VersionRange.parse("(1.3.0,)");
+  const all = VersionRange.parse("*");
+
+  assert.equal(VersionRange.contains(bounded, SemanticVersion.parse("1.0.0")), true);
+  assert.equal(VersionRange.contains(bounded, SemanticVersion.parse("1.2.0")), false);
+  assert.equal(VersionRange.contains(below, SemanticVersion.parse("1.1.9")), true);
+  assert.equal(VersionRange.contains(below, SemanticVersion.parse("1.2.0")), false);
+  assert.equal(VersionRange.contains(above, SemanticVersion.parse("1.3.0")), false);
+  assert.equal(VersionRange.contains(above, SemanticVersion.parse("2.0.0")), true);
+  assert.equal(VersionRange.contains(all, SemanticVersion.parse("1.2.3-alpha")), true);
+  assert.equal(all, "(,)");
+});
+
+test("VersionRange supports sets, unions, prereleases, and build-equivalent versions", () => {
+  const range = VersionRange.parse(
+    " {1.2.3} | [1.3.0,1.4.0) | [1.4.0-alpha,1.5.0) "
+  );
+
+  assert.equal(range, "{1.2.3}|[1.3.0,1.4.0)|[1.4.0-alpha,1.5.0)");
+  assert.equal(VersionRange.contains(range, SemanticVersion.parse("1.2.3+linux-x64")), true);
+  assert.equal(VersionRange.contains(range, SemanticVersion.parse("1.3.5")), true);
+  assert.equal(VersionRange.contains(range, SemanticVersion.parse("1.4.0-beta")), true);
+  assert.equal(VersionRange.contains(range, SemanticVersion.parse("1.2.4")), false);
+  assert.equal(VersionRange.contains(range, SemanticVersion.parse("1.5.0")), false);
+});
+
+test("VersionRange rejects invalid expressions", () => {
+  for (const value of [
+    "",
+    "1.2.3",
+    "{}",
+    "[,1.2.0)",
+    "(1.3.0,]",
+    "[1.2.0,1.2.0)",
+    "[2.0.0,1.0.0]",
+    "{1.2.3,}",
+    "[1.0.0,1.2.0)||{2.0.0}",
+    "**"
+  ]) {
+    assert.equal(VersionRange.tryParse(value), null);
+    assert.throws(() => VersionRange.parse(value), /valid version range/);
   }
 });

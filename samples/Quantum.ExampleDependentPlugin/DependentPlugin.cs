@@ -8,7 +8,9 @@ namespace Quantum.ExampleDependentPlugin;
 /// </summary>
 public sealed class DependentPlugin : IQuantumPlugin
 {
+    private static readonly PluginId CurrentPluginId = PluginId.Of("quantum.plugin.example-dependent");
     private static readonly PluginId RequiredPluginId = PluginId.Of("quantum.plugin.example");
+    private const string RequiredServiceType = "Quantum.ExamplePlugin.IExamplePluginState";
 
     public static Task StartAsync(
         IServiceProvider services,
@@ -25,9 +27,16 @@ public sealed class DependentPlugin : IQuantumPlugin
                 $"Required plugin '{RequiredPluginId}' was not loaded before the dependent example.");
         }
 
+        var dependencyServices = services.GetRequiredKeyedService<IServiceProvider>(RequiredPluginId);
+        dynamic examplePlugin = dependencyServices.GetService(RequiredServiceType)
+            ?? throw new InvalidOperationException(
+                $"Required service '{RequiredServiceType}' is not registered by '{RequiredPluginId}'.");
+        string greeting = examplePlugin.CreateDependencyGreeting(CurrentPluginId);
+
         services.GetRequiredService<DependentPluginState>().Start(
             DateTimeOffset.Now,
-            requiredPlugin);
+            requiredPlugin,
+            greeting);
         return Task.CompletedTask;
     }
 

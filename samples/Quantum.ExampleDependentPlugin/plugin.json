@@ -5,7 +5,7 @@
   "dependencies": [
     {
       "id": "quantum.plugin.example",
-      "minVersion": "0.1.0"
+      "versionRange": "[0.1.0,)"
     }
   ],
   "integrations": [],

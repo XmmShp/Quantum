@@ -74,10 +74,12 @@ Web 插件不能使用 `web.head`/`web.postBlazor` 向宿主页面注入 HTML；
 路由的 `showInNavigation` 默认为 `true`；设为 `false` 后仍可通过路径或 `context.navigation.navigate()`
 打开，但不会显示在宿主主导航中。
 
-manifest 的 `id` 与版本字段和 .NET 插件使用相同约束：id 最长 128 个字符，`version`/`minVersion` 必须是
-写全 `major.minor.patch` 的 SemVer 2.0.0。TypeScript SDK 提供 `PluginId.of()`、`SemanticVersion.parse()`、
-`SemanticVersion.components()` 和 `SemanticVersion.compare()`；它们是带运行时校验的 branded string，JSON
-传输仍保持字符串字段。
+manifest 的 `id` 与版本字段和 .NET 插件使用相同约束：id 最长 128 个字符，`version` 必须是写全
+`major.minor.patch` 的 SemVer 2.0.0；`dependencies`/`integrations` 使用 `versionRange`，不再接受
+`minVersion`。TypeScript SDK 提供 `PluginId.of()`、`SemanticVersion.parse()`、`SemanticVersion.components()`、
+`SemanticVersion.compare()`、`VersionRange.parse()` 和 `VersionRange.contains()`；它们是带运行时校验的 branded
+string，JSON 传输仍保持字符串字段。完整的区间、无界区间、有限集合与并集语法见
+[.NET 插件开发指南](plugin-development.md#2-编写-manifest)。
 
 `database.migrations` 是 Host 能力，不是 JavaScript API。它与 .NET 插件使用完全相同的发布 artifact：把 Prisma、
 Drizzle 或其他开发期 ORM 的最终升级路径导出为 SQLite SQL，按 `001_init.sql`、`002_add_index.sql` 的形式放入声明目录。

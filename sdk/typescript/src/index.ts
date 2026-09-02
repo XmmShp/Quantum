@@ -209,6 +209,183 @@ function compareSemanticVersions(
   return Math.sign(left.preReleaseIdentifiers.length - right.preReleaseIdentifiers.length);
 }
 
+declare const versionRangeBrand: unique symbol;
+
+/** A validated union of Semantic Versioning 2.0.0 intervals and finite sets. */
+export type VersionRange = string & {
+  readonly [versionRangeBrand]: "VersionRange";
+};
+
+/** Parser and membership test for VersionRange values. */
+export const VersionRange = Object.freeze({
+  parse(value: string): VersionRange {
+    const range = parseVersionRange(value);
+    if (range === null) {
+      throw new TypeError(`'${String(value)}' is not a valid version range.`);
+    }
+    return range.normalized as VersionRange;
+  },
+
+  tryParse(value: string): VersionRange | null {
+    const range = parseVersionRange(value);
+    return range === null ? null : range.normalized as VersionRange;
+  },
+
+  contains(range: VersionRange, version: SemanticVersion): boolean {
+    const parsedRange = parseVersionRange(range);
+    const parsedVersion = parseSemanticVersion(version);
+    if (parsedRange === null || parsedVersion === null) {
+      throw new TypeError("VersionRange.contains requires valid range and version values.");
+    }
+    return parsedRange.terms.some(term => versionRangeTermContains(term, parsedVersion));
+  }
+});
+
+type ParsedVersionRangeTerm = ParsedVersionInterval | ParsedVersionSet;
+
+interface ParsedVersionInterval {
+  readonly kind: "interval";
+  readonly lowerBound: SemanticVersionComponents | null;
+  readonly includeLowerBound: boolean;
+  readonly upperBound: SemanticVersionComponents | null;
+  readonly includeUpperBound: boolean;
+}
+
+interface ParsedVersionSet {
+  readonly kind: "set";
+  readonly versions: readonly SemanticVersionComponents[];
+}
+
+interface ParsedVersionRange {
+  readonly normalized: string;
+  readonly terms: readonly ParsedVersionRangeTerm[];
+}
+
+function parseVersionRange(value: string): ParsedVersionRange | null {
+  if (typeof value !== "string" || value.trim().length === 0) {
+    return null;
+  }
+
+  const rawTerms = value.trim().split("|");
+  if (rawTerms.some(term => term.trim().length === 0)) {
+    return null;
+  }
+
+  const terms: ParsedVersionRangeTerm[] = [];
+  const normalizedTerms: string[] = [];
+  for (const rawTerm of rawTerms) {
+    const parsed = parseVersionRangeTerm(rawTerm.trim());
+    if (parsed === null) {
+      return null;
+    }
+    terms.push(parsed.term);
+    normalizedTerms.push(parsed.normalized);
+  }
+
+  return Object.freeze({
+    normalized: normalizedTerms.join("|"),
+    terms: Object.freeze(terms)
+  });
+}
+
+function parseVersionRangeTerm(
+  term: string
+): { readonly normalized: string; readonly term: ParsedVersionRangeTerm } | null {
+  if (term === "*") {
+    return {
+      normalized: "(,)",
+      term: {
+        kind: "interval",
+        lowerBound: null,
+        includeLowerBound: false,
+        upperBound: null,
+        includeUpperBound: false
+      }
+    };
+  }
+
+  if (term.startsWith("{") && term.endsWith("}")) {
+    const values = term.slice(1, -1).split(",").map(value => value.trim());
+    if (values.length === 0 || values.some(value => value.length === 0)) {
+      return null;
+    }
+    const versions = values.map(parseSemanticVersion);
+    if (versions.some(version => version === null)) {
+      return null;
+    }
+    return {
+      normalized: `{${values.join(",")}}`,
+      term: { kind: "set", versions: versions as SemanticVersionComponents[] }
+    };
+  }
+
+  if (term.length < 3
+      || !(term.startsWith("[") || term.startsWith("("))
+      || !(term.endsWith("]") || term.endsWith(")"))) {
+    return null;
+  }
+
+  const bounds = term.slice(1, -1).split(",").map(value => value.trim());
+  if (bounds.length !== 2) {
+    return null;
+  }
+  const lowerValue = bounds[0]!;
+  const upperValue = bounds[1]!;
+  const includeLowerBound = term.startsWith("[");
+  const includeUpperBound = term.endsWith("]");
+  if ((lowerValue.length === 0 && includeLowerBound)
+      || (upperValue.length === 0 && includeUpperBound)) {
+    return null;
+  }
+
+  const lowerBound = lowerValue.length === 0 ? null : parseSemanticVersion(lowerValue);
+  const upperBound = upperValue.length === 0 ? null : parseSemanticVersion(upperValue);
+  if ((lowerValue.length > 0 && lowerBound === null)
+      || (upperValue.length > 0 && upperBound === null)) {
+    return null;
+  }
+  if (lowerBound !== null && upperBound !== null) {
+    const comparison = compareSemanticVersions(lowerBound, upperBound);
+    if (comparison > 0 || (comparison === 0 && (!includeLowerBound || !includeUpperBound))) {
+      return null;
+    }
+  }
+
+  return {
+    normalized: `${term[0]}${lowerValue},${upperValue}${term.at(-1)}`,
+    term: {
+      kind: "interval",
+      lowerBound,
+      includeLowerBound,
+      upperBound,
+      includeUpperBound
+    }
+  };
+}
+
+function versionRangeTermContains(
+  term: ParsedVersionRangeTerm,
+  version: SemanticVersionComponents
+): boolean {
+  if (term.kind === "set") {
+    return term.versions.some(candidate => compareSemanticVersions(candidate, version) === 0);
+  }
+
+  if (term.lowerBound !== null) {
+    const comparison = compareSemanticVersions(version, term.lowerBound);
+    if (comparison < 0 || (comparison === 0 && !term.includeLowerBound)) {
+      return false;
+    }
+  }
+  if (term.upperBound !== null) {
+    const comparison = compareSemanticVersions(version, term.upperBound);
+    if (comparison > 0 || (comparison === 0 && !term.includeUpperBound)) {
+      return false;
+    }
+  }
+  return true;
+}
+
 declare const quantumTopicBrand: unique symbol;
 
 /** A validated, dot-delimited EventBus topic. */
@@ -264,7 +441,7 @@ export interface QuantumEventBus {
 
 export interface QuantumPluginIntegration {
   readonly pluginId: PluginId;
-  readonly minimumVersion: SemanticVersion;
+  readonly versionRange: VersionRange;
   /** Informational availability of the declared target; this does not gate plugin interaction. */
   readonly active: boolean;
 }

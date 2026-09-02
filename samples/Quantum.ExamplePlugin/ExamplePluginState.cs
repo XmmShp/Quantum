@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using Quantum.Plugin.Abstraction;
 
 namespace Quantum.ExamplePlugin;
 
@@ -13,6 +14,8 @@ public interface IExamplePluginState
     int WebHandshakeCount { get; }
 
     string? LastWebPluginId { get; }
+
+    string CreateDependencyGreeting(PluginId callerPluginId);
 
     Task<ExamplePluginHandshake> CreateWebHandshakeAsync(
         string webPluginId,
@@ -53,6 +56,16 @@ public sealed class ExamplePluginState
     internal void Stop()
     {
         IsRunning = false;
+    }
+
+    internal string CreateDependencyGreeting(PluginId callerPluginId)
+    {
+        if (!IsRunning || StartedAt is null)
+        {
+            throw new InvalidOperationException("The .NET example plugin is not running.");
+        }
+
+        return $"你好，{callerPluginId}！这条消息来自 {PluginId.Of("quantum.plugin.example")} 的 DI 服务。";
     }
 
     internal Task<ExamplePluginHandshake> CreateWebHandshakeAsync(

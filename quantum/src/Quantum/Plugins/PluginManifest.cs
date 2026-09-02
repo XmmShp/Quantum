@@ -184,9 +184,9 @@ public sealed record PluginRuntimeDefinition
         => new(PluginRuntimeKind.Web, entryModule);
 }
 
-public sealed record PluginDependency(PluginId Id, SemanticVersion MinimumVersion);
+public sealed record PluginDependency(PluginId Id, VersionRange VersionRange);
 
-public sealed record PluginIntegration(PluginId Id, SemanticVersion MinimumVersion);
+public sealed record PluginIntegration(PluginId Id, VersionRange VersionRange);
 
 public sealed record PluginRouteDefinition
 {

@@ -255,12 +255,14 @@ internal sealed class PluginRuntime
         string sessionShadowRoot,
         string databasePath,
         PluginCatalog catalog,
+        IReadOnlyDictionary<PluginId, IServiceProvider> dependencyServices,
         IServiceProvider hostServices,
         ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(candidate);
         ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
         ArgumentNullException.ThrowIfNull(catalog);
+        ArgumentNullException.ThrowIfNull(dependencyServices);
         ArgumentNullException.ThrowIfNull(hostServices);
 
         var runtimeId = Guid.NewGuid();
@@ -357,6 +359,15 @@ internal sealed class PluginRuntime
                 shadowRoot));
             serviceCollection.AddSingleton<IQuantumEventBus>(
                 _ => new PluginEventBus(pluginInfo, eventHub));
+            // The dependency runtime owns these provider instances. Reverse stop/disposal order
+            // guarantees that the consumer releases them before their containers are torn down.
+            foreach (var dependency in dependencyServices)
+            {
+                serviceCollection.AddKeyedSingleton<IServiceProvider>(
+                    dependency.Key,
+                    dependency.Value);
+            }
+
             CopyHostService<ILoggerFactory>(hostServices, serviceCollection);
             serviceCollection.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
             InitializePluginServices(assembly, serviceCollection);

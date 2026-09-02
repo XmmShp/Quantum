@@ -14,11 +14,18 @@ public sealed class DependentPluginState
 
     public bool IsRunning { get; private set; }
 
-    internal void Start(DateTimeOffset startedAt, QuantumPluginInfo requiredPlugin)
+    public string? Greeting { get; private set; }
+
+    internal void Start(
+        DateTimeOffset startedAt,
+        QuantumPluginInfo requiredPlugin,
+        string greeting)
     {
         ArgumentNullException.ThrowIfNull(requiredPlugin);
+        ArgumentException.ThrowIfNullOrWhiteSpace(greeting);
         StartedAt = startedAt;
         RequiredPlugin = requiredPlugin;
+        Greeting = greeting;
         IsRunning = true;
     }
 

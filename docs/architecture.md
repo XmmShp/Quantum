@@ -48,6 +48,10 @@ Web runtime 不把宿主对象直接暴露给 iframe。iframe 只能通过经来
 `DotNetObjectReference` 转发到 capability RPC。`.NET` 调用按次创建 DI scope，可访问宿主或任意已加载 .NET 插件的服务 FQN，
 并在异步结果完成且序列化之后释放 scope。销毁 iframe 会强制终止未正确清理的定时器、事件和模块全局状态。
 
+.NET 插件之间只为 manifest 中声明的直接强依赖建立服务桥接：Host 把被依赖插件的运行期 provider 以其 `PluginId`
+注册为调用方容器中的 keyed `IServiceProvider`。调用方可按服务 FQN 解析并通过 `dynamic` 调用；依赖顺序同时保证服务
+提供方先启动、后停止。provider 与服务实例的所有权仍属于提供方，调用方不能释放或跨运行代缓存。
+
 ## 插件 EventBus
 
 .NET 插件容器与 TypeScript iframe 都获得带当前插件身份的 EventBus。Topic 在 .NET 中是 NOF

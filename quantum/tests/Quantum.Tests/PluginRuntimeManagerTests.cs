@@ -173,6 +173,34 @@ public sealed class PluginRuntimeManagerTests
     }
 
     [Fact]
+    public async Task InitializeAsync_DependentExampleInvokesRequiredPluginServiceThroughKeyedDi()
+    {
+        using var fixture = new RuntimeFixture();
+        fixture.AddExampleDependentPlugin();
+        await using var manager = fixture.CreateManager();
+
+        await manager.InitializeAsync(fixture.HostServices);
+
+        Assert.Empty(fixture.Catalog.Failures);
+        var example = fixture.Catalog.FindPlugin("quantum.plugin.example");
+        var dependent = fixture.Catalog.FindPlugin("quantum.plugin.example-dependent");
+        Assert.NotNull(example);
+        Assert.NotNull(dependent);
+        Assert.Same(
+            example.Services,
+            dependent.Services!.GetRequiredKeyedService<IServiceProvider>(
+                PluginId.Of("quantum.plugin.example")));
+
+        var state = dependent.Services!.GetService(
+            "Quantum.ExampleDependentPlugin.DependentPluginState");
+        Assert.NotNull(state);
+        var greeting = Assert.IsType<string>(
+            state.GetType().GetProperty("Greeting")!.GetValue(state));
+        Assert.Contains("quantum.plugin.example-dependent", greeting, StringComparison.Ordinal);
+        Assert.Contains("quantum.plugin.example", greeting, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public async Task InitializeAsync_DiscoversStaticBootstrapWithoutRegisteringIt()
     {
         using var fixture = new RuntimeFixture();
@@ -519,7 +547,7 @@ public sealed class PluginRuntimeManagerTests
                     "quantum.plugin.addon",
                     "2.0.0",
                     """
-                    ,"dependencies":[{"id":"quantum.plugin.example","minVersion":"1.1.0"}]
+                    ,"dependencies":[{"id":"quantum.plugin.example","versionRange":"[1.1.0,)"}]
                     """)),
             new ArchiveFile("addon/wwwroot/dist/plugin.js", "export default { mount() {} };"));
 
@@ -567,7 +595,7 @@ public sealed class PluginRuntimeManagerTests
                     "quantum.plugin.broken",
                     "1.0.0",
                     """
-                    ,"dependencies":[{"id":"quantum.plugin.missing","minVersion":"3.0.0"}]
+                    ,"dependencies":[{"id":"quantum.plugin.missing","versionRange":"[3.0.0,)"}]
                     """)),
             new ArchiveFile("broken/wwwroot/dist/plugin.js", "export default { mount() {} };"));
 
@@ -762,6 +790,10 @@ public sealed class PluginRuntimeManagerTests
 
             SourceAssemblyPath = Path.Combine(AppContext.BaseDirectory, "Quantum.ExamplePlugin.dll");
             Assert.True(File.Exists(SourceAssemblyPath));
+            DependentSourceAssemblyPath = Path.Combine(
+                AppContext.BaseDirectory,
+                "Quantum.ExampleDependentPlugin.dll");
+            Assert.True(File.Exists(DependentSourceAssemblyPath));
             File.Copy(SourceAssemblyPath, Path.Combine(PluginRoot, "Quantum.ExamplePlugin.dll"));
             WriteManifest("1.0.0");
 
@@ -779,6 +811,8 @@ public sealed class PluginRuntimeManagerTests
         public string ShadowRoot { get; }
 
         public string SourceAssemblyPath { get; }
+
+        public string DependentSourceAssemblyPath { get; }
 
         public string DatabasePath => Path.Combine(_root, "quantum.db");
 
@@ -833,7 +867,31 @@ public sealed class PluginRuntimeManagerTests
                   "entryAssembly": "Quantum.ExamplePlugin.dll",
                   "dependencies": [{
                     "id": "quantum.plugin.example",
-                    "minVersion": "1.0.0"
+                    "versionRange": "[1.0.0,)"
+                  }]
+                }
+                """);
+        }
+
+        public void AddExampleDependentPlugin()
+        {
+            var dependentRoot = Path.Combine(
+                ModulesRoot,
+                "quantum.plugin.example-dependent");
+            Directory.CreateDirectory(dependentRoot);
+            File.Copy(
+                DependentSourceAssemblyPath,
+                Path.Combine(dependentRoot, "Quantum.ExampleDependentPlugin.dll"));
+            File.WriteAllText(
+                Path.Combine(dependentRoot, "plugin.json"),
+                """
+                {
+                  "id": "quantum.plugin.example-dependent",
+                  "version": "0.1.0",
+                  "entryAssembly": "Quantum.ExampleDependentPlugin.dll",
+                  "dependencies": [{
+                    "id": "quantum.plugin.example",
+                    "versionRange": "[0.1.0,)"
                   }]
                 }
                 """);
@@ -900,7 +958,7 @@ public sealed class PluginRuntimeManagerTests
                   "entryAssembly": "Quantum.ExamplePlugin.dll",
                   "dependencies": [{
                     "id": "quantum.plugin.dependent",
-                    "minVersion": "1.0.0"
+                    "versionRange": "[1.0.0,)"
                   }]
                 }
                 """);

@@ -1,4 +1,5 @@
 using NOF.Domain;
+using System.Text.Json;
 using Quantum.Plugins;
 
 namespace Quantum.Tests;
@@ -25,8 +26,8 @@ public sealed class JsonPluginManifestReaderTests
               "version": "1.2.0-beta.1",
               "entryAssembly": "Test.dll",
               "database": { "migrations": "./migrations" },
-              "dependencies": [{ "id": "core", "minVersion": "1.0.0" }],
-              "integrations": [{ "id": "optional-addon", "minVersion": "2.0.0" }],
+              "dependencies": [{ "id": "core", "versionRange": "[1.0.0,2.0.0)" }],
+              "integrations": [{ "id": "optional-addon", "versionRange": "{2.0.0,2.1.0}" }],
               "ui": {
                 "routes": [{
                   "path": "/plugins/test",
@@ -54,7 +55,7 @@ public sealed class JsonPluginManifestReaderTests
         Assert.Single(candidate.Manifest.Dependencies);
         var integration = Assert.Single(candidate.Manifest.Integrations);
         Assert.Equal("optional-addon", (string)integration.Id);
-        Assert.Equal("2.0.0", integration.MinimumVersion.ToString());
+        Assert.Equal("{2.0.0,2.1.0}", integration.VersionRange.ToString());
         var route = Assert.Single(candidate.Manifest.Routes);
         Assert.False(route.ShowInNavigation);
         Assert.Single(candidate.Manifest.Web.Head);
@@ -78,6 +79,25 @@ public sealed class JsonPluginManifestReaderTests
         File.WriteAllBytes(Path.Combine(directory.Path, "Test.dll"), []);
 
         Assert.ThrowsAny<Exception>(() => new JsonPluginManifestReader().Read(directory.Path));
+    }
+
+    [Fact]
+    public void Read_RejectsLegacyMinimumVersionField()
+    {
+        using var directory = TemporaryDirectory.Create();
+        File.WriteAllText(
+            Path.Combine(directory.Path, "plugin.json"),
+            """
+            {
+              "id": "quantum.plugin.test",
+              "version": "1.0.0",
+              "entryAssembly": "Test.dll",
+              "dependencies": [{ "id": "core", "minVersion": "1.0.0" }]
+            }
+            """);
+        File.WriteAllBytes(Path.Combine(directory.Path, "Test.dll"), []);
+
+        Assert.Throws<JsonException>(() => new JsonPluginManifestReader().Read(directory.Path));
     }
 
     [Fact]

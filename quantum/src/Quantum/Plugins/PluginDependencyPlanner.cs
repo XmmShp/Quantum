@@ -108,9 +108,10 @@ public sealed class PluginDependencyPlanner
                 return $"Required plugin '{dependency.Id}' is missing or invalid.";
             }
 
-            if (dependencyCandidate.Manifest.Version.CompareTo(dependency.MinimumVersion) < 0)
+            if (!dependency.VersionRange.Contains(dependencyCandidate.Manifest.Version))
             {
-                return $"Plugin '{dependency.Id}' must be at least version {dependency.MinimumVersion}.";
+                return $"Plugin '{dependency.Id}' version {dependencyCandidate.Manifest.Version} "
+                    + $"does not satisfy range {dependency.VersionRange}.";
             }
         }
 
@@ -121,7 +122,7 @@ public sealed class PluginDependencyPlanner
         PluginIntegration integration,
         IReadOnlyDictionary<PluginId, PluginCandidate> active)
         => active.TryGetValue(integration.Id, out var candidate)
-            && candidate.Manifest.Version.CompareTo(integration.MinimumVersion) >= 0;
+            && integration.VersionRange.Contains(candidate.Manifest.Version);
 }
 
 public sealed record PluginLoadPlan(

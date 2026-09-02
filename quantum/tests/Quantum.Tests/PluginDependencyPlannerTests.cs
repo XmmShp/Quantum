@@ -13,7 +13,7 @@ public sealed class PluginDependencyPlannerTests
         var feature = Candidate(
             "feature",
             "1.0.0",
-            dependencies: [new PluginDependency(core.Manifest.Id, SemanticVersion.Of("1.0.0"))]);
+            dependencies: [new PluginDependency(core.Manifest.Id, VersionRange.Of("[1.0.0,)"))]);
 
         var plan = _planner.CreatePlan([feature, core]);
 
@@ -27,11 +27,11 @@ public sealed class PluginDependencyPlannerTests
         var feature = Candidate(
             "feature",
             "1.0.0",
-            dependencies: [new PluginDependency(PluginId.Of("missing"), SemanticVersion.Of("1.0.0"))]);
+            dependencies: [new PluginDependency(PluginId.Of("missing"), VersionRange.Of("[1.0.0,)"))]);
         var child = Candidate(
             "child",
             "1.0.0",
-            dependencies: [new PluginDependency(feature.Manifest.Id, SemanticVersion.Of("1.0.0"))]);
+            dependencies: [new PluginDependency(feature.Manifest.Id, VersionRange.Of("[1.0.0,)"))]);
 
         var plan = _planner.CreatePlan([child, feature]);
 
@@ -46,12 +46,44 @@ public sealed class PluginDependencyPlannerTests
         var feature = Candidate(
             "feature",
             "1.0.0",
-            dependencies: [new PluginDependency(core.Manifest.Id, SemanticVersion.Of("2.0.0"))]);
+            dependencies: [new PluginDependency(core.Manifest.Id, VersionRange.Of("[2.0.0,)"))]);
 
         var plan = _planner.CreatePlan([core, feature]);
 
         Assert.Equal(core.Manifest.Id, Assert.Single(plan.OrderedCandidates).Manifest.Id);
         Assert.Contains(plan.Failures, failure => failure.PluginId == feature.Manifest.Id);
+    }
+
+    [Fact]
+    public void CreatePlan_AcceptsPrereleaseFromUnionRange()
+    {
+        var core = Candidate("core", "1.4.0-beta");
+        var feature = Candidate(
+            "feature",
+            "1.0.0",
+            dependencies: [new PluginDependency(
+                core.Manifest.Id,
+                VersionRange.Of("{1.2.3}|[1.4.0-alpha,1.4.0)"))]);
+
+        var plan = _planner.CreatePlan([feature, core]);
+
+        Assert.Equal([core.Manifest.Id, feature.Manifest.Id], plan.OrderedCandidates.Select(static item => item.Manifest.Id));
+        Assert.Empty(plan.Failures);
+    }
+
+    [Fact]
+    public void CreatePlan_TreatsBuildMetadataAsRangeEquivalent()
+    {
+        var core = Candidate("core", "1.2.3+linux-x64");
+        var feature = Candidate(
+            "feature",
+            "1.0.0",
+            dependencies: [new PluginDependency(core.Manifest.Id, VersionRange.Of("{1.2.3}"))]);
+
+        var plan = _planner.CreatePlan([feature, core]);
+
+        Assert.Equal([core.Manifest.Id, feature.Manifest.Id], plan.OrderedCandidates.Select(static item => item.Manifest.Id));
+        Assert.Empty(plan.Failures);
     }
 
     [Fact]
@@ -62,11 +94,11 @@ public sealed class PluginDependencyPlannerTests
         var first = Candidate(
             "first",
             "1.0.0",
-            dependencies: [new PluginDependency(secondId, SemanticVersion.Of("1.0.0"))]);
+            dependencies: [new PluginDependency(secondId, VersionRange.Of("[1.0.0,)"))]);
         var second = Candidate(
             "second",
             "1.0.0",
-            dependencies: [new PluginDependency(firstId, SemanticVersion.Of("1.0.0"))]);
+            dependencies: [new PluginDependency(firstId, VersionRange.Of("[1.0.0,)"))]);
 
         var plan = _planner.CreatePlan([first, second]);
 
@@ -80,7 +112,7 @@ public sealed class PluginDependencyPlannerTests
         var plugin = Candidate(
             "standalone",
             "1.0.0",
-            integrations: [new PluginIntegration(PluginId.Of("optional-addon"), SemanticVersion.Of("1.0.0"))]);
+            integrations: [new PluginIntegration(PluginId.Of("optional-addon"), VersionRange.Of("[1.0.0,)"))]);
 
         var plan = _planner.CreatePlan([plugin]);
 
@@ -95,7 +127,7 @@ public sealed class PluginDependencyPlannerTests
         var owner = Candidate(
             "a-owner",
             "1.0.0",
-            integrations: [new PluginIntegration(target.Manifest.Id, SemanticVersion.Of("1.1.0"))]);
+            integrations: [new PluginIntegration(target.Manifest.Id, VersionRange.Of("[1.1.0,2.0.0)"))]);
 
         var plan = _planner.CreatePlan([owner, target]);
 
@@ -110,7 +142,7 @@ public sealed class PluginDependencyPlannerTests
         var owner = Candidate(
             "a-owner",
             "1.0.0",
-            integrations: [new PluginIntegration(target.Manifest.Id, SemanticVersion.Of("2.0.0"))]);
+            integrations: [new PluginIntegration(target.Manifest.Id, VersionRange.Of("[2.0.0,)"))]);
 
         var plan = _planner.CreatePlan([target, owner]);
 
@@ -126,11 +158,11 @@ public sealed class PluginDependencyPlannerTests
         var first = Candidate(
             "first",
             "1.0.0",
-            integrations: [new PluginIntegration(secondId, SemanticVersion.Of("1.0.0"))]);
+            integrations: [new PluginIntegration(secondId, VersionRange.Of("[1.0.0,)"))]);
         var second = Candidate(
             "second",
             "1.0.0",
-            integrations: [new PluginIntegration(firstId, SemanticVersion.Of("1.0.0"))]);
+            integrations: [new PluginIntegration(firstId, VersionRange.Of("[1.0.0,)"))]);
 
         var plan = _planner.CreatePlan([second, first]);
 
@@ -146,8 +178,8 @@ public sealed class PluginDependencyPlannerTests
         Assert.Throws<ArgumentException>(() => Candidate(
             "owner",
             "1.0.0",
-            dependencies: [new PluginDependency(targetId, SemanticVersion.Of("1.0.0"))],
-            integrations: [new PluginIntegration(targetId, SemanticVersion.Of("1.0.0"))]));
+            dependencies: [new PluginDependency(targetId, VersionRange.Of("[1.0.0,)"))],
+            integrations: [new PluginIntegration(targetId, VersionRange.Of("[1.0.0,)"))]));
     }
 
     private static PluginCandidate Candidate(

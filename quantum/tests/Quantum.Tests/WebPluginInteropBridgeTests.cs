@@ -79,6 +79,69 @@ public sealed class WebPluginInteropBridgeTests
         Assert.Equal("echo:hello", result.GetString());
     }
 
+    [Fact]
+    public async Task DotNetInvocationBindsPluginIdValueObjectByFullName()
+    {
+        var runtimeId = Guid.NewGuid();
+        var catalog = new PluginCatalog([LoadedWebPlugin(runtimeId)]);
+        await using var host = new ServiceCollection()
+            .AddQuantumPluginEventBus()
+            .AddSingleton<Quantum.Plugin.Abstraction.IQuantumPluginEnvironment>(catalog)
+            .BuildServiceProvider(new ServiceProviderOptions
+            {
+                ValidateOnBuild = true,
+                ValidateScopes = true
+            });
+        using var bridge = CreateBridge(catalog, host, new RejectingEventDeliveryJavaScriptRuntime());
+
+        var result = await bridge.InvokeAsync(
+            PluginId,
+            runtimeId.ToString("N"),
+            Guid.NewGuid().ToString("N"),
+            "dotnet",
+            "invoke",
+            JsonSerializer.SerializeToElement(new
+            {
+                target = "host",
+                service = typeof(Quantum.Plugin.Abstraction.IQuantumPluginEnvironment).FullName,
+                method = nameof(Quantum.Plugin.Abstraction.IQuantumPluginEnvironment.IsPluginLoaded),
+                arguments = new[] { PluginId },
+                parameterTypes = new[] { typeof(Quantum.Plugin.Abstraction.PluginId).FullName }
+            }));
+
+        Assert.True(result.GetBoolean());
+    }
+
+    [Fact]
+    public async Task EnvironmentSnapshotReportsVersionRangeAndCompatibility()
+    {
+        await using var host = CreateHost();
+        var runtimeId = Guid.NewGuid();
+        var catalog = new PluginCatalog([
+            LoadedWebPlugin(
+                runtimeId,
+                [new PluginIntegration(
+                    Quantum.Plugin.Abstraction.PluginId.Of(TargetPluginId),
+                    VersionRange.Of("[1.0.0,2.0.0)"))]),
+            LoadedDotNetPlugin(host)
+        ]);
+        using var bridge = CreateBridge(catalog, host, new RejectingEventDeliveryJavaScriptRuntime());
+
+        var result = await bridge.InvokeAsync(
+            PluginId,
+            runtimeId.ToString("N"),
+            Guid.NewGuid().ToString("N"),
+            "environment",
+            "snapshot",
+            JsonSerializer.SerializeToElement(new { }));
+
+        var integration = Assert.Single(result.GetProperty("integrations").EnumerateArray());
+        Assert.Equal(TargetPluginId, integration.GetProperty("pluginId").GetString());
+        Assert.Equal("[1.0.0,2.0.0)", integration.GetProperty("versionRange").GetString());
+        Assert.True(integration.GetProperty("active").GetBoolean());
+        Assert.False(integration.TryGetProperty("minimumVersion", out _));
+    }
+
     private static ServiceProvider CreateHost()
         => new ServiceCollection()
             .AddQuantumPluginEventBus()
@@ -131,12 +194,15 @@ public sealed class WebPluginInteropBridgeTests
                 payload = new { state = "activated" }
             }));
 
-    private static LoadedPlugin LoadedWebPlugin(Guid runtimeId)
+    private static LoadedPlugin LoadedWebPlugin(
+        Guid runtimeId,
+        IEnumerable<PluginIntegration>? integrations = null)
         => new(
             new PluginManifest(
                 Quantum.Plugin.Abstraction.PluginId.Of(PluginId),
                 SemanticVersion.Of("1.0.0"),
-                PluginRuntimeDefinition.Web("plugin.js")),
+                PluginRuntimeDefinition.Web("plugin.js"),
+                integrations: integrations),
             Path.Combine("plugins", PluginId),
             entryAssembly: null,
             routes: [],

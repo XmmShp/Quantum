@@ -87,7 +87,7 @@ public sealed class PluginCatalogBootstrapperTests
                   "entryAssembly": "Quantum.ExampleDependentPlugin.dll",
                   "dependencies": [{
                     "id": "quantum.plugin.example",
-                    "minVersion": "0.1.0"
+                    "versionRange": "[0.1.0,)"
                   }],
                   "ui": {
                     "routes": [{
@@ -107,7 +107,7 @@ public sealed class PluginCatalogBootstrapperTests
             var dependent = catalog.Plugins[1];
             var dependency = Assert.Single(dependent.Manifest.Dependencies);
             Assert.Equal("quantum.plugin.example", (string)dependency.Id);
-            Assert.Equal("0.1.0", dependency.MinimumVersion.ToString());
+            Assert.Equal("[0.1.0,)", dependency.VersionRange.ToString());
             Assert.Equal(
                 "/plugins/example-dependent",
                 Assert.Single(dependent.Routes).Definition.Path);

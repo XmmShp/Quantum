@@ -73,6 +73,44 @@
   line-height: 1.65;
 }
 
+.dynamic-call {
+  margin-top: 20px;
+  padding: 24px;
+  border: 1px solid rgba(95, 82, 200, 0.16);
+  border-radius: 22px;
+  background: linear-gradient(135deg, rgba(239, 237, 255, 0.9), rgba(255, 255, 255, 0.92));
+}
+
+.dynamic-call span {
+  display: block;
+  color: var(--dependent-accent);
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+}
+
+.dynamic-call > code {
+  display: block;
+  margin-top: 16px;
+  color: #4f43aa;
+  font-size: 13px;
+}
+
+.dynamic-call strong {
+  display: block;
+  margin-top: 22px;
+  color: #332b45;
+  font-size: 22px;
+  line-height: 1.45;
+}
+
+.dynamic-call p {
+  margin: 16px 0 0;
+  color: #746f80;
+  font-size: 13px;
+  line-height: 1.7;
+}
+
 .dependency-arrow {
   color: var(--dependent-accent);
   font-size: 30px;
