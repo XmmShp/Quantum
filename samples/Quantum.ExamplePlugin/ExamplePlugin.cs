@@ -9,6 +9,11 @@ namespace Quantum.ExamplePlugin;
 /// </summary>
 public sealed class ExamplePlugin : IQuantumPlugin
 {
+    public static void ConfigureServices(IServiceCollection services)
+    {
+        services.AddSingleton<ExamplePluginState>();
+    }
+
     public static Task StartAsync(
         IServiceProvider services,
         CancellationToken cancellationToken = default)

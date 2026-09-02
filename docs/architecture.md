@@ -25,7 +25,9 @@ Quantum (单一 NOF MAUI Host 项目)
 3. 按 `dependencies` 删除强前置缺失、版本不满足和硬循环的候选及其下游。
 4. 对剩余插件拓扑排序；兼容且已安装的 `integrations` 形成软排序偏好，但不形成加载门槛。
 5. 把每个候选复制到本次进程专属的影子目录；.NET runtime 创建独立的 collectible `PluginLoadContext`，Web runtime 则生成独立 iframe descriptor。
-6. .NET runtime 读取 NOF 生成的 `IAssemblyInitializer` 并建立私有 DI 容器；Web runtime 先验证 `wwwroot` 下的单文件 ESM 并生成 descriptor。
+6. .NET runtime 先执行 NOF 生成的全部 `IAssemblyInitializer`，再执行每个 `IQuantumPlugin.ConfigureServices`；
+   两条注册链路均完成后建立私有 DI 容器，并发现 `[TransportOverQuantum]` `RpcServer` endpoint。Web runtime
+   先验证 `wwwroot` 下的单文件 ESM 并生成 descriptor。
 7. 为候选代建立私有环境快照和运行期 DI scope；Host 按依赖顺序先应用该插件尚未执行的 SQL migrations，再从入口程序集发现静态 .NET `IQuantumPlugin` bootstrap 并执行 `StartAsync`。bootstrap 不进入 DI，全部成功后再原子发布到宿主 `PluginCatalog`。
 8. MAUI 创建 `BlazorWebView`；路由、菜单、静态文件提供器和 Web 注入订阅同一份动态 `PluginCatalog`。Web descriptor 发布后，宿主才在 opaque-origin iframe 内通过 Blob Module 激活入口。
 
@@ -45,12 +47,19 @@ artifact 不一致时拒绝启动插件。
 因此发布者必须使用向后兼容的 expand/migrate/contract 方案。Host 管理事务边界，artifact 不能包含事务控制语句。
 
 Web runtime 不把宿主对象直接暴露给 iframe。iframe 只能通过经来源校验的 `postMessage` 与宿主通信；父页面再通过
-`DotNetObjectReference` 转发到 capability RPC。`.NET` 调用按次创建 DI scope，可访问宿主或任意已加载 .NET 插件的服务 FQN，
-并在异步结果完成且序列化之后释放 scope。销毁 iframe 会强制终止未正确清理的定时器、事件和模块全局状态。
+`DotNetObjectReference` 转发到 capability RPC。插件 RPC 只传递忽略大小写的路由名、JSON Payload、Context 与 NOF Result；
+每次调用在目标 .NET 插件创建独立 DI scope，并在生成 Handler 完成且结果序列化之后释放。销毁 iframe 会强制终止未正确
+清理的定时器、事件和模块全局状态。
 
-.NET 插件之间只为 manifest 中声明的直接强依赖建立服务桥接：Host 把被依赖插件的运行期 provider 以其 `PluginId`
-注册为调用方容器中的 keyed `IServiceProvider`。调用方可按服务 FQN 解析并通过 `dynamic` 调用；依赖顺序同时保证服务
-提供方先启动、后停止。provider 与服务实例的所有权仍属于提供方，调用方不能释放或跨运行代缓存。
+.NET Contract 使用 `[TransportOverQuantum]` 声明 NOF `IRpcService`，NOF 生成协议无关 Client 接口、`RpcServer` 映射和
+Handler 基类，不生成具体 Quantum Client。Host 从当前运行代发现映射，并为每个方法注册完整
+`pluginId.service.method`、短 `service.method` 与方法 Alias。一个名称有多个实现时，按实现方法所在的规范化 `pluginId`
+做 ordinal 字典序排序并选择最小项，同时记录 Warning；没有实现时返回 `rpc_not_found` 失败 Result。manifest 关系不构成
+RPC 权限，但强依赖顺序仍保证典型提供方先启动、后停止。
+
+调用方只持有绑定自身 `pluginId + runtimeId` 的 `IRpcInvoker`，不会取得或缓存目标 provider、服务实例和 CLR DTO。Host
+在调用方和目标 ALC 两侧分别序列化，运行代停止时先暂停 endpoint 并等待在途调用完成，再清除路由、JSON 类型缓存和
+容器引用，因此旧 ALC 可以被 GC 回收。
 
 ## 插件 EventBus
 

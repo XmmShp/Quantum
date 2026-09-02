@@ -38,7 +38,7 @@
             <strong>@State.WebHandshakeCount</strong>
             <p>
                 @(State.LastWebPluginId is null
-                    ? "等待 TypeScript 插件发起 FQN 调用。"
+                    ? "等待 TypeScript 插件发起名称路由 RPC。"
                     : $"最近调用方：{State.LastWebPluginId}")
             </p>
         </article>

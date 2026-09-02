@@ -1032,24 +1032,11 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                         candidate.Manifest.Id,
                         candidate.Manifest.Version,
                         candidate.RootPath);
-                    var dependencyServices = candidate.Manifest.Dependencies
-                        .Select(dependency => new
-                        {
-                            dependency.Id,
-                            Services = runtimes
-                                .Single(runtime => runtime.Candidate.Manifest.Id == dependency.Id)
-                                .LoadedPlugin.Services
-                        })
-                        .Where(static dependency => dependency.Services is not null)
-                        .ToDictionary(
-                            static dependency => dependency.Id,
-                            static dependency => dependency.Services!);
                     var runtime = await PluginRuntime.CreateAsync(
                             candidate,
                             SessionShadowRoot,
                             _options.DatabasePath,
                             _catalog,
-                            dependencyServices,
                             _hostServices!,
                             _logger)
                         .ConfigureAwait(false);
@@ -1139,9 +1126,15 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             runtimes.Select(static runtime => runtime.LoadedPlugin),
             failures,
             _logger);
+        var rpcRegistry = PluginRpcRegistry.Create(
+            runtimes
+                .Select(static runtime => runtime.LoadedPlugin.RpcRuntime)
+                .OfType<PluginRpcRuntime>(),
+            _logger);
         foreach (var runtime in runtimes)
         {
             runtime.UseEnvironment(environment);
+            runtime.UseRpcRegistry(rpcRegistry);
         }
     }
 

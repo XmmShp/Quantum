@@ -1,4 +1,5 @@
 using Microsoft.Extensions.DependencyInjection;
+using NOF.Contract;
 using Quantum.Plugin.Abstraction;
 
 namespace Quantum.ExampleDependentPlugin;
@@ -8,11 +9,10 @@ namespace Quantum.ExampleDependentPlugin;
 /// </summary>
 public sealed class DependentPlugin : IQuantumPlugin
 {
-    private static readonly PluginId CurrentPluginId = PluginId.Of("quantum.plugin.example-dependent");
     private static readonly PluginId RequiredPluginId = PluginId.Of("quantum.plugin.example");
-    private const string RequiredServiceType = "Quantum.ExamplePlugin.IExamplePluginState";
+    private const string GreetingRpcName = "quantum.plugin.example.example.greet";
 
-    public static Task StartAsync(
+    public static async Task StartAsync(
         IServiceProvider services,
         CancellationToken cancellationToken = default)
     {
@@ -27,17 +27,24 @@ public sealed class DependentPlugin : IQuantumPlugin
                 $"Required plugin '{RequiredPluginId}' was not loaded before the dependent example.");
         }
 
-        var dependencyServices = services.GetRequiredKeyedService<IServiceProvider>(RequiredPluginId);
-        dynamic examplePlugin = dependencyServices.GetService(RequiredServiceType)
-            ?? throw new InvalidOperationException(
-                $"Required service '{RequiredServiceType}' is not registered by '{RequiredPluginId}'.");
-        string greeting = examplePlugin.CreateDependencyGreeting(CurrentPluginId);
+        var greetingResult = await services
+            .GetRequiredService<IRpcInvoker>()
+            .InvokeAsync<string>(
+                GreetingRpcName,
+                new Empty(),
+                Context.Empty,
+                cancellationToken)
+            .ConfigureAwait(false);
+        if (!greetingResult.IsSuccess)
+        {
+            throw new InvalidOperationException(
+                $"RPC '{GreetingRpcName}' failed: {greetingResult.ErrorCode} {greetingResult.Message}");
+        }
 
         services.GetRequiredService<DependentPluginState>().Start(
             DateTimeOffset.Now,
             requiredPlugin,
-            greeting);
-        return Task.CompletedTask;
+            greetingResult.Value);
     }
 
     public static Task StopAsync(

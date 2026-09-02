@@ -5,6 +5,7 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
+using NOF.Contract;
 using Quantum.Plugins;
 
 namespace Quantum.Tests;
@@ -139,7 +140,7 @@ public sealed class PluginRuntimeManagerTests
     }
 
     [Fact]
-    public async Task InitializeAsync_ExampleServiceSupportsWebHandshakeThroughFqn()
+    public async Task InitializeAsync_ExampleRpcSupportsAliasAndSerializedResponse()
     {
         using var fixture = new RuntimeFixture();
         await using var manager = fixture.CreateManager();
@@ -148,32 +149,20 @@ public sealed class PluginRuntimeManagerTests
             fixture.Catalog.Plugins.Count == 1,
             string.Join(Environment.NewLine, fixture.Catalog.Failures.Select(static failure => failure.ToString())));
         var plugin = fixture.Catalog.Plugins[0];
-        var serviceTypeName = "Quantum.ExamplePlugin.IExamplePluginState";
-        var service = plugin.Services!.GetService(serviceTypeName);
-        Assert.NotNull(service);
-        Assert.DoesNotContain(
-            service.GetType().GetInterfaces(),
-            static type => type == typeof(IQuantumPlugin));
-        var contract = Assert.Single(service.GetType().GetInterfaces(), type =>
-            string.Equals(type.FullName, serviceTypeName, StringComparison.Ordinal));
-        var method = contract.GetMethod("CreateWebHandshakeAsync");
-        Assert.NotNull(method);
+        var result = await plugin.Services!
+            .GetRequiredService<IRpcInvoker>()
+            .InvokeAsync<Quantum.ExamplePlugin.ExamplePluginHandshake>(
+                "SAMPLE.HANDSHAKE",
+                new Empty(),
+                Context.Empty);
 
-        var invocation = method.Invoke(service, ["quantum.plugin.example-web", CancellationToken.None]);
-        var task = Assert.IsAssignableFrom<Task>(invocation);
-        await task;
-        var handshake = task.GetType().GetProperty("Result")!.GetValue(task);
-
-        Assert.NotNull(handshake);
-        Assert.Equal(1, handshake.GetType().GetProperty("Sequence")!.GetValue(handshake));
-        Assert.Contains(
-            "quantum.plugin.example-web",
-            Assert.IsType<string>(handshake.GetType().GetProperty("Message")!.GetValue(handshake)),
-            StringComparison.Ordinal);
+        Assert.True(result.IsSuccess, $"{result.ErrorCode}: {result.Message}");
+        Assert.Equal(1, result.Value.Sequence);
+        Assert.Contains("quantum.plugin.example", result.Value.Message, StringComparison.Ordinal);
     }
 
     [Fact]
-    public async Task InitializeAsync_DependentExampleInvokesRequiredPluginServiceThroughKeyedDi()
+    public async Task InitializeAsync_DependentExampleInvokesRequiredPluginThroughRpcInvoker()
     {
         using var fixture = new RuntimeFixture();
         fixture.AddExampleDependentPlugin();
@@ -186,12 +175,11 @@ public sealed class PluginRuntimeManagerTests
         var dependent = fixture.Catalog.FindPlugin("quantum.plugin.example-dependent");
         Assert.NotNull(example);
         Assert.NotNull(dependent);
-        Assert.Same(
-            example.Services,
-            dependent.Services!.GetRequiredKeyedService<IServiceProvider>(
-                PluginId.Of("quantum.plugin.example")));
+        Assert.NotNull(example.Services);
+        Assert.NotNull(dependent.Services!.GetRequiredService<IRpcInvoker>());
 
-        var state = dependent.Services!.GetService(
+        var state = GetPluginService(
+            dependent,
             "Quantum.ExampleDependentPlugin.DependentPluginState");
         Assert.NotNull(state);
         var greeting = Assert.IsType<string>(
@@ -201,7 +189,7 @@ public sealed class PluginRuntimeManagerTests
     }
 
     [Fact]
-    public async Task InitializeAsync_DiscoversStaticBootstrapWithoutRegisteringIt()
+    public async Task InitializeAsync_RunsBootstrapConfigurationAndAssemblyInitializers()
     {
         using var fixture = new RuntimeFixture();
         await using var manager = fixture.CreateManager();
@@ -211,10 +199,12 @@ public sealed class PluginRuntimeManagerTests
         var plugin = Assert.Single(fixture.Catalog.Plugins);
         var services = plugin.Services!;
         var eventBus = services.GetRequiredService<IQuantumEventBus>();
-        var state = services.GetService("Quantum.ExamplePlugin.IExamplePluginState");
+        var concreteState = GetPluginService(plugin, "Quantum.ExamplePlugin.ExamplePluginState");
+        var state = GetPluginService(plugin, "Quantum.ExamplePlugin.IExamplePluginState");
 
         Assert.NotNull(eventBus);
         Assert.Null(services.GetService(typeof(IQuantumPlugin)));
+        Assert.NotNull(concreteState);
         Assert.NotNull(state);
         Assert.True((bool)state.GetType().GetProperty("IsRunning")!.GetValue(state)!);
     }
@@ -227,7 +217,7 @@ public sealed class PluginRuntimeManagerTests
         await manager.InitializeAsync(fixture.HostServices);
 
         var loaded = Assert.Single(fixture.Catalog.Plugins);
-        var state = loaded.Services!.GetService("Quantum.ExamplePlugin.IExamplePluginState");
+        var state = GetPluginService(loaded, "Quantum.ExamplePlugin.IExamplePluginState");
         Assert.NotNull(state);
         Assert.True((bool)state.GetType().GetProperty("IsRunning")!.GetValue(state)!);
 
@@ -304,7 +294,7 @@ public sealed class PluginRuntimeManagerTests
         var rolledBack = Assert.Single(fixture.Catalog.Plugins);
         Assert.Equal("1.0.0", rolledBack.Manifest.Version.ToString());
         Assert.Equal(original.RuntimeId, rolledBack.RuntimeId);
-        var state = rolledBack.Services!.GetService("Quantum.ExamplePlugin.IExamplePluginState");
+        var state = GetPluginService(rolledBack, "Quantum.ExamplePlugin.IExamplePluginState");
         Assert.NotNull(state);
         Assert.True((bool)state.GetType().GetProperty("IsRunning")!.GetValue(state)!);
     }
@@ -721,6 +711,15 @@ public sealed class PluginRuntimeManagerTests
 
         stream.Position = 0;
         return stream;
+    }
+
+    private static object? GetPluginService(LoadedPlugin plugin, string typeName)
+    {
+        var serviceType = plugin.EntryAssembly?.GetType(
+            typeName,
+            throwOnError: true,
+            ignoreCase: false);
+        return serviceType is null ? null : plugin.Services?.GetService(serviceType);
     }
 
     private static string DotNetManifest(string pluginId, string version)

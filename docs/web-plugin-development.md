@@ -1,5 +1,7 @@
 # Quantum TypeScript 插件开发
 
+> **实验性支持：** JavaScript/TypeScript 插件开发目前处于实验阶段，许多能力暂不可用，不建议作为主要开发方式。当前版本请优先使用 [.NET 插件开发指南](plugin-development.md)。
+
 Quantum Web 插件不需要 DLL。宿主把每代插件复制到影子目录，在一个 `sandbox="allow-scripts"`、
 opaque-origin 的独立 iframe 中执行入口模块；卸载或热更新时销毁整个 iframe。
 
@@ -112,6 +114,10 @@ export default definePlugin({
 - `context.signal` 在整个 runtime 停止时 abort。
 - 即使插件没有正确清理，宿主最终也会删除 iframe，浏览上下文中的 DOM、定时器和事件随之释放。
 
+`IQuantumPlugin.ConfigureServices` 配置的是 .NET 插件运行代的 `IServiceCollection`，因此 Web 插件没有对应的
+TypeScript API。Web runtime 不拥有 .NET DI 容器，继续通过 `activate`/cleanup 管理状态和生命周期，并通过
+`context` 使用宿主能力。
+
 ## 4. 宿主能力
 
 SDK 提供日志、导航、环境快照、Topic EventBus、资源读取和通用 RPC：
@@ -157,29 +163,37 @@ schema validator 或显式收窄后再使用。发布会等待当前所有 .NET 
 消息不持久化、不重放。runtime deactivate 会自动退订，iframe 非正常销毁时 Host 也会按 `pluginId + runtimeId` 释放全部
 订阅，防止旧运行代继续收到消息。
 
-## 6. 调用 .NET 服务
+## 6. 调用插件 RPC
 
 ```ts
-const result = await context.dotnet.invoke<MyResult>({
-  target: "host",
-  service: "My.Contracts.INotesService",
-  method: "FindAsync",
-  arguments: [{ text: "quantum" }],
-  parameterTypes: ["My.Contracts.NoteQuery"]
-}, { signal });
+const result = await context.rpc.invoke<MyResult>(
+  "quantum.plugin.notes.notes.find",
+  { text: "quantum" },
+  { traceId: "web-search" },
+  { signal });
+
+if (!result.isSuccess) {
+  throw new Error(`${result.errorCode}: ${result.message}`);
+}
+console.log(result.value);
 ```
 
-`target` 可以是 `host`，也可以是任意已加载的 .NET 插件 id；后者从目标插件的私有容器解析服务，不要求调用方
-在 manifest 中声明 `integration`。Quantum 将已安装插件视为受控代码，导航和 .NET 服务调用均可直接使用。
+服务端方法来自带 `[TransportOverQuantum]` 的 NOF `IRpcService`，可以使用以下任一名称：
 
-互操作约束：
+- `<实现插件 id>.<service name>.<method name>`，例如 `quantum.plugin.notes.notes.find`；
+- `<service name>.<method name>`，例如 `notes.find`；
+- 方法上一个或多个 `[RpcInvocationAlias(...)]` 声明的完整 Alias。
 
-- 服务名和 `parameterTypes` 使用不带程序集名与 `global::` 的 `Type.FullName`。
-- 只允许调用服务契约上的 public instance method；不允许泛型方法、指针或 `ref`/`out` 参数。
-- 参数和结果必须可由 `System.Text.Json` 序列化；重载无法唯一匹配时必须填写 `parameterTypes`。
-- `CancellationToken` 参数由宿主注入。JS Abort 会请求取消，宿主同时有 30 秒超时。
-- 每次调用创建独立 DI scope；返回值序列化完成后释放 scope，不能返回需要继续使用的 scoped 对象或句柄。
-  如果异步方法忽略取消，RPC 会按时结束，但宿主会把 scope 保留到实际任务结束，避免提前释放 scoped 服务。
+Service/method name 优先使用 `[RpcInvocationName]`；否则使用接口名（去掉常规 `I` 前缀）与方法名。全部名称忽略
+大小写。短名称或 Alias 有多个实现时，Host 记录 Warning，并选择实现方法所在 `pluginId` 按 ordinal 字典序最小的一项。
+
+第二个参数是与服务端单一 request 类型对应的 JSON Payload，第三个参数是可选 Context 字典。调用方插件 id 和 runtime id
+由 Host 写入保留 Context 项，插件不能伪造。未实现名称、Payload 不匹配和 Handler 业务失败都返回失败的
+`QuantumResult`；其中未实现名称的错误码为 `rpc_not_found`，不会因为“服务未注册”而 reject Promise。Abort/超时仍按取消
+语义结束 Promise。
+
+RPC 不要求 manifest 声明 `dependency` 或 `integration`。每次调用在目标插件创建独立 DI scope，等待 NOF 生成的 Handler
+完成，在 Result 序列化后释放 scope；iframe 不接触 CLR TypeName、`IServiceProvider`、服务实例或反射重载。
 
 ## 7. 构建与调试
 
@@ -189,7 +203,7 @@ npm run build
 
 把 `plugin.json` 和 `wwwroot` 复制到 `Modules/<plugin-id>` 后执行“重新扫描 Modules”。仓库内的
 `samples/Quantum.ExampleWebPlugin` 展示了 iframe 页面、环境查询、导航，以及在没有 integration 声明时对
-`samples/Quantum.ExamplePlugin` 发起 .NET FQN 异步握手调用；打开 .NET 示例页可以看到 JS 发起的累计握手次数。
+`samples/Quantum.ExamplePlugin` 发起 Alias `sample.handshake` 异步调用；打开 .NET 示例页可以看到 JS 发起的累计握手次数。
 
 也可以把 `plugin.json` 与 `wwwroot` 放在同一个插件目录中打成 ZIP，直接拖到 Quantum 窗口中的任意位置安装；单插件包与多插件整合包使用相同流程，包内插件目录不能互相嵌套。宿主会与已安装版本按 SemVer 择优，并在确认前用同一份新快照校验 Web 入口、强依赖和所有 .NET / Web 插件的兼容性。完整包结构、安全限制与事务语义见 [.NET 插件开发指南的分发 ZIP 安装包章节](plugin-development.md#8-分发-zip-安装包)。
 

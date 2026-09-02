@@ -13,6 +13,9 @@ internal sealed class PluginRuntime
     private readonly AsyncServiceScope? _lifecycleScope;
     private readonly PluginEnvironmentProxy? _environment;
     private readonly PluginEventBus? _eventBus;
+    private readonly PluginRpcSerializer? _rpcSerializer;
+    private readonly PluginRpcInvoker? _rpcInvoker;
+    private readonly PluginRpcRuntime? _rpcRuntime;
     private readonly IReadOnlyList<PluginBootstrap> _bootstraps;
     private readonly string _databasePath;
     private readonly bool _usesDatabase;
@@ -31,6 +34,9 @@ internal sealed class PluginRuntime
         AsyncServiceScope? lifecycleScope,
         PluginEnvironmentProxy? environment,
         PluginEventBus? eventBus,
+        PluginRpcSerializer? rpcSerializer,
+        PluginRpcInvoker? rpcInvoker,
+        PluginRpcRuntime? rpcRuntime,
         IReadOnlyList<PluginBootstrap> bootstraps,
         bool usesDatabase,
         LoadedPlugin loadedPlugin,
@@ -44,6 +50,9 @@ internal sealed class PluginRuntime
         _lifecycleScope = lifecycleScope;
         _environment = environment;
         _eventBus = eventBus;
+        _rpcSerializer = rpcSerializer;
+        _rpcInvoker = rpcInvoker;
+        _rpcRuntime = rpcRuntime;
         _bootstraps = bootstraps;
         _usesDatabase = usesDatabase;
         _started = new bool[bootstraps.Count];
@@ -67,6 +76,11 @@ internal sealed class PluginRuntime
         {
             _environment.Target = environment;
         }
+    }
+
+    public void UseRpcRegistry(PluginRpcRegistry registry)
+    {
+        _rpcInvoker?.UseRegistry(registry);
     }
 
     public async Task StartAsync(CancellationToken cancellationToken)
@@ -126,6 +140,7 @@ internal sealed class PluginRuntime
                 LoadedPlugin.RuntimeId);
         }
 
+        _rpcRuntime?.Resume();
         _eventBus?.Resume();
         try
         {
@@ -155,6 +170,11 @@ internal sealed class PluginRuntime
         catch
         {
             _eventBus?.Pause();
+            if (_rpcRuntime is not null)
+            {
+                await _rpcRuntime.PauseAsync(CancellationToken.None).ConfigureAwait(false);
+            }
+
             throw;
         }
     }
@@ -166,7 +186,19 @@ internal sealed class PluginRuntime
         if (services is null)
         {
             _eventBus?.Pause();
+            if (_rpcRuntime is not null)
+            {
+                await _rpcRuntime.PauseAsync(cancellationToken).ConfigureAwait(false);
+            }
+
             return failures;
+        }
+
+        if (_rpcRuntime is not null)
+        {
+            // Stop accepting new calls and let current handlers release their per-call scopes
+            // before lifecycle hooks begin tearing down plugin-owned state.
+            await _rpcRuntime.PauseAsync(cancellationToken).ConfigureAwait(false);
         }
 
         if (_started.Any(static started => started))
@@ -231,17 +263,30 @@ internal sealed class PluginRuntime
         {
             try
             {
-                if (_lifecycleScope is { } lifecycleScope)
+                if (_rpcRuntime is not null)
                 {
-                    await lifecycleScope.DisposeAsync().ConfigureAwait(false);
+                    await _rpcRuntime.DisposeAsync().ConfigureAwait(false);
+                }
+
+                try
+                {
+                    if (_lifecycleScope is { } lifecycleScope)
+                    {
+                        await lifecycleScope.DisposeAsync().ConfigureAwait(false);
+                    }
+                }
+                finally
+                {
+                    if (_services is not null)
+                    {
+                        await _services.DisposeAsync().ConfigureAwait(false);
+                    }
                 }
             }
             finally
             {
-                if (_services is not null)
-                {
-                    await _services.DisposeAsync().ConfigureAwait(false);
-                }
+                _rpcInvoker?.Dispose();
+                _rpcSerializer?.Dispose();
             }
         }
         finally
@@ -255,14 +300,12 @@ internal sealed class PluginRuntime
         string sessionShadowRoot,
         string databasePath,
         PluginCatalog catalog,
-        IReadOnlyDictionary<PluginId, IServiceProvider> dependencyServices,
         IServiceProvider hostServices,
         ILogger logger)
     {
         ArgumentNullException.ThrowIfNull(candidate);
         ArgumentException.ThrowIfNullOrWhiteSpace(databasePath);
         ArgumentNullException.ThrowIfNull(catalog);
-        ArgumentNullException.ThrowIfNull(dependencyServices);
         ArgumentNullException.ThrowIfNull(hostServices);
 
         var runtimeId = Guid.NewGuid();
@@ -287,6 +330,9 @@ internal sealed class PluginRuntime
         PluginLoadContext? loadContext = null;
         ServiceProvider? services = null;
         AsyncServiceScope? lifecycleScope = null;
+        PluginRpcSerializer? rpcSerializer = null;
+        PluginRpcInvoker? rpcInvoker = null;
+        PluginRpcRuntime? rpcRuntime = null;
         try
         {
             if (candidate.Manifest.Runtime.Kind == PluginRuntimeKind.Web)
@@ -328,6 +374,9 @@ internal sealed class PluginRuntime
                     lifecycleScope: null,
                     environment: null,
                     eventBus: null,
+                    rpcSerializer: null,
+                    rpcInvoker: null,
+                    rpcRuntime: null,
                     bootstraps: [],
                     usesDatabase: false,
                     loadedPlugin: webPlugin,
@@ -353,24 +402,20 @@ internal sealed class PluginRuntime
                 candidate.Manifest.Id,
                 candidate.Manifest.Version);
             var eventHub = hostServices.GetRequiredService<PluginEventHub>();
+            rpcSerializer = new PluginRpcSerializer();
+            rpcInvoker = new PluginRpcInvoker(candidate.Manifest.Id, runtimeId, rpcSerializer);
             serviceCollection.AddSingleton<IQuantumPluginEnvironment>(environment);
             serviceCollection.AddSingleton<IQuantumPluginRuntimeContext>(new PluginRuntimeContext(
                 pluginInfo,
                 shadowRoot));
             serviceCollection.AddSingleton<IQuantumEventBus>(
                 _ => new PluginEventBus(pluginInfo, eventHub));
-            // The dependency runtime owns these provider instances. Reverse stop/disposal order
-            // guarantees that the consumer releases them before their containers are torn down.
-            foreach (var dependency in dependencyServices)
-            {
-                serviceCollection.AddKeyedSingleton<IServiceProvider>(
-                    dependency.Key,
-                    dependency.Value);
-            }
+            serviceCollection.AddSingleton<IRpcInvoker>(rpcInvoker);
 
             CopyHostService<ILoggerFactory>(hostServices, serviceCollection);
             serviceCollection.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
             InitializePluginServices(assembly, serviceCollection);
+            ConfigurePluginServices(bootstraps, serviceCollection);
             var usesDatabase = serviceCollection.Any(static descriptor =>
                 descriptor.ServiceType == typeof(IDbContextModelCreatingContributor));
             if (usesDatabase)
@@ -383,6 +428,13 @@ internal sealed class PluginRuntime
                 ValidateScopes = true
             });
             var eventBus = (PluginEventBus)services.GetRequiredService<IQuantumEventBus>();
+            rpcRuntime = PluginRpcRuntime.Create(
+                candidate.Manifest.Id,
+                runtimeId,
+                assembly,
+                services.GetRequiredService<IServiceScopeFactory>(),
+                rpcSerializer,
+                logger);
 
             var ownedScope = services.CreateAsyncScope();
             ownedScope.ServiceProvider.ResolveDaemonServices(); lifecycleScope = ownedScope;
@@ -392,7 +444,10 @@ internal sealed class PluginRuntime
                 assembly,
                 routes,
                 runtimeId,
-                ownedScope.ServiceProvider);
+                ownedScope.ServiceProvider)
+            {
+                RpcRuntime = rpcRuntime
+            };
             logger.LogInformation(
                 "Prepared .NET plugin {PluginId} runtime {RuntimeId}; assembly: {EntryAssembly}; "
                 + "routes: {RouteCount}; bootstraps: {BootstrapCount}; database services: {UsesDatabase}.",
@@ -411,6 +466,9 @@ internal sealed class PluginRuntime
                 lifecycleScope,
                 environment,
                 eventBus,
+                rpcSerializer,
+                rpcInvoker,
+                rpcRuntime,
                 bootstraps,
                 usesDatabase,
                 loadedPlugin,
@@ -420,6 +478,11 @@ internal sealed class PluginRuntime
         {
             try
             {
+                if (rpcRuntime is not null)
+                {
+                    await rpcRuntime.DisposeAsync().ConfigureAwait(false);
+                }
+
                 if (lifecycleScope is { } ownedScope)
                 {
                     await ownedScope.DisposeAsync().ConfigureAwait(false);
@@ -436,6 +499,8 @@ internal sealed class PluginRuntime
                 }
                 finally
                 {
+                    rpcInvoker?.Dispose();
+                    rpcSerializer?.Dispose();
                     loadContext?.Unload();
                     PluginShadowCopy.TryDelete(shadowRoot);
                 }
@@ -494,6 +559,26 @@ internal sealed class PluginRuntime
         }
     }
 
+    private static void ConfigurePluginServices(
+        IReadOnlyList<PluginBootstrap> bootstraps,
+        IServiceCollection services)
+    {
+        foreach (var bootstrap in bootstraps)
+        {
+            try
+            {
+                bootstrap.ConfigureServices(services);
+            }
+            catch (Exception exception)
+            {
+                throw new InvalidOperationException(
+                    $"Plugin bootstrap '{bootstrap.Type.FullName}' failed to configure services: "
+                    + exception.Message,
+                    exception);
+            }
+        }
+    }
+
     private static IReadOnlyList<PluginBootstrap> DiscoverPluginBootstraps(Assembly assembly)
         => GetLoadableTypes(assembly)
             .Where(static type => !type.IsInterface && typeof(IQuantumPlugin).IsAssignableFrom(type))
@@ -521,6 +606,7 @@ internal sealed class PluginRuntime
 
     private sealed record PluginBootstrap(
         Type Type,
+        Action<IServiceCollection> ConfigureServices,
         Func<IServiceProvider, CancellationToken, Task> StartAsync,
         Func<IServiceProvider, CancellationToken, Task> StopAsync)
     {
@@ -529,9 +615,17 @@ internal sealed class PluginRuntime
             var invokerType = typeof(PluginBootstrapInvoker<>).MakeGenericType(type);
             return new PluginBootstrap(
                 type,
+                CreateConfigureServicesDelegate(invokerType),
                 CreateDelegate(invokerType, nameof(StartAsync)),
                 CreateDelegate(invokerType, nameof(StopAsync)));
         }
+
+        private static Action<IServiceCollection> CreateConfigureServicesDelegate(Type invokerType)
+            => (Action<IServiceCollection>)invokerType
+                .GetMethod(
+                    nameof(ConfigureServices),
+                    BindingFlags.Public | BindingFlags.Static)!
+                .CreateDelegate(typeof(Action<IServiceCollection>));
 
         private static Func<IServiceProvider, CancellationToken, Task> CreateDelegate(
             Type invokerType,
@@ -544,6 +638,9 @@ internal sealed class PluginRuntime
     private static class PluginBootstrapInvoker<TPlugin>
         where TPlugin : IQuantumPlugin
     {
+        public static void ConfigureServices(IServiceCollection services)
+            => TPlugin.ConfigureServices(services);
+
         public static Task StartAsync(
             IServiceProvider services,
             CancellationToken cancellationToken)

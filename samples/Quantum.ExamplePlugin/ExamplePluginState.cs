@@ -1,4 +1,3 @@
-using Microsoft.Extensions.DependencyInjection;
 using Quantum.Plugin.Abstraction;
 
 namespace Quantum.ExamplePlugin;
@@ -14,12 +13,6 @@ public interface IExamplePluginState
     int WebHandshakeCount { get; }
 
     string? LastWebPluginId { get; }
-
-    string CreateDependencyGreeting(PluginId callerPluginId);
-
-    Task<ExamplePluginHandshake> CreateWebHandshakeAsync(
-        string webPluginId,
-        CancellationToken cancellationToken = default);
 }
 
 public sealed record ExamplePluginHandshake(
@@ -28,9 +21,6 @@ public sealed record ExamplePluginHandshake(
     DateTimeOffset DotNetStartedAt,
     bool WebPluginAvailable);
 
-[AutoInject(
-    ServiceLifetime.Singleton,
-    RegisterTypes = [typeof(ExamplePluginState)])]
 public sealed class ExamplePluginState
 {
     private int _webHandshakeCount;

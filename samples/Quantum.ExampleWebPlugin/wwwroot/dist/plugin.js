@@ -302,9 +302,9 @@ var index_default = definePlugin({
         <h1>Quantum Web Runtime</h1>
         <p>\u5F53\u524D\u89C6\u56FE\uFF1A${escapeHtml(context.route.view)}</p>
         <p data-environment-status>\u6B63\u5728\u8BFB\u53D6 Quantum \u63D2\u4EF6\u73AF\u5883\u2026</p>
-        <p data-host-status>\u6B63\u5728\u901A\u8FC7 FQN \u67E5\u8BE2 .NET \u5BBF\u4E3B\u2026</p>
+        <p data-host-status>\u8C03\u7528\u53EA\u643A\u5E26 RPC \u540D\u79F0\u4E0E JSON Payload\uFF0C\u4E0D\u4F9D\u8D56\u4EFB\u4F55 CLR \u7C7B\u578B\u3002</p>
         <div class="interop">
-          <strong>TypeScript \u2192 .NET \u63D2\u4EF6 FQN \u8C03\u7528</strong>
+          <strong>TypeScript \u2192 Quantum RPC \u2192 .NET Handler</strong>
           <p data-handshake-status>\u7B49\u5F85\u73AF\u5883\u67E5\u8BE2\u5B8C\u6210\u2026</p>
           <small data-handshake-meta></small>
         </div>
@@ -318,7 +318,6 @@ var index_default = definePlugin({
     const status = context.element.querySelector("[data-handshake-status]");
     const metadata = context.element.querySelector("[data-handshake-meta]");
     const environmentStatus = context.element.querySelector("[data-environment-status]");
-    const hostStatus = context.element.querySelector("[data-host-status]");
     const handshakeButton = context.element.querySelector("[data-action=handshake]");
     let dotNetPluginAvailable = null;
     const requestHandshake = async () => {
@@ -338,13 +337,16 @@ var index_default = definePlugin({
         if (metadata) {
           metadata.textContent = "";
         }
-        const handshake = await context.dotnet.invoke({
-          target: "quantum.plugin.example",
-          service: "Quantum.ExamplePlugin.IExamplePluginState",
-          method: "CreateWebHandshakeAsync",
-          arguments: [context.plugin.id],
-          parameterTypes: ["System.String"]
-        }, { signal: context.signal });
+        const result = await context.rpc.invoke(
+          "sample.handshake",
+          {},
+          {},
+          { signal: context.signal }
+        );
+        if (!result.isSuccess) {
+          throw new Error(`${result.errorCode}: ${result.message}`);
+        }
+        const handshake = result.value;
         if (status) {
           status.textContent = handshake.message;
         }
@@ -374,22 +376,6 @@ var index_default = definePlugin({
       } catch (error) {
         if (!context.signal.aborted && environmentStatus) {
           environmentStatus.textContent = `\u73AF\u5883\u67E5\u8BE2\u5931\u8D25\uFF1A${errorMessage(error)}`;
-        }
-      }
-      try {
-        const recognizesItself = await context.dotnet.invoke({
-          target: "host",
-          service: "Quantum.Plugin.Abstraction.IQuantumPluginEnvironment",
-          method: "IsPluginLoaded",
-          arguments: [context.plugin.id],
-          parameterTypes: ["Quantum.Plugin.Abstraction.PluginId"]
-        }, { signal: context.signal });
-        if (!context.signal.aborted && hostStatus) {
-          hostStatus.textContent = `.NET \u5BBF\u4E3B\u8BC6\u522B\u5F53\u524D\u63D2\u4EF6\uFF1A${recognizesItself ? "\u662F" : "\u5426"}\u3002`;
-        }
-      } catch (error) {
-        if (!context.signal.aborted && hostStatus) {
-          hostStatus.textContent = `\u5BBF\u4E3B FQN \u8C03\u7528\u5931\u8D25\uFF1A${errorMessage(error)}`;
         }
       }
       await requestHandshake();

@@ -1,18 +1,17 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
-using System.Reflection;
 using System.Text.Json;
 using Microsoft.AspNetCore.Components;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
+using NOF.Contract;
 using Quantum.Plugins;
 
 namespace Quantum.WebPlugins;
 
 public sealed class WebPluginInteropBridge(
     PluginCatalog catalog,
-    IServiceProvider hostServices,
+    PluginRpcRouter rpcRouter,
     NavigationManager navigation,
     IJSRuntime javaScript,
     QuantumPluginEventBusFactory eventBusFactory,
@@ -78,7 +77,11 @@ public sealed class WebPluginInteropBridge(
                     .ConfigureAwait(false),
                 "assets" => await InvokeAssetsAsync(plugin, method, arguments, cancellation.Token)
                     .ConfigureAwait(false),
-                "dotnet" => await InvokeDotNetAsync(method, arguments, cancellation.Token)
+                "rpc" => await InvokePluginRpcAsync(
+                        plugin,
+                        method,
+                        arguments,
+                        cancellation.Token)
                     .ConfigureAwait(false),
                 _ => throw new InvalidOperationException($"Unknown Web plugin capability '{capability}'.")
             };
@@ -361,245 +364,66 @@ public sealed class WebPluginInteropBridge(
         return Serialize(await File.ReadAllTextAsync(path, cancellationToken).ConfigureAwait(false));
     }
 
-    private async Task<JsonElement> InvokeDotNetAsync(
+    private async Task<JsonElement> InvokePluginRpcAsync(
+        LoadedPlugin plugin,
         string method,
         JsonElement arguments,
         CancellationToken cancellationToken)
     {
         if (!string.Equals(method, "invoke", StringComparison.Ordinal))
         {
-            throw new InvalidOperationException($"Unknown .NET interop method '{method}'.");
+            throw new InvalidOperationException($"Unknown plugin RPC method '{method}'.");
         }
 
-        var target = OptionalString(arguments, "target") ?? "host";
-        var serviceTypeName = RequireString(arguments, "service");
-        var methodName = RequireString(arguments, "method");
-
-        var provider = ResolveTargetProvider(target);
-        AsyncServiceScope? scope = null;
-        if (provider.GetService<IServiceScopeFactory>() is { } scopeFactory)
+        if (arguments.ValueKind != JsonValueKind.Object
+            || OptionalString(arguments, "rpcName") is not { } rpcName)
         {
-            var ownedScope = scopeFactory.CreateAsyncScope();
-            ownedScope.ServiceProvider.ResolveDaemonServices();
-            scope = ownedScope;
+            return Serialize(Result.Fail(
+                PluginRpcErrors.InvalidName,
+                "RPC argument 'rpcName' is required."));
         }
-        try
+
+        if (!arguments.TryGetProperty("payload", out var payload))
         {
-            var effectiveProvider = scope?.ServiceProvider ?? provider;
-            var service = effectiveProvider.GetService(serviceTypeName)
-                ?? throw new InvalidOperationException(
-                    $"Service '{serviceTypeName}' is not registered in target '{target}'.");
-            var argumentArray = arguments.TryGetProperty("arguments", out var values)
-                ? values
-                : EmptyJsonArray;
-            var parameterTypes = ReadStringArray(arguments, "parameterTypes");
-            var invocation = BindMethod(
-                ResolveContractType(service, serviceTypeName),
-                methodName,
-                argumentArray,
-                parameterTypes,
-                cancellationToken);
+            return Serialize(Result.Fail(
+                PluginRpcErrors.InvalidPayload,
+                "RPC argument 'payload' is required."));
+        }
 
-            object? result;
-            try
+        var contextItems = new Dictionary<string, JsonElement>(StringComparer.Ordinal);
+        if (arguments.TryGetProperty("context", out var context)
+            && context.ValueKind != JsonValueKind.Null)
+        {
+            if (context.ValueKind != JsonValueKind.Object)
             {
-                result = invocation.Method.Invoke(service, invocation.Arguments);
+                return Serialize(Result.Fail(
+                    PluginRpcErrors.InvalidContext,
+                    "RPC argument 'context' must be an object."));
             }
-            catch (TargetInvocationException exception) when (exception.InnerException is not null)
+            foreach (var item in context.EnumerateObject())
             {
-                throw new InvalidOperationException(exception.InnerException.Message, exception.InnerException);
-            }
-
-            var asynchronousResult = NormalizeResult(result, invocation.Method.ReturnType);
-            if (asynchronousResult.Completion is { } completion)
-            {
-                try
+                if (PluginRpcInvoker.IsReservedContextKey(item.Name)
+                    || !contextItems.TryAdd(item.Name, item.Value.Clone()))
                 {
-                    await completion.WaitAsync(cancellationToken).ConfigureAwait(false);
-                }
-                catch (OperationCanceledException) when (!completion.IsCompleted && scope is { } deferredScope)
-                {
-                    // WaitAsync does not stop a service method that ignores CancellationToken. Keep
-                    // its scope alive until the underlying operation actually settles.
-                    scope = null;
-                    _ = DisposeScopeWhenCompletedAsync(completion, deferredScope);
-                    throw;
+                    return Serialize(Result.Fail(
+                        PluginRpcErrors.InvalidContext,
+                        "RPC context keys must be unique and cannot use Quantum reserved keys."));
                 }
             }
-
-            result = asynchronousResult.GetResult();
-            return Serialize(result);
-        }
-        finally
-        {
-            if (scope is { } ownedScope)
-            {
-                await ownedScope.DisposeAsync().ConfigureAwait(false);
-            }
-        }
-    }
-
-    private IServiceProvider ResolveTargetProvider(string target)
-    {
-        if (string.Equals(target, "host", StringComparison.Ordinal))
-        {
-            return hostServices;
         }
 
-        var targetPlugin = catalog.FindPlugin(target)
-            ?? throw new InvalidOperationException($"Target plugin '{target}' is not loaded.");
-        return targetPlugin.Services
-            ?? throw new InvalidOperationException(
-                $"Target plugin '{target}' does not expose a .NET service provider.");
-    }
-
-    private static BoundInvocation BindMethod(
-        Type contractType,
-        string methodName,
-        JsonElement arguments,
-        IReadOnlyList<string>? parameterTypes,
-        CancellationToken cancellationToken)
-    {
-        if (arguments.ValueKind != JsonValueKind.Array)
-        {
-            throw new InvalidOperationException(".NET invocation arguments must be a JSON array.");
-        }
-
-        var suppliedArguments = arguments.EnumerateArray().Select(static item => item.Clone()).ToArray();
-        var matches = new List<BoundInvocation>();
-        foreach (var method in contractType.GetMethods(BindingFlags.Public | BindingFlags.Instance)
-                     .Where(candidate => string.Equals(candidate.Name, methodName, StringComparison.Ordinal)
-                         && !candidate.ContainsGenericParameters
-                         && !candidate.IsSpecialName))
-        {
-            var parameters = method.GetParameters();
-            var serializableParameters = parameters
-                .Where(static parameter => parameter.ParameterType != typeof(CancellationToken))
-                .ToArray();
-            if (serializableParameters.Length != suppliedArguments.Length
-                || parameters.Any(static parameter => parameter.ParameterType.IsByRef
-                    || parameter.ParameterType.IsPointer))
-            {
-                continue;
-            }
-
-            if (parameterTypes is not null
-                && (parameterTypes.Count != serializableParameters.Length
-                    || parameterTypes.Where((name, index) => !string.Equals(
-                        name,
-                        serializableParameters[index].ParameterType.FullName,
-                        StringComparison.Ordinal)).Any()))
-            {
-                continue;
-            }
-
-            var boundArguments = new object?[parameters.Length];
-            var suppliedIndex = 0;
-            var failed = false;
-            for (var parameterIndex = 0; parameterIndex < parameters.Length; parameterIndex++)
-            {
-                var parameter = parameters[parameterIndex];
-                if (parameter.ParameterType == typeof(CancellationToken))
-                {
-                    boundArguments[parameterIndex] = cancellationToken;
-                    continue;
-                }
-
-                try
-                {
-                    boundArguments[parameterIndex] = suppliedArguments[suppliedIndex]
-                        .Deserialize(parameter.ParameterType, SerializerOptions);
-                    suppliedIndex++;
-                }
-                catch (Exception exception) when (exception is JsonException or NotSupportedException)
-                {
-                    failed = true;
-                    break;
-                }
-            }
-
-            if (!failed)
-            {
-                matches.Add(new BoundInvocation(method, boundArguments));
-            }
-        }
-
-        return matches.Count switch
-        {
-            1 => matches[0],
-            0 => throw new MissingMethodException(
-                $"No callable overload '{contractType.FullName}.{methodName}' matches the supplied arguments."),
-            _ => throw new AmbiguousMatchException(
-                $"More than one overload '{contractType.FullName}.{methodName}' matches; supply parameterTypes.")
-        };
-    }
-
-    private static Type ResolveContractType(object service, string serviceTypeName)
-    {
-        var implementationType = service.GetType();
-        if (string.Equals(implementationType.FullName, serviceTypeName, StringComparison.Ordinal))
-        {
-            return implementationType;
-        }
-
-        return implementationType.GetInterfaces().SingleOrDefault(candidate => string.Equals(
-                candidate.FullName,
-                serviceTypeName,
-                StringComparison.Ordinal))
-            ?? throw new InvalidOperationException(
-                $"Resolved service '{implementationType.FullName}' does not implement '{serviceTypeName}'.");
-    }
-
-    private static NormalizedResult NormalizeResult(object? result, Type returnType)
-    {
-        if (returnType == typeof(void))
-        {
-            return new NormalizedResult(Completion: null, static () => null);
-        }
-
-        if (result is Task task)
-        {
-            return new NormalizedResult(
-                task,
-                () => returnType.IsGenericType ? returnType.GetProperty("Result")?.GetValue(result) : null);
-        }
-
-        if (returnType == typeof(ValueTask))
-        {
-            return new NormalizedResult(((ValueTask)result!).AsTask(), static () => null);
-        }
-
-        if (returnType.IsGenericType && returnType.GetGenericTypeDefinition() == typeof(ValueTask<>))
-        {
-            var taskResult = (Task)returnType.GetMethod("AsTask")!.Invoke(result, null)!;
-            return new NormalizedResult(
-                taskResult,
-                () => taskResult.GetType().GetProperty("Result")?.GetValue(taskResult));
-        }
-
-        return new NormalizedResult(Completion: null, () => result);
-    }
-
-    private async Task DisposeScopeWhenCompletedAsync(Task completion, AsyncServiceScope scope)
-    {
-        try
-        {
-            await completion.ConfigureAwait(false);
-        }
-        catch (Exception)
-        {
-            // The RPC caller already observed cancellation or timeout. The underlying service
-            // failure is intentionally observed here so it cannot become unobserved.
-        }
-
-        try
-        {
-            await scope.DisposeAsync().ConfigureAwait(false);
-        }
-        catch (Exception exception) when (exception is not OutOfMemoryException)
-        {
-            logger.LogWarning(exception, "Could not dispose a deferred Web plugin RPC scope.");
-        }
+        var invocation = await rpcRouter.InvokeAsync(
+                rpcName,
+                payload.Clone(),
+                new PluginRpcCallContext(
+                    (string)plugin.Manifest.Id,
+                    plugin.RuntimeId.ToString("N"),
+                    contextItems),
+                cancellationToken)
+            .ConfigureAwait(false);
+        return invocation.Failure is not null
+            ? Serialize(invocation.Failure)
+            : invocation.SerializedResult!.Value;
     }
 
     private static string ResolvePluginAssetPath(LoadedPlugin plugin, string relativePath)
@@ -648,26 +472,6 @@ public sealed class WebPluginInteropBridge(
         return value.Clone();
     }
 
-    private static IReadOnlyList<string>? ReadStringArray(JsonElement arguments, string propertyName)
-    {
-        if (arguments.ValueKind != JsonValueKind.Object
-            || !arguments.TryGetProperty(propertyName, out var values)
-            || values.ValueKind == JsonValueKind.Null)
-        {
-            return null;
-        }
-
-        if (values.ValueKind != JsonValueKind.Array)
-        {
-            throw new InvalidOperationException($"RPC argument '{propertyName}' must be an array.");
-        }
-
-        return values.EnumerateArray()
-            .Select(value => value.GetString()
-                ?? throw new InvalidOperationException($"RPC argument '{propertyName}' must contain strings."))
-            .ToArray();
-    }
-
     private static JsonElement Serialize(object? value)
         => JsonSerializer.SerializeToElement(value, value?.GetType() ?? typeof(object), SerializerOptions);
 
@@ -687,12 +491,6 @@ public sealed class WebPluginInteropBridge(
         {
         }
     }
-
-    private static JsonElement EmptyJsonArray { get; } = JsonSerializer.SerializeToElement(Array.Empty<object>());
-
-    private sealed record BoundInvocation(MethodInfo Method, object?[] Arguments);
-
-    private sealed record NormalizedResult(Task? Completion, Func<object?> GetResult);
 
     private sealed class WebEventBusRuntime(QuantumPluginEventBusHandle bus)
         : IDisposable, IAsyncDisposable

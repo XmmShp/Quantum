@@ -3,6 +3,8 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Microsoft.JSInterop;
+using NOF.Application;
+using NOF.Contract;
 using Quantum.Plugins;
 using Quantum.WebPlugins;
 
@@ -22,7 +24,8 @@ public sealed class WebPluginInteropBridgeTests
         var newRuntimeId = Guid.NewGuid();
         var catalog = new PluginCatalog([LoadedWebPlugin(oldRuntimeId)]);
         var javaScript = new RejectingEventDeliveryJavaScriptRuntime();
-        using var bridge = CreateBridge(catalog, host, javaScript);
+        using var rpcRouter = new PluginRpcRouter(catalog, NullLogger<PluginRpcRouter>.Instance);
+        using var bridge = CreateBridge(catalog, rpcRouter, host, javaScript);
         await SubscribeAsync(bridge, oldRuntimeId);
 
         catalog.Replace([LoadedWebPlugin(newRuntimeId)]);
@@ -40,7 +43,8 @@ public sealed class WebPluginInteropBridgeTests
         var runtimeId = Guid.NewGuid();
         var catalog = new PluginCatalog([LoadedWebPlugin(runtimeId)]);
         var javaScript = new RejectingEventDeliveryJavaScriptRuntime();
-        using var bridge = CreateBridge(catalog, host, javaScript);
+        using var rpcRouter = new PluginRpcRouter(catalog, NullLogger<PluginRpcRouter>.Instance);
+        using var bridge = CreateBridge(catalog, rpcRouter, host, javaScript);
         await SubscribeAsync(bridge, runtimeId);
 
         var exception = await Assert.ThrowsAsync<AggregateException>(async () =>
@@ -51,65 +55,69 @@ public sealed class WebPluginInteropBridgeTests
     }
 
     [Fact]
-    public async Task DotNetInvocationDoesNotRequireAnIntegrationDeclaration()
+    public async Task RpcInvocationDoesNotRequireAnIntegrationDeclaration()
     {
         await using var host = CreateHost();
+        await using var target = CreateRpcTarget(host);
         var runtimeId = Guid.NewGuid();
         var catalog = new PluginCatalog([
             LoadedWebPlugin(runtimeId),
-            LoadedDotNetPlugin(host)
+            target.Plugin
         ]);
-        using var bridge = CreateBridge(catalog, host, new RejectingEventDeliveryJavaScriptRuntime());
+        using var rpcRouter = new PluginRpcRouter(catalog, NullLogger<PluginRpcRouter>.Instance);
+        using var bridge = CreateBridge(
+            catalog,
+            rpcRouter,
+            host,
+            new RejectingEventDeliveryJavaScriptRuntime());
 
         var result = await bridge.InvokeAsync(
             PluginId,
             runtimeId.ToString("N"),
             Guid.NewGuid().ToString("N"),
-            "dotnet",
+            "rpc",
             "invoke",
             JsonSerializer.SerializeToElement(new
             {
-                target = TargetPluginId,
-                service = typeof(TestInteropService).FullName,
-                method = nameof(TestInteropService.Echo),
-                arguments = new[] { "hello" },
-                parameterTypes = new[] { typeof(string).FullName }
+                rpcName = "TEST.ECHO",
+                payload = new { value = "hello" },
+                context = new { trace = "web-test" }
             }));
 
-        Assert.Equal("echo:hello", result.GetString());
+        Assert.True(result.GetProperty("isSuccess").GetBoolean());
+        Assert.Equal(
+            $"{PluginId}:echo:hello",
+            result.GetProperty("value").GetString());
     }
 
     [Fact]
-    public async Task DotNetInvocationBindsPluginIdValueObjectByFullName()
+    public async Task MissingRpcReturnsFailedResultInsteadOfThrowing()
     {
+        await using var host = CreateHost();
         var runtimeId = Guid.NewGuid();
         var catalog = new PluginCatalog([LoadedWebPlugin(runtimeId)]);
-        await using var host = new ServiceCollection()
-            .AddQuantumPluginEventBus()
-            .AddSingleton<Quantum.Plugin.Abstraction.IQuantumPluginEnvironment>(catalog)
-            .BuildServiceProvider(new ServiceProviderOptions
-            {
-                ValidateOnBuild = true,
-                ValidateScopes = true
-            });
-        using var bridge = CreateBridge(catalog, host, new RejectingEventDeliveryJavaScriptRuntime());
+        using var rpcRouter = new PluginRpcRouter(catalog, NullLogger<PluginRpcRouter>.Instance);
+        using var bridge = CreateBridge(
+            catalog,
+            rpcRouter,
+            host,
+            new RejectingEventDeliveryJavaScriptRuntime());
 
         var result = await bridge.InvokeAsync(
             PluginId,
             runtimeId.ToString("N"),
             Guid.NewGuid().ToString("N"),
-            "dotnet",
+            "rpc",
             "invoke",
             JsonSerializer.SerializeToElement(new
             {
-                target = "host",
-                service = typeof(Quantum.Plugin.Abstraction.IQuantumPluginEnvironment).FullName,
-                method = nameof(Quantum.Plugin.Abstraction.IQuantumPluginEnvironment.IsPluginLoaded),
-                arguments = new[] { PluginId },
-                parameterTypes = new[] { typeof(Quantum.Plugin.Abstraction.PluginId).FullName }
+                rpcName = "missing.service.call",
+                payload = new { },
+                context = new { }
             }));
 
-        Assert.True(result.GetBoolean());
+        Assert.False(result.GetProperty("isSuccess").GetBoolean());
+        Assert.Equal("rpc_not_found", result.GetProperty("errorCode").GetString());
     }
 
     [Fact]
@@ -117,15 +125,21 @@ public sealed class WebPluginInteropBridgeTests
     {
         await using var host = CreateHost();
         var runtimeId = Guid.NewGuid();
+        await using var target = CreateRpcTarget(host);
         var catalog = new PluginCatalog([
             LoadedWebPlugin(
                 runtimeId,
                 [new PluginIntegration(
                     Quantum.Plugin.Abstraction.PluginId.Of(TargetPluginId),
                     VersionRange.Of("[1.0.0,2.0.0)"))]),
-            LoadedDotNetPlugin(host)
+            target.Plugin
         ]);
-        using var bridge = CreateBridge(catalog, host, new RejectingEventDeliveryJavaScriptRuntime());
+        using var rpcRouter = new PluginRpcRouter(catalog, NullLogger<PluginRpcRouter>.Instance);
+        using var bridge = CreateBridge(
+            catalog,
+            rpcRouter,
+            host,
+            new RejectingEventDeliveryJavaScriptRuntime());
 
         var result = await bridge.InvokeAsync(
             PluginId,
@@ -145,7 +159,7 @@ public sealed class WebPluginInteropBridgeTests
     private static ServiceProvider CreateHost()
         => new ServiceCollection()
             .AddQuantumPluginEventBus()
-            .AddSingleton<TestInteropService>()
+            .AddTransient<WebBridgeTestRpcService.Echo, WebBridgeEcho>()
             .BuildServiceProvider(new ServiceProviderOptions
             {
                 ValidateOnBuild = true,
@@ -154,11 +168,12 @@ public sealed class WebPluginInteropBridgeTests
 
     private static WebPluginInteropBridge CreateBridge(
         PluginCatalog catalog,
+        PluginRpcRouter rpcRouter,
         ServiceProvider host,
         IJSRuntime javaScript)
         => new(
             catalog,
-            host,
+            rpcRouter,
             new TestNavigationManager(),
             javaScript,
             host.GetRequiredService<QuantumPluginEventBusFactory>(),
@@ -208,8 +223,19 @@ public sealed class WebPluginInteropBridgeTests
             routes: [],
             runtimeId);
 
-    private static LoadedPlugin LoadedDotNetPlugin(IServiceProvider services)
-        => new(
+    private static RpcTarget CreateRpcTarget(ServiceProvider services)
+    {
+        var runtimeId = Guid.NewGuid();
+        var serializer = new PluginRpcSerializer();
+        var rpcRuntime = PluginRpcRuntime.Create(
+            Quantum.Plugin.Abstraction.PluginId.Of(TargetPluginId),
+            runtimeId,
+            typeof(WebBridgeTestRpcService).Assembly,
+            services.GetRequiredService<IServiceScopeFactory>(),
+            serializer,
+            NullLogger.Instance);
+        rpcRuntime.Resume();
+        var plugin = new LoadedPlugin(
             new PluginManifest(
                 Quantum.Plugin.Abstraction.PluginId.Of(TargetPluginId),
                 SemanticVersion.Of("1.0.0"),
@@ -217,12 +243,24 @@ public sealed class WebPluginInteropBridgeTests
             Path.Combine("plugins", TargetPluginId),
             typeof(WebPluginInteropBridgeTests).Assembly,
             routes: [],
-            runtimeId: Guid.NewGuid(),
-            services: services);
+            runtimeId,
+            services)
+        {
+            RpcRuntime = rpcRuntime
+        };
+        return new RpcTarget(plugin, rpcRuntime, serializer);
+    }
 
-    private sealed class TestInteropService
+    private sealed record RpcTarget(
+        LoadedPlugin Plugin,
+        PluginRpcRuntime Runtime,
+        PluginRpcSerializer Serializer) : IAsyncDisposable
     {
-        public string Echo(string value) => $"echo:{value}";
+        public async ValueTask DisposeAsync()
+        {
+            await Runtime.DisposeAsync();
+            Serializer.Dispose();
+        }
     }
 
     private sealed class RejectingEventDeliveryJavaScriptRuntime : IJSRuntime
@@ -253,5 +291,30 @@ public sealed class WebPluginInteropBridgeTests
         protected override void NavigateToCore(string uri, bool forceLoad)
         {
         }
+    }
+}
+
+public sealed record WebBridgeEchoRequest(string Value);
+
+[TransportOverQuantum]
+[RpcInvocationName("test")]
+public interface IWebBridgeTestRpcService : IRpcService
+{
+    [RpcInvocationName("echo")]
+    Result<string> Echo(WebBridgeEchoRequest request);
+}
+
+public partial class WebBridgeTestRpcService : RpcServer<IWebBridgeTestRpcService>;
+
+public sealed class WebBridgeEcho : WebBridgeTestRpcService.Echo
+{
+    public override Task<Result<string>> HandleAsync(
+        WebBridgeEchoRequest request,
+        Context context,
+        CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var caller = context[QuantumRpcContextKeys.CallerPluginId] as string ?? "unknown";
+        return Task.FromResult<Result<string>>($"{caller}:echo:{request.Value}");
     }
 }

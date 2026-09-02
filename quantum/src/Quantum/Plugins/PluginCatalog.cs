@@ -178,6 +178,8 @@ public sealed class LoadedPlugin
     public Guid RuntimeId { get; }
 
     public IServiceProvider? Services { get; }
+
+    internal PluginRpcRuntime? RpcRuntime { get; init; }
 }
 
 public sealed record PluginRouteRegistration(

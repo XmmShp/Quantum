@@ -18,6 +18,7 @@
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="NOF.Abstraction" />
+    <PackageReference Include="NOF.Contract" />
     <PackageReference Include="NOF.Domain" />
   </ItemGroup>
 

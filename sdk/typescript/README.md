@@ -1,8 +1,14 @@
 # Quantum TypeScript Plugin SDK
 
+> **Experimental:** JavaScript/TypeScript plugin development is still experimental. Many capabilities are not yet available, so it is not recommended as the primary development path. Prefer the .NET SDK for the current release.
+
 `@quantum/plugin-sdk` provides the typed lifecycle and host-capability contract for Quantum Web plugins.
 Web plugins execute in a dedicated sandboxed iframe. The iframe is destroyed on unload, so timers, DOM state,
 module globals, and event handlers cannot leak into the next runtime generation.
+
+The .NET-only `IQuantumPlugin.ConfigureServices` hook configures a private `IServiceCollection` and therefore has
+no TypeScript equivalent. Web plugins do not own a .NET DI container; use `activate` and its cleanup result for
+runtime state and lifecycle, and consume Host capabilities through the supplied context.
 
 ```ts
 import { definePlugin, QuantumTopic } from "@quantum/plugin-sdk";
@@ -36,9 +42,29 @@ or another ORM during development, but its release declares `database.migrations
 append-only SQLite SQL history. The Host applies pending scripts before `activate`; the iframe receives no direct
 database connection. See the repository Web plugin guide for the artifact and upgrade rules.
 
-Installed plugins run as trusted, controlled code. Host navigation and .NET invocation are directly available.
-`target` is `host` or the id of any loaded .NET plugin; an `integration` declaration is not required. Each invocation owns a DI scope, injects
-`CancellationToken` parameters, awaits `Task`/`ValueTask`, serializes the result, and then disposes the scope.
+Installed plugins run as trusted, controlled code. Host navigation and name-routed plugin RPC are directly available;
+an `integration` declaration is not required. TypeScript and .NET use the same RPC names and JSON boundary:
+
+```ts
+const result = await context.rpc.invoke<Note[]>(
+  "quantum.plugin.notes.notes.find",
+  { text: "quantum" },
+  { traceId: "web-search" },
+  { signal: context.signal });
+
+if (!result.isSuccess) {
+  throw new Error(`${result.errorCode}: ${result.message}`);
+}
+console.log(result.value);
+```
+
+The same method can be addressed by its short `service.method` name or any method-level alias. Names are
+case-insensitive. When multiple plugins implement a short name or alias, the Host logs the collision and selects
+the implementation whose normalized plugin id is lexicographically smallest using ordinal comparison. A missing
+name resolves to a failed `QuantumResult` with `rpc_not_found` instead of rejecting the Promise.
+
+Each invocation owns a target DI scope, awaits the generated NOF Handler, serializes its `Result`, and then disposes
+the scope. No CLR type name, service provider, or service instance enters the iframe.
 Entries in `environment.snapshot().integrations` are informational declarations used for soft ordering; their `active`
 field reports target availability and version compatibility but does not authorize or block interaction.
 

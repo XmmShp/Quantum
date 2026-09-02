@@ -4,20 +4,56 @@
 
 生产插件应引用发布后的 `Quantum.Plugin.Abstraction` NuGet 包。仓库内的样例使用项目引用，以便 SDK、宿主与样例一起构建和验证。
 
-- `IQuantumPlugin` 是静态启动/停止 bootstrap，不需要注册到 DI 或创建实例；业务状态应放在普通插件服务中。
+- `IQuantumPlugin` 是静态 bootstrap：可通过默认空实现的 `ConfigureServices` 配置本代私有 DI，并通过
+  `StartAsync`/`StopAsync` 编排生命周期；bootstrap 本身不注册到 DI，也不会创建实例。
 - `IQuantumPluginEnvironment` 提供已加载插件列表和查询；联动逻辑可以直接按目标插件是否可用来决定。
 - `IQuantumPluginRuntimeContext` 提供当前运行版本和只读影子目录路径。
 - `IQuantumEventBus` 提供 ROS 风格的 Topic Publisher/Subscription；发布者和订阅者只需使用 JSON 结构兼容的消息模型。
-- `IServiceProvider.GetService(string)` 可按 `Type.FullName`（不含程序集名和 `global::`）解析无法在编译期引用的联动服务。Host 还会把每个直接 .NET 强依赖的服务容器，以依赖插件的 `PluginId` 注册为 keyed `IServiceProvider`：
+- `IRpcInvoker` 通过稳定 RPC 名称调用其他插件的 NOF `RpcServer` Handler；调用方不会取得目标插件的 provider、服务实例或 CLR 类型。
+
+## 插件 RPC
+
+服务端使用 NOF Contract，并用 Quantum transport 与调用名称标注契约：
 
 ```csharp
-var dependencyServices = services.GetRequiredKeyedService<IServiceProvider>(
-    PluginId.Of("quantum.plugin.example"));
-dynamic? service = dependencyServices.GetService("MyNamespace.MySub.IMyInterface");
-string message = service!.CreateGreeting(PluginId.Of("quantum.plugin.consumer"));
+[TransportOverQuantum]
+[RpcInvocationName("notes")]
+public interface INotesService : IRpcService
+{
+    [RpcInvocationName("find")]
+    [RpcInvocationAlias("search.notes")]
+    Result<Note[]> Find(FindNotesRequest request);
+}
+
+public partial class NotesService : RpcServer<INotesService>;
+
+public sealed class FindNotes(NoteStore store) : NotesService.Find
+{
+    public override Task<Result<Note[]>> HandleAsync(
+        FindNotesRequest request,
+        Context context,
+        CancellationToken cancellationToken)
+        => store.FindAsync(request, cancellationToken);
+}
 ```
 
-只有 manifest 中声明的直接强依赖会被注册；若需要访问传递依赖，应把它同时声明为直接依赖。依赖服务仍由提供方容器拥有，调用方不得释放或长期缓存 provider、服务实例及其返回的私有对象。Web 插件的等价能力是 `context.dotnet.invoke({ target, service, method })`。
+假设实现插件 id 为 `quantum.plugin.notes`，以上方法可以通过完整名称
+`quantum.plugin.notes.notes.find`、短名称 `notes.find` 或 Alias `search.notes` 调用。所有名称忽略大小写。
+短名称或 Alias 有多个实现时，Host 记录 Warning，并选择实现方法所在 `pluginId` 按 ordinal 字典序最小的一项。
+
+调用方从自己的 DI 获取 `IRpcInvoker`：
+
+```csharp
+var result = await services.GetRequiredService<IRpcInvoker>().InvokeAsync<Note[]>(
+    "quantum.plugin.notes.notes.find",
+    new { text = "quantum" },
+    Context.Empty,
+    cancellationToken);
+```
+
+找不到名称时返回失败的 `Result`（`rpc_not_found`），不会抛出“服务未注册”异常。Payload、Context 与 Result
+始终经过 JSON 边界；每次调用在目标插件中创建独立 scope，结果序列化完成后释放。manifest 的 `dependencies` 与
+`integrations` 不构成 RPC 权限，只描述加载约束或软排序关系。
 
 ## 插件标识与版本值对象
 
@@ -132,15 +168,17 @@ await using var raw = events.Subscribe(
 Host 会在插件停止时暂停该运行代的收发，并在容器释放时兜底移除订阅。插件仍应在 `StopAsync` 主动释放
 `IQuantumSubscription`，这样热切换失败并回滚旧运行代时，`StartAsync` 可以无重复订阅地重新建立监听。
 
-宿主从入口程序集发现 `IQuantumPlugin` 实现类型，并通过静态接口分派调用其 `StartAsync` 和 `StopAsync`；
-bootstrap 不注册到 DI。两个方法收到同一个运行期 scoped provider，runtime 释放时一并释放该 scope。主插件 scope 内 `Singleton` 与 `Scoped`
-通常表现相近，但 `Scoped` 可以避免服务被错误地从根 provider 解析。Web RPC 仍按调用创建独立 scope，因而需要
+宿主从入口程序集发现 `IQuantumPlugin` 实现类型。构建容器前，宿主先执行程序集中的所有 NOF
+`IAssemblyInitializer`，再通过静态接口分派调用每个 bootstrap 的 `ConfigureServices`；两条服务注册链路都会执行，
+后者可以追加或覆盖生成注册。`ConfigureServices` 有默认空实现。bootstrap 不注册到 DI，也不会创建实例。
+容器构建后，宿主通过静态接口分派调用 `StartAsync` 和 `StopAsync`，两个方法收到同一个运行期 scoped provider，
+runtime 释放时一并释放该 scope。主插件 scope 内 `Singleton` 与 `Scoped`
+通常表现相近，但 `Scoped` 可以避免服务被错误地从根 provider 解析。插件 RPC 按调用创建独立 scope，因而需要
 跨 RPC 共享的状态应使用 `Singleton`。
 
-该扩展直接使用传入的 provider，不缓存类型或实例，也不会隐式创建作用域。解析 scoped 服务时必须传入当前
-`IServiceScope.ServiceProvider`；服务及其依赖仍由对应 scope/container 释放，不应由调用方单独释放。从根 provider
-解析 scoped 服务时，行为与原生 `GetService(Type)` 相同（启用 scope 校验的容器会抛出异常）。
+RPC 调用方只持有 Host 提供的 `IRpcInvoker`，不会缓存目标 provider、Handler 或服务实例。Host 在运行代停止时先撤销
+路由并等待在途调用结束，再释放目标 scope/container 和 collectible ALC。
 
 纯 JavaScript/TypeScript 插件使用同级目录中的 `typescript` SDK。该 SDK 提供与 .NET 共用的 Topic EventBus，以及
-隔离 iframe 生命周期、路由挂载、资源、导航、环境信息和 .NET 服务调用；详细说明见插件开发文档中的
+隔离 iframe 生命周期、路由挂载、资源、导航、环境信息和同一套名称路由 RPC；详细说明见插件开发文档中的
 Web 插件章节。

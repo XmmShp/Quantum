@@ -1,3 +1,5 @@
+using Microsoft.Extensions.DependencyInjection;
+
 namespace Quantum.Plugin.Abstraction;
 
 /// <summary>
@@ -5,12 +7,24 @@ namespace Quantum.Plugin.Abstraction;
 /// </summary>
 /// <remarks>
 /// Implementations are discovered from the plugin entry assembly and are never instantiated or
-/// registered in dependency injection. Both methods receive the same plugin-runtime scoped
-/// <see cref="IServiceProvider"/>. Durable or observable state belongs in regular plugin services,
-/// and the runtime disposes the scope after the plugin stops.
+/// registered in dependency injection. <see cref="ConfigureServices"/> configures the plugin's
+/// private service collection before its provider is built. Both lifecycle methods receive the
+/// same plugin-runtime scoped <see cref="IServiceProvider"/>. Durable or observable state belongs
+/// in regular plugin services, and the runtime disposes the scope after the plugin stops.
 /// </remarks>
 public interface IQuantumPlugin
 {
+    /// <summary>
+    /// Adds services to this plugin runtime's private service collection.
+    /// </summary>
+    /// <remarks>
+    /// The default implementation does nothing. Quantum also runs every NOF assembly initializer;
+    /// this hook is an additional registration path and does not replace assembly initialization.
+    /// </remarks>
+    static virtual void ConfigureServices(IServiceCollection services)
+    {
+    }
+
     /// <summary>
     /// Starts the plugin using its runtime-scoped service provider.
     /// </summary>

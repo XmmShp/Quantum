@@ -113,7 +113,9 @@ dotnet run --project quantum/src/Quantum/Quantum.csproj `
 
 ## 插件开发
 
-完整流程见 [插件开发指南](docs/plugin-development.md)，架构边界见 [架构说明](docs/architecture.md)。可直接从 [Quantum.ExamplePlugin](samples/Quantum.ExamplePlugin) 复制起步；需要声明强前置依赖时参考 [Quantum.ExampleDependentPlugin](samples/Quantum.ExampleDependentPlugin)。
+当前版本建议使用 .NET 作为主要的插件开发方式。JavaScript/TypeScript 插件支持仍处于实验阶段，许多能力暂不可用，不建议用于主要开发路径。
+
+完整流程见 [插件开发指南](docs/plugin-development.md)，架构边界见 [架构说明](docs/architecture.md)。可直接从 [Quantum.ExamplePlugin](samples/Quantum.ExamplePlugin) 复制起步；需要声明强前置依赖时参考 [Quantum.ExampleDependentPlugin](samples/Quantum.ExampleDependentPlugin)。实验性的 Web 插件支持见 [TypeScript 插件开发](docs/web-plugin-development.md)。
 
 ## 平台服务
 

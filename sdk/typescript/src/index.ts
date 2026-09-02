@@ -452,17 +452,30 @@ export interface QuantumEnvironmentSnapshot {
   readonly integrations: readonly QuantumPluginIntegration[];
 }
 
-export interface QuantumDotNetInvocation {
-  /** "host" or the id of a loaded .NET plugin. */
-  target?: string;
-  /** Exact CLR Type.FullName without an assembly name or global:: prefix. */
-  service: string;
-  /** Public instance method name. */
-  method: string;
-  /** JSON-serializable arguments. CancellationToken parameters are supplied by Quantum. */
-  arguments?: readonly unknown[];
-  /** CLR Type.FullName values used to disambiguate overloads. */
-  parameterTypes?: readonly string[];
+export type QuantumRpcContext = Readonly<Record<string, unknown>>;
+
+export type QuantumResult<TResponse = undefined> =
+  | {
+      readonly isSuccess: true;
+      readonly value: TResponse;
+      readonly errorCode: string;
+      readonly message: string;
+      readonly extra?: Readonly<Record<string, string>> | null;
+    }
+  | {
+      readonly isSuccess: false;
+      readonly errorCode: string;
+      readonly message: string;
+      readonly extra?: Readonly<Record<string, string>> | null;
+    };
+
+export interface QuantumRpcInvoker {
+  invoke<TResponse = undefined>(
+    rpcName: string,
+    payload: unknown,
+    context?: QuantumRpcContext,
+    options?: QuantumRpcOptions
+  ): Promise<QuantumResult<TResponse>>;
 }
 
 export interface QuantumPluginContext {
@@ -487,18 +500,7 @@ export interface QuantumPluginContext {
     url(path: string): string;
     readText(path: string, options?: QuantumRpcOptions): Promise<string>;
   };
-  readonly dotnet: {
-    invoke<TResult = unknown>(
-      invocation: QuantumDotNetInvocation,
-      options?: QuantumRpcOptions
-    ): Promise<TResult>;
-  };
-  rpc<TResult = unknown>(
-    capability: string,
-    method: string,
-    payload?: unknown,
-    options?: QuantumRpcOptions
-  ): Promise<TResult>;
+  readonly rpc: QuantumRpcInvoker;
 }
 
 export interface QuantumRoute {

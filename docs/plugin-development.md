@@ -1,10 +1,10 @@
 # Quantum 插件开发指南
 
-Quantum 插件可以使用 .NET DLL 或 Web runtime。本篇介绍 .NET 插件；纯 JavaScript/TypeScript 插件见 [TypeScript 插件开发](web-plugin-development.md)。NOF `AutoInject` 元数据会注册到每代 .NET 插件独立的 DI 容器，使容器和程序集能在运行时一起释放。
+当前版本建议使用 .NET 作为主要的插件开发方式。本篇介绍 .NET 插件；JavaScript/TypeScript 插件支持仍处于实验阶段，许多能力暂不可用，不建议作为主要开发方式，相关实验性功能见 [TypeScript 插件开发](web-plugin-development.md)。NOF `AutoInject` 元数据会注册到每代 .NET 插件独立的 DI 容器，使容器和程序集能在运行时一起释放。
 
 ## 1. 创建项目
 
-使用 Razor SDK 创建类库，并引用稳定的插件 ABI 与 NOF Abstraction：
+使用 Razor SDK 创建类库，并引用稳定的插件 ABI；声明/实现插件 RPC 时同时引用 NOF Contract 与 Application：
 
 ```xml
 <Project Sdk="Microsoft.NET.Sdk.Razor">
@@ -17,6 +17,8 @@ Quantum 插件可以使用 .NET DLL 或 Web runtime。本篇介绍 .NET 插件�
   <ItemGroup>
     <ProjectReference Include="../../sdk/dotnet/src/Quantum.Plugin.Abstraction/Quantum.Plugin.Abstraction.csproj" />
     <PackageReference Include="NOF.Abstraction" />
+    <PackageReference Include="NOF.Application" />
+    <PackageReference Include="NOF.Contract" />
   </ItemGroup>
 
   <ItemGroup>
@@ -27,7 +29,8 @@ Quantum 插件可以使用 .NET DLL 或 Web runtime。本篇介绍 .NET 插件�
 </Project>
 ```
 
-生产插件应引用发布后的 `Quantum.Plugin.Abstraction` 包，而不是宿主、Application 或 Infrastructure 项目。插件不得携带自己的 ABI 副本版本并尝试覆盖宿主版本。
+生产插件应引用发布后的 `Quantum.Plugin.Abstraction` 与所需 NOF 包，而不是 Quantum 宿主、Application 或
+Infrastructure 项目。插件不得携带自己的 ABI 副本版本并尝试覆盖宿主版本。
 
 ## 2. 编写 manifest
 
@@ -107,28 +110,59 @@ Quantum 插件可以使用 .NET DLL 或 Web runtime。本篇介绍 .NET 插件�
 完整的强依赖示例见
 [`Quantum.ExampleDependentPlugin`](../samples/Quantum.ExampleDependentPlugin/plugin.json)：它要求
 `quantum.plugin.example >= 0.1.0`，并在启动后展示宿主实际解析到的前置插件版本以及一次跨插件方法调用结果。
-Host 会把每个直接 .NET 强依赖的运行期服务容器，以依赖插件的 `PluginId` 注册为 keyed
-`IServiceProvider`。调用方可以从自身 DI 获取该 provider，再通过服务 FQN 和 `dynamic` 调用而无需引用依赖插件 DLL：
+插件间调用不传递 `IServiceProvider` 或服务实例。服务端声明 NOF RPC Contract，并让 Host 通过 Quantum transport 暴露
+生成的 Handler：
 
 ```csharp
-var dependencyServices = services.GetRequiredKeyedService<IServiceProvider>(
-    PluginId.Of("quantum.plugin.example"));
-dynamic example = dependencyServices.GetService("Quantum.ExamplePlugin.IExamplePluginState")
-    ?? throw new InvalidOperationException("ExamplePlugin service is unavailable.");
-string greeting = example.CreateDependencyGreeting(
-    PluginId.Of("quantum.plugin.example-dependent"));
+public sealed record CreateGreetingRequest;
+
+[TransportOverQuantum]
+[RpcInvocationName("example")]
+public interface IExampleRpcService : IRpcService
+{
+    [RpcInvocationName("greet")]
+    [RpcInvocationAlias("sample.greet")]
+    Result<string> CreateGreeting(CreateGreetingRequest request);
+}
+
+public partial class ExampleRpcService : RpcServer<IExampleRpcService>;
+
+public sealed class CreateGreeting(ExampleState state) : ExampleRpcService.CreateGreeting
+{
+    public override Task<Result<string>> HandleAsync(
+        CreateGreetingRequest request,
+        Context context,
+        CancellationToken cancellationToken)
+        => Task.FromResult<Result<string>>(state.CreateGreeting());
+}
 ```
 
-只有 manifest 中声明的直接强依赖会注册 keyed provider；访问传递依赖时也必须显式声明直接依赖。provider、服务实例及
-返回的私有对象仍归被依赖插件所有，调用方不能释放或跨生命周期缓存。`dynamic` 方式把服务 FQN、方法名和参数形状变成
-运行时契约；需要编译期类型安全时，应把接口与 DTO 放入双方共享的稳定 Contract/SDK 程序集，不能直接引用另一个插件
-实现 DLL。
+实现插件 id 为 `quantum.plugin.example` 时，该方法注册三个忽略大小写的名称：完整名称
+`quantum.plugin.example.example.greet`、短名称 `example.greet` 和 Alias `sample.greet`。接口没有
+`RpcInvocationName` 时使用去掉常规 `I` 前缀的接口名；方法没有该 Attribute 时使用方法名。一个名称存在多个实现时，
+Host 记录 Warning，并选择实现方法所在 `pluginId` 按 ordinal 字典序最小的一项。
+
+调用方不需要引用实现插件 DLL，只从自己的 DI 获取 `IRpcInvoker`：
+
+```csharp
+var result = await services.GetRequiredService<IRpcInvoker>().InvokeAsync<string>(
+    "quantum.plugin.example.example.greet",
+    new { },
+    Context.Empty,
+    cancellationToken);
+```
+
+未实现的名称返回 `rpc_not_found` 失败 Result。Payload、Context 和 Result 都经过 JSON 序列化边界；Host 每次调用创建
+目标插件 scope，并在 Handler 完成且结果序列化后释放。`dependencies` 仍用于确保提供方先启动、后停止，但不作为 RPC
+访问权限；没有依赖或 integration 声明的已加载插件也可以被调用。
 
 ## 3. 注册服务和启动逻辑
 
-插件装载时，宿主执行 NOF 为程序集生成的初始化器。`IQuantumPlugin` 是由入口程序集静态发现的
-bootstrap，不需要用 `AutoInject` 注册，也不会创建实例。业务状态、后台任务与可观察数据应放在普通服务中；
-bootstrap 直接使用宿主传入的插件运行期 scope 完成启动和停止编排：
+插件装载时有两条独立的服务注册链路：宿主先执行程序集中的所有 NOF `IAssemblyInitializer`，再调用入口程序集内
+每个 `IQuantumPlugin.ConfigureServices`。两条链路始终都会执行；显式 `ConfigureServices` 可以追加或覆盖生成注册，
+并有一个什么都不做的默认实现。`IQuantumPlugin` 是由入口程序集静态发现的 bootstrap，不需要用 `AutoInject`
+注册，也不会创建实例。业务状态、后台任务与可观察数据应放在普通服务中；bootstrap 直接使用宿主传入的插件运行期
+scope 完成启动和停止编排：
 
 ```csharp
 using Microsoft.Extensions.DependencyInjection;
@@ -139,9 +173,6 @@ public interface IExampleState
     DateTimeOffset? StartedAt { get; }
 }
 
-[AutoInject(
-    ServiceLifetime.Singleton,
-    RegisterTypes = [typeof(ExampleState)])]
 public sealed class ExampleState
 {
     public DateTimeOffset? StartedAt { get; private set; }
@@ -159,6 +190,11 @@ public sealed class ExampleStateView(ExampleState state) : IExampleState
 
 public sealed class ExamplePlugin : IQuantumPlugin
 {
+    public static void ConfigureServices(IServiceCollection services)
+    {
+        services.AddSingleton<ExampleState>();
+    }
+
     public static Task StartAsync(
         IServiceProvider services,
         CancellationToken cancellationToken = default)
@@ -185,19 +221,22 @@ public sealed class ExamplePlugin : IQuantumPlugin
 }
 ```
 
+上例中的 `ExampleStateView` 由 NOF `AutoInject`/`IAssemblyInitializer` 注册，`ExampleState` 则由
+`IQuantumPlugin.ConfigureServices` 注册，说明两条链路可以在同一插件内同时使用。
+
 每代 .NET 插件拥有一个由宿主管理的 DI scope。宿主从入口程序集发现 `IQuantumPlugin` 实现类型，通过静态接口
-分派调用 bootstrap；bootstrap 本身不进入 DI。`StartAsync` 与 `StopAsync` 收到同一个 scoped
+分派调用配置与生命周期；bootstrap 本身不进入 DI。`StartAsync` 与 `StopAsync` 收到同一个 scoped
 `IServiceProvider`，runtime 销毁时 scope 才会释放。这与 Blazor WebAssembly
 中的 scope 很接近：在主插件 scope 内 `Singleton` 与 `Scoped` 通常各只有一个实例，但使用 `Scoped` 能阻止
 代码意外从根 provider 解析 scoped 服务。需要跨 Web RPC 调用共享的状态仍应注册为 `Singleton`，因为每次 RPC
 会建立自己的调用 scope。
 
-`IQuantumPlugin.StartAsync` 针对候选环境快照按依赖顺序调用，全部成功后宿主才发布新目录；`StopAsync` 在卸载或热切换前按逆序调用。两个静态方法都必须实现；即使无需清理，`StopAsync` 也应明确返回 `Task.CompletedTask`。
+`IQuantumPlugin.StartAsync` 针对候选环境快照按依赖顺序调用，全部成功后宿主才发布新目录；`StopAsync` 在卸载或热切换前按逆序调用。两个生命周期方法都必须实现；`ConfigureServices` 可以省略并使用默认空实现。即使无需清理，`StopAsync` 也应明确返回 `Task.CompletedTask`。
 
 `IQuantumPluginEnvironment` 提供实时的 `LoadedPlugins` 和 `IsPluginLoaded`。`integrations` 只是供加载规划器参考的
 声明性软排序提示，不是联动逻辑或跨插件调用的准入条件；插件可以直接根据运行环境决定是否启用适配逻辑。
-`IQuantumPluginRuntimeContext` 可用于读取当前插件版本与本代只读影子目录。插件容器会执行 NOF 生成的
-`AutoInject` 初始化器，但动态插件不会加入宿主根 Application Part；依赖宿主级全局扫描的 Handler 或
+`IQuantumPluginRuntimeContext` 可用于读取当前插件版本与本代只读影子目录。插件容器会同时执行 NOF 生成的
+`AutoInject` 初始化器和 bootstrap 的 `ConfigureServices`，但动态插件不会加入宿主根 Application Part；依赖宿主级全局扫描的 Handler 或
 Initialization Step 不属于可热卸载边界，应由稳定的宿主 Contract 显式桥接。
 
 ## 4. 使用 Topic EventBus
@@ -412,8 +451,8 @@ Modules/
 `Modules/disabled` 专门用于保存已禁用插件，普通扫描不会把它当成插件目录。
 
 插件程序集依赖优先从自身影子目录解析；`System.*`、`Microsoft.*`、`NOF.*` 与 Quantum 插件 ABI 始终与宿主共享。
-需要编译期类型安全的跨插件接口应放在双方共同引用的稳定 Contract/SDK 程序集中，不能依赖两个 ALC 中恰好同名的
-私有类型；按 FQN 和 `dynamic` 调用时，参数和返回值也应限制为共享 ABI 类型或不需要跨生命周期保留的简单值。
+RPC Payload 与 Result 只要求 JSON 结构兼容，不依赖两个 ALC 中恰好同名的私有 CLR 类型。需要使用 NOF 生成的强类型
+Client 接口时，可以把 Contract 与 DTO 放入双方共同引用的稳定 Contract 程序集；名称路由的 `IRpcInvoker` 不要求该引用。
 
 调试热升级流程：
 

@@ -79,7 +79,7 @@
         }
       };
 
-      const rpc = (capability, method, args = {}, options = {}) => {
+      const hostRpc = (capability, method, args = {}, options = {}) => {
         const requestId = globalThis.crypto?.randomUUID?.()
           ?? `${Date.now()}-${++requestSequence}`;
         const signal = options.signal;
@@ -135,7 +135,7 @@
               if (message === undefined) {
                 return Promise.reject(new TypeError("An EventBus payload cannot be undefined."));
               }
-              return rpc("eventBus", "publish", {
+              return hostRpc("eventBus", "publish", {
                 topic: validatedTopic,
                 payload: message
               }, options);
@@ -159,7 +159,7 @@
               }
               disposed = true;
               try {
-                await rpc("eventBus", "unsubscribe", { subscriptionId });
+                await hostRpc("eventBus", "unsubscribe", { subscriptionId });
               } finally {
                 eventSubscriptions.delete(subscriptionId);
               }
@@ -167,7 +167,7 @@
           });
           eventSubscriptions.set(subscriptionId, { handler, subscription });
           try {
-            await rpc("eventBus", "subscribe", {
+            await hostRpc("eventBus", "subscribe", {
               topic: validatedTopic,
               subscriptionId
             }, options);
@@ -175,7 +175,7 @@
           } catch (error) {
             eventSubscriptions.delete(subscriptionId);
             try {
-              await rpc("eventBus", "unsubscribe", { subscriptionId });
+              await hostRpc("eventBus", "unsubscribe", { subscriptionId });
             } catch {
               // Runtime release is the final fallback when subscribe and cancellation race.
             }
@@ -198,27 +198,31 @@
           runtimeId: metadata.runtimeId
         }),
         signal: lifecycleController.signal,
-        rpc,
+        rpc: Object.freeze({
+          invoke: (rpcName, payload, context = {}, options) => {
+            if (payload === undefined) {
+              return Promise.reject(new TypeError("An RPC payload cannot be undefined."));
+            }
+            return hostRpc("rpc", "invoke", { rpcName, payload, context }, options);
+          }
+        }),
         log: Object.freeze({
-          trace: message => rpc("log", "trace", { message }),
-          debug: message => rpc("log", "debug", { message }),
-          info: message => rpc("log", "info", { message }),
-          warn: message => rpc("log", "warn", { message }),
-          error: message => rpc("log", "error", { message })
+          trace: message => hostRpc("log", "trace", { message }),
+          debug: message => hostRpc("log", "debug", { message }),
+          info: message => hostRpc("log", "info", { message }),
+          warn: message => hostRpc("log", "warn", { message }),
+          error: message => hostRpc("log", "error", { message })
         }),
         navigation: Object.freeze({
-          navigate: href => rpc("navigation", "navigate", { href })
+          navigate: href => hostRpc("navigation", "navigate", { href })
         }),
         environment: Object.freeze({
-          snapshot: () => rpc("environment", "snapshot")
+          snapshot: () => hostRpc("environment", "snapshot")
         }),
         eventBus: createEventBus(),
         assets: Object.freeze({
           url: path => assetUrl(metadata.assetBaseUrl, path),
-          readText: (path, options) => rpc("assets", "readText", { path }, options)
-        }),
-        dotnet: Object.freeze({
-          invoke: (request, options) => rpc("dotnet", "invoke", request, options)
+          readText: (path, options) => hostRpc("assets", "readText", { path }, options)
         })
       });
 

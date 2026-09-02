@@ -44,9 +44,9 @@ export default definePlugin({
         <h1>Quantum Web Runtime</h1>
         <p>当前视图：${escapeHtml(context.route.view)}</p>
         <p data-environment-status>正在读取 Quantum 插件环境…</p>
-        <p data-host-status>正在通过 FQN 查询 .NET 宿主…</p>
+        <p data-host-status>调用只携带 RPC 名称与 JSON Payload，不依赖任何 CLR 类型。</p>
         <div class="interop">
-          <strong>TypeScript → .NET 插件 FQN 调用</strong>
+          <strong>TypeScript → Quantum RPC → .NET Handler</strong>
           <p data-handshake-status>等待环境查询完成…</p>
           <small data-handshake-meta></small>
         </div>
@@ -61,7 +61,6 @@ export default definePlugin({
     const status = context.element.querySelector<HTMLElement>("[data-handshake-status]");
     const metadata = context.element.querySelector<HTMLElement>("[data-handshake-meta]");
     const environmentStatus = context.element.querySelector<HTMLElement>("[data-environment-status]");
-    const hostStatus = context.element.querySelector<HTMLElement>("[data-host-status]");
     const handshakeButton = context.element.querySelector<HTMLButtonElement>("[data-action=handshake]");
     let dotNetPluginAvailable: boolean | null = null;
 
@@ -83,13 +82,15 @@ export default definePlugin({
         if (metadata) {
           metadata.textContent = "";
         }
-        const handshake = await context.dotnet.invoke<ExamplePluginHandshake>({
-          target: "quantum.plugin.example",
-          service: "Quantum.ExamplePlugin.IExamplePluginState",
-          method: "CreateWebHandshakeAsync",
-          arguments: [context.plugin.id],
-          parameterTypes: ["System.String"]
-        }, { signal: context.signal });
+        const result = await context.rpc.invoke<ExamplePluginHandshake>(
+          "sample.handshake",
+          {},
+          {},
+          { signal: context.signal });
+        if (!result.isSuccess) {
+          throw new Error(`${result.errorCode}: ${result.message}`);
+        }
+        const handshake = result.value;
         if (status) {
           status.textContent = handshake.message;
         }
@@ -119,23 +120,6 @@ export default definePlugin({
       } catch (error) {
         if (!context.signal.aborted && environmentStatus) {
           environmentStatus.textContent = `环境查询失败：${errorMessage(error)}`;
-        }
-      }
-
-      try {
-        const recognizesItself = await context.dotnet.invoke<boolean>({
-          target: "host",
-          service: "Quantum.Plugin.Abstraction.IQuantumPluginEnvironment",
-          method: "IsPluginLoaded",
-          arguments: [context.plugin.id],
-          parameterTypes: ["Quantum.Plugin.Abstraction.PluginId"]
-        }, { signal: context.signal });
-        if (!context.signal.aborted && hostStatus) {
-          hostStatus.textContent = `.NET 宿主识别当前插件：${recognizesItself ? "是" : "否"}。`;
-        }
-      } catch (error) {
-        if (!context.signal.aborted && hostStatus) {
-          hostStatus.textContent = `宿主 FQN 调用失败：${errorMessage(error)}`;
         }
       }
 

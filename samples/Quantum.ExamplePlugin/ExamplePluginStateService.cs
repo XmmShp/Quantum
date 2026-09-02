@@ -1,5 +1,4 @@
 using Microsoft.Extensions.DependencyInjection;
-using Quantum.Plugin.Abstraction;
 
 namespace Quantum.ExamplePlugin;
 
@@ -17,12 +16,4 @@ public sealed class ExamplePluginStateService(ExamplePluginState state) : IExamp
     public int WebHandshakeCount => state.WebHandshakeCount;
 
     public string? LastWebPluginId => state.LastWebPluginId;
-
-    public string CreateDependencyGreeting(PluginId callerPluginId)
-        => state.CreateDependencyGreeting(callerPluginId);
-
-    public Task<ExamplePluginHandshake> CreateWebHandshakeAsync(
-        string webPluginId,
-        CancellationToken cancellationToken = default)
-        => state.CreateWebHandshakeAsync(webPluginId, cancellationToken);
 }

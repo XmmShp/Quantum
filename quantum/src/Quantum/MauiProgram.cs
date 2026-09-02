@@ -43,6 +43,7 @@ public static class MauiProgram
             services.GetRequiredService<ILogger<PluginCatalog>>()));
         builder.Services.AddSingleton<IQuantumPluginEnvironment>(services =>
             services.GetRequiredService<PluginCatalog>());
+        builder.Services.AddSingleton<PluginRpcRouter>();
         builder.Services.AddQuantumPluginEventBus();
         builder.Services.AddSingleton(runtimeOptions);
         builder.Services.AddSingleton<IPluginReferenceRelease, BlazorPluginReferenceRelease>();

@@ -27,12 +27,12 @@
     </div>
 
     <article class="dynamic-call">
-        <span>KEYED DI → DYNAMIC</span>
-        <code>IExamplePluginState.CreateDependencyGreeting(...)</code>
+        <span>NAME → QUANTUM RPC</span>
+        <code>quantum.plugin.example.example.greet</code>
         <strong>@(State.Greeting ?? "等待调用")</strong>
         <p>
-            本插件从 keyed DI 获取 <code>ExamplePlugin</code> 的服务容器，按 FQN 解析服务；
-            编译期不引用被依赖插件的程序集，方法由 <code>dynamic</code> 分派。
+            本插件只向 <code>IRpcInvoker</code> 提交名称和 JSON Payload；Host 路由到
+            <code>ExamplePlugin</code> 的 NOF RpcServer Handler，全程不共享服务实例或 CLR 类型。
         </p>
     </article>
 

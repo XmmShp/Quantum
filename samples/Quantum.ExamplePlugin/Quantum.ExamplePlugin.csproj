@@ -11,6 +11,8 @@
 
   <ItemGroup>
     <PackageReference Include="NOF.Abstraction" />
+    <PackageReference Include="NOF.Application" />
+    <PackageReference Include="NOF.Contract" />
   </ItemGroup>
 
   <ItemGroup>
