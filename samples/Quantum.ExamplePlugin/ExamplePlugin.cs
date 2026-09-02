@@ -24,9 +24,7 @@ public sealed class ExamplePlugin : IQuantumPlugin
         var environment = services.GetRequiredService<IQuantumPluginEnvironment>();
         services.GetRequiredService<ExamplePluginState>().Start(
             DateTimeOffset.Now,
-            environment.IsIntegrationActive(
-                "quantum.plugin.example",
-                "quantum.plugin.example-web"));
+            environment.IsPluginLoaded(PluginId.Of("quantum.plugin.example-web")));
 
         return Task.CompletedTask;
     }

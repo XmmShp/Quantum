@@ -6,12 +6,7 @@
     "entry": "dist/plugin.js"
   },
   "dependencies": [],
-  "integrations": [
-    {
-      "id": "quantum.plugin.example",
-      "minVersion": "0.1.0"
-    }
-  ],
+  "integrations": [],
   "ui": {
     "routes": [
       {

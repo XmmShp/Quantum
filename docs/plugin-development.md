@@ -81,13 +81,22 @@ Quantum 插件可以使用 .NET DLL 或 Web runtime。本篇介绍 .NET 插件�
 
 约束：
 
-- `id` 使用小写字母、数字、点、下划线或连字符。
-- `version` 与 `minVersion` 使用 SemVer；预发布版本参与正确的先后比较。
+- `id` 最长 128 个字符，使用小写 ASCII 字母、数字、点、下划线或连字符，首尾必须是字母或数字；
+  `disabled` 是宿主保留值。SDK 中对应基于 NOF `IValueObject<string>` 生成的 `PluginId` 值对象。
+- `version` 与 `minVersion` 严格使用 SemVer 2.0.0，必须写全 `major.minor.patch`；预发布版本参与正确的
+  先后比较，构建元数据不参与优先级。SDK 中对应基于 NOF `IValueObject<string>` 生成的
+  `SemanticVersion` 值对象。
 - 旧版 `entryAssembly` 继续受支持，等价于 `{ "runtime": { "kind": "dotnet", "entry": "..." } }`；DLL 入口只能是插件根目录下的文件名。
 - .NET 路由的 `component` 必须是入口程序集内实现 `IComponent` 的完整类型名；Web 路由改用 `view`。
 - `showInNavigation` 默认为 `true`；设为 `false` 的页面不会出现在主导航中，但仍可通过其路径或导航 API 打开。
 - `database.migrations` 对 .NET 和 Web 插件含义相同，指向插件根目录内的 SQL migration artifact。
 - 同一目标不能同时出现在 `dependencies` 和 `integrations`，各类关系和路由不能重复；未知 manifest 字段会被拒绝，避免拼写错误静默失效。
+
+完整的强依赖示例见
+[`Quantum.ExampleDependentPlugin`](../samples/Quantum.ExampleDependentPlugin/plugin.json)：它要求
+`quantum.plugin.example >= 0.1.0`，并在启动后展示宿主实际解析到的前置插件版本。示例刻意不直接引用
+`Quantum.ExamplePlugin.dll`；manifest 负责运行时排序和可用性约束，跨插件 CLR 契约仍应放入双方共享的稳定
+Contract/SDK 程序集。
 
 ## 3. 注册服务和启动逻辑
 
@@ -132,9 +141,9 @@ public sealed class ExamplePlugin : IQuantumPlugin
 
         services.GetRequiredService<ExampleState>().MarkStarted();
         var environment = services.GetRequiredService<IQuantumPluginEnvironment>();
-        if (environment.IsIntegrationActive("quantum.plugin.example", "quantum.plugin.theme"))
+        if (environment.IsPluginLoaded(PluginId.Of("quantum.plugin.theme")))
         {
-            // 启动只在联动目标可用时才需要的适配逻辑。
+            // 目标当前可用时启用适配逻辑；无需预先声明 integration。
         }
 
         return Task.CompletedTask;
@@ -159,7 +168,11 @@ public sealed class ExamplePlugin : IQuantumPlugin
 
 `IQuantumPlugin.StartAsync` 针对候选环境快照按依赖顺序调用，全部成功后宿主才发布新目录；`StopAsync` 在卸载或热切换前按逆序调用。两个静态方法都必须实现；即使无需清理，`StopAsync` 也应明确返回 `Task.CompletedTask`。
 
-`IQuantumPluginEnvironment` 提供实时的 `LoadedPlugins` 和 `IsPluginLoaded`；只有 manifest 中声明且版本兼容的关系才会被 `IsIntegrationActive` 认可。`IQuantumPluginRuntimeContext` 可用于读取当前插件版本与本代只读影子目录。插件容器会执行 NOF 生成的 `AutoInject` 初始化器，但动态插件不会加入宿主根 Application Part；依赖宿主级全局扫描的 Handler 或 Initialization Step 不属于可热卸载边界，应由稳定的宿主 Contract 显式桥接。
+`IQuantumPluginEnvironment` 提供实时的 `LoadedPlugins` 和 `IsPluginLoaded`。`integrations` 只是供加载规划器参考的
+声明性软排序提示，不是联动逻辑或跨插件调用的准入条件；插件可以直接根据运行环境决定是否启用适配逻辑。
+`IQuantumPluginRuntimeContext` 可用于读取当前插件版本与本代只读影子目录。插件容器会执行 NOF 生成的
+`AutoInject` 初始化器，但动态插件不会加入宿主根 Application Part；依赖宿主级全局扫描的 Handler 或
+Initialization Step 不属于可热卸载边界，应由稳定的宿主 Contract 显式桥接。
 
 ## 4. 使用 Topic EventBus
 

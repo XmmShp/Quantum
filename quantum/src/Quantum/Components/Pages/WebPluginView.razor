@@ -41,14 +41,14 @@
             {
                 await JavaScript.InvokeVoidAsync(
                     "quantum.plugins.detachWebPlugin",
-                    Plugin.Manifest.Id.Value,
+                    (string)Plugin.Manifest.Id,
                     _hostElement);
                 _attachedKey = null;
             }
 
             await JavaScript.InvokeVoidAsync(
                 "quantum.plugins.attachWebPlugin",
-                Plugin.Manifest.Id.Value,
+                (string)Plugin.Manifest.Id,
                 _hostElement,
                 new
                 {
@@ -60,7 +60,7 @@
             _failureMessage = null;
             Logger.LogInformation(
                 "Mounted Web plugin {PluginId} runtime {RuntimeId} at route {PluginRoute}.",
-                Plugin.Manifest.Id.Value,
+                (string)Plugin.Manifest.Id,
                 Plugin.RuntimeId,
                 Route.Definition.Path);
         }
@@ -70,7 +70,7 @@
             Logger.LogError(
                 exception,
                 "Could not mount Web plugin view for {PluginId}.",
-                Plugin.Manifest.Id.Value);
+                (string)Plugin.Manifest.Id);
             await InvokeAsync(StateHasChanged);
         }
     }
@@ -86,7 +86,7 @@
         {
             await JavaScript.InvokeVoidAsync(
                 "quantum.plugins.detachWebPlugin",
-                Plugin.Manifest.Id.Value,
+                (string)Plugin.Manifest.Id,
                 _hostElement);
         }
         catch (Exception exception) when (exception is JSException or TaskCanceledException)
@@ -94,7 +94,7 @@
             Logger.LogDebug(
                 exception,
                 "Could not detach Web plugin view for {PluginId} during disposal.",
-                Plugin.Manifest.Id.Value);
+                (string)Plugin.Manifest.Id);
         }
     }
 }

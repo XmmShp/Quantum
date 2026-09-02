@@ -4,7 +4,7 @@ interface ExamplePluginHandshake {
   message: string;
   sequence: number;
   dotNetStartedAt: string;
-  integrationActive: boolean;
+  webPluginAvailable: boolean;
 }
 
 export default definePlugin({
@@ -63,12 +63,12 @@ export default definePlugin({
     const environmentStatus = context.element.querySelector<HTMLElement>("[data-environment-status]");
     const hostStatus = context.element.querySelector<HTMLElement>("[data-host-status]");
     const handshakeButton = context.element.querySelector<HTMLButtonElement>("[data-action=handshake]");
-    let dotNetIntegrationActive: boolean | null = null;
+    let dotNetPluginAvailable: boolean | null = null;
 
     const requestHandshake = async () => {
-      if (dotNetIntegrationActive === false) {
+      if (dotNetPluginAvailable === false) {
         if (status) {
-          status.textContent = ".NET 示例未安装或版本不兼容，Web 插件继续独立运行。";
+          status.textContent = ".NET 示例未安装，Web 插件继续独立运行。";
         }
         return;
       }
@@ -95,7 +95,7 @@ export default definePlugin({
         }
         if (metadata) {
           const startedAt = new Date(handshake.dotNetStartedAt).toLocaleTimeString();
-          metadata.textContent = `调用序号 ${handshake.sequence} · .NET runtime 启动于 ${startedAt} · integration ${handshake.integrationActive ? "ACTIVE" : "STANDALONE"}`;
+          metadata.textContent = `调用序号 ${handshake.sequence} · .NET runtime 启动于 ${startedAt} · Web 插件 ${handshake.webPluginAvailable ? "LOADED" : "STANDALONE"}`;
         }
       } catch (error) {
         if (!context.signal.aborted && status) {
@@ -111,11 +111,10 @@ export default definePlugin({
     const initializeInterop = async () => {
       try {
         const environment = await context.environment.snapshot();
-        const dotNetIntegration = environment.integrations.find(
-          integration => integration.pluginId === "quantum.plugin.example");
-        dotNetIntegrationActive = dotNetIntegration?.active ?? false;
+        dotNetPluginAvailable = environment.loadedPlugins.some(
+          plugin => plugin.id === "quantum.plugin.example");
         if (!context.signal.aborted && environmentStatus) {
-          environmentStatus.textContent = `已加载 ${environment.loadedPlugins.length} 个插件；.NET 示例 integration：${dotNetIntegrationActive ? "ACTIVE" : "INACTIVE"}。`;
+          environmentStatus.textContent = `已加载 ${environment.loadedPlugins.length} 个插件；.NET 示例：${dotNetPluginAvailable ? "LOADED" : "NOT LOADED"}。`;
         }
       } catch (error) {
         if (!context.signal.aborted && environmentStatus) {

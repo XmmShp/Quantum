@@ -13,6 +13,9 @@ Quantum (单一 NOF MAUI Host 项目)
 - `Quantum` 在一个项目内包含桌面组合根、Blazor UI，以及 `Quantum.Plugins` 下的插件模型、依赖规划、manifest、ALC、文件系统和 EventBus 实现；这些内部职责以目录组织，不再拆成独立程序集。
 - 同一个 `Quantum.csproj` 提供桌面 MAUI 目标和供测试、API 文档使用的普通 `net10.0` 核心目标；核心目标排除平台启动文件，但编译相同的插件实现源码。
 - `sdk/dotnet/src/Quantum.Plugin.Abstraction` 是宿主与插件共享的唯一 .NET SDK 和稳定 ABI，独立于宿主实现；程序集名、包名和命名空间均为单数形式 `Quantum.Plugin.Abstraction`，是插件兼容性边界。
+- manifest、运行时环境和 EventBus envelope 共用 SDK 中基于 NOF `IValueObject<string>` 生成的 `PluginId` 与
+  `SemanticVersion` 值对象；Web adapter 保持
+  字符串 JSON 形状，并在 TypeScript SDK 中映射为具有相同校验与比较语义的 branded string。
 - `quantum-platform` 是独立部署的统一后端平台，平台级用户身份、权限、插件市场、密码哈希、文件存储、JWT 与 EF Core 持久化均由该宿主组合；其 Contract 通过 `/rpc` 的 JSON-RPC 2.0 暴露，不进入桌面插件 ABI。
 
 ## 启动顺序
@@ -26,7 +29,9 @@ Quantum (单一 NOF MAUI Host 项目)
 7. 为候选代建立私有环境快照和运行期 DI scope；Host 按依赖顺序先应用该插件尚未执行的 SQL migrations，再从入口程序集发现静态 .NET `IQuantumPlugin` bootstrap 并执行 `StartAsync`。bootstrap 不进入 DI，全部成功后再原子发布到宿主 `PluginCatalog`。
 8. MAUI 创建 `BlazorWebView`；路由、菜单、静态文件提供器和 Web 注入订阅同一份动态 `PluginCatalog`。Web descriptor 发布后，宿主才在 opaque-origin iframe 内通过 Blob Module 激活入口。
 
-加载失败按插件隔离；强前置失败的下游插件不会继续加载。弱联动缺失、版本不兼容或形成软循环时，插件仍然加载，规划器只放弃无法满足的顺序偏好。最终状态通过 SDK 的 `IQuantumPluginEnvironment` 暴露，插件可在启动时选择独立模式或联动模式。
+加载失败按插件隔离；强前置失败的下游插件不会继续加载。弱联动缺失、版本不兼容或形成软循环时，插件仍然加载，
+规划器只放弃无法满足的顺序偏好。`integrations` 不构成运行时调用权限；最终已加载状态通过 SDK 的
+`IQuantumPluginEnvironment` 暴露，插件可以在没有 integration 声明时按运行环境选择独立模式或联动模式。
 
 ## 插件数据库 migration
 
@@ -40,7 +45,7 @@ artifact 不一致时拒绝启动插件。
 因此发布者必须使用向后兼容的 expand/migrate/contract 方案。Host 管理事务边界，artifact 不能包含事务控制语句。
 
 Web runtime 不把宿主对象直接暴露给 iframe。iframe 只能通过经来源校验的 `postMessage` 与宿主通信；父页面再通过
-`DotNetObjectReference` 转发到 capability RPC。`.NET` 调用按次创建 DI scope，只允许 manifest 声明的目标和服务 FQN，
+`DotNetObjectReference` 转发到 capability RPC。`.NET` 调用按次创建 DI scope，可访问宿主或任意已加载 .NET 插件的服务 FQN，
 并在异步结果完成且序列化之后释放 scope。销毁 iframe 会强制终止未正确清理的定时器、事件和模块全局状态。
 
 ## 插件 EventBus

@@ -2,7 +2,6 @@ using System.Reflection;
 using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Quantum.Plugin.Abstraction;
 
 namespace Quantum.Plugins;
 
@@ -54,22 +53,9 @@ public sealed class PluginCatalog : IQuantumPluginEnvironment
         RaiseChanged();
     }
 
-    public bool IsPluginLoaded(string pluginId)
-        => FindPlugin(pluginId) is not null;
-
-    public bool IsIntegrationActive(string ownerPluginId, string targetPluginId)
+    public bool IsPluginLoaded(PluginId pluginId)
     {
-        var owner = FindPlugin(ownerPluginId);
-        var target = FindPlugin(targetPluginId);
-        if (owner is null || target is null)
-        {
-            return false;
-        }
-
-        var integration = owner.Manifest.Integrations.FirstOrDefault(candidate =>
-            candidate.Id == target.Manifest.Id);
-        return integration is not null
-            && target.Manifest.Version.CompareTo(integration.MinimumVersion) >= 0;
+        return FindPlugin((string)pluginId) is not null;
     }
 
     public PluginRouteRegistration? FindRoute(string path)
@@ -86,7 +72,7 @@ public sealed class PluginCatalog : IQuantumPluginEnvironment
         ArgumentException.ThrowIfNullOrWhiteSpace(pluginId);
         var normalizedId = pluginId.Trim().ToLowerInvariant();
         return Plugins.FirstOrDefault(plugin => string.Equals(
-            plugin.Manifest.Id.Value,
+            (string)plugin.Manifest.Id,
             normalizedId,
             StringComparison.Ordinal));
     }
@@ -131,8 +117,8 @@ public sealed class PluginCatalog : IQuantumPluginEnvironment
             .ToArray();
         var loadedPlugins = pluginArray
             .Select(static plugin => new QuantumPluginInfo(
-                plugin.Manifest.Id.Value,
-                plugin.Manifest.Version.ToString()))
+                plugin.Manifest.Id,
+                plugin.Manifest.Version))
             .ToArray();
         return new PluginCatalogSnapshot(
             pluginArray,

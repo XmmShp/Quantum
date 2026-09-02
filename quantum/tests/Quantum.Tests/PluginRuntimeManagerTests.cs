@@ -5,7 +5,6 @@ using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
-using Quantum.Plugin.Abstraction;
 using Quantum.Plugins;
 
 namespace Quantum.Tests;
@@ -23,7 +22,7 @@ public sealed class PluginRuntimeManagerTests
 
         Assert.Empty(fixture.Catalog.Plugins);
         var failure = Assert.Single(fixture.Catalog.Failures);
-        Assert.Equal("quantum.plugin.example", failure.PluginId?.Value);
+        Assert.Equal("quantum.plugin.example", failure.PluginId?.ToString());
         Assert.Contains("failed to start", failure.Reason, StringComparison.OrdinalIgnoreCase);
     }
 
@@ -422,7 +421,7 @@ public sealed class PluginRuntimeManagerTests
         await using var manager = fixture.CreateManager(logger);
         await manager.InitializeAsync(fixture.HostServices);
         var originalRuntimeIds = fixture.Catalog.Plugins
-            .ToDictionary(plugin => plugin.Manifest.Id.Value, plugin => plugin.RuntimeId);
+            .ToDictionary(plugin => (string)plugin.Manifest.Id, plugin => plugin.RuntimeId);
         logger.Messages.Clear();
 
         fixture.WriteManifest("1.1.0");
@@ -433,7 +432,7 @@ public sealed class PluginRuntimeManagerTests
         Assert.Contains("quantum.plugin.transitive", result.Message, StringComparison.Ordinal);
         Assert.Equal("1.1.0", fixture.Catalog.FindPlugin("quantum.plugin.example")!.Manifest.Version.ToString());
         Assert.All(fixture.Catalog.Plugins, plugin =>
-            Assert.NotEqual(originalRuntimeIds[plugin.Manifest.Id.Value], plugin.RuntimeId));
+            Assert.NotEqual(originalRuntimeIds[(string)plugin.Manifest.Id], plugin.RuntimeId));
         Assert.Collection(
             logger.Messages.Where(static message => message.StartsWith("Stopped lifecycle", StringComparison.Ordinal)),
             message => Assert.Contains("quantum.plugin.transitive", message, StringComparison.Ordinal),
@@ -475,7 +474,7 @@ public sealed class PluginRuntimeManagerTests
         await using var manager = fixture.CreateManager();
         await manager.InitializeAsync(fixture.HostServices);
         var originalRuntimeIds = fixture.Catalog.Plugins
-            .ToDictionary(plugin => plugin.Manifest.Id.Value, plugin => plugin.RuntimeId);
+            .ToDictionary(plugin => (string)plugin.Manifest.Id, plugin => plugin.RuntimeId);
 
         fixture.WriteManifest("1.1.0");
         File.WriteAllText(fixture.DependentManifestPath, "{ invalid json");
@@ -487,7 +486,7 @@ public sealed class PluginRuntimeManagerTests
             "1.0.0",
             fixture.Catalog.FindPlugin("quantum.plugin.example")!.Manifest.Version.ToString());
         Assert.All(fixture.Catalog.Plugins, plugin =>
-            Assert.Equal(originalRuntimeIds[plugin.Manifest.Id.Value], plugin.RuntimeId));
+            Assert.Equal(originalRuntimeIds[(string)plugin.Manifest.Id], plugin.RuntimeId));
     }
 
     [Fact]

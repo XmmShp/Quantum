@@ -9,7 +9,7 @@ public sealed class ExamplePluginStateService(ExamplePluginState state) : IExamp
 {
     public DateTimeOffset? StartedAt => state.StartedAt;
 
-    public bool WebIntegrationActive => state.WebIntegrationActive;
+    public bool WebPluginAvailable => state.WebPluginAvailable;
 
     public bool IsRunning => state.IsRunning;
 

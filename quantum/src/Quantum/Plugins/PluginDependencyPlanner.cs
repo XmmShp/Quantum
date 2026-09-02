@@ -66,7 +66,7 @@ public sealed class PluginDependencyPlanner
         {
             var ready = remaining
                 .Where(pluginId => requiredDependencyCount[pluginId] == 0)
-                .OrderBy(static pluginId => pluginId.Value, StringComparer.Ordinal)
+                .OrderBy(static pluginId => (string)pluginId, StringComparer.Ordinal)
                 .ToArray();
             if (ready.Length == 0)
             {
@@ -87,7 +87,7 @@ public sealed class PluginDependencyPlanner
             }
         }
 
-        foreach (var pluginId in remaining.OrderBy(static pluginId => pluginId.Value, StringComparer.Ordinal))
+        foreach (var pluginId in remaining.OrderBy(static pluginId => (string)pluginId, StringComparer.Ordinal))
         {
             failures.Add(new PluginLoadFailure(
                 pluginId,

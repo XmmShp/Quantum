@@ -66,10 +66,10 @@ internal static class PluginDatabaseMigrator
             var applied = await ReadAppliedAsync(
                     connection,
                     transaction,
-                    manifest.Id.Value,
+                    (string)manifest.Id,
                     cancellationToken)
                 .ConfigureAwait(false);
-            ValidateHistory(manifest.Id.Value, scripts, applied);
+            ValidateHistory((string)manifest.Id, scripts, applied);
 
             foreach (var script in scripts.Skip(applied.Count))
             {
@@ -87,7 +87,7 @@ internal static class PluginDatabaseMigrator
                         "plugin_id", "migration_name", "sha256", "plugin_version", "applied_at_utc")
                     VALUES ($pluginId, $migrationName, $sha256, $pluginVersion, $appliedAtUtc);
                     """;
-                historyCommand.Parameters.AddWithValue("$pluginId", manifest.Id.Value);
+                historyCommand.Parameters.AddWithValue("$pluginId", (string)manifest.Id);
                 historyCommand.Parameters.AddWithValue("$migrationName", script.Name);
                 historyCommand.Parameters.AddWithValue("$sha256", script.Sha256);
                 historyCommand.Parameters.AddWithValue("$pluginVersion", manifest.Version.ToString());

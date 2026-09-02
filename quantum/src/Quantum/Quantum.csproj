@@ -63,7 +63,7 @@
   <Target Name="BuildExamplePlugins"
           BeforeTargets="Build"
           Condition="'$(Configuration)' == 'Debug' And '$(TargetFramework)' != '' And '$(TargetFramework)' != 'net10.0'">
-    <MSBuild Projects="$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExamplePlugin\Quantum.ExamplePlugin.csproj;$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExampleCalendarPlugin\Quantum.ExampleCalendarPlugin.csproj"
+    <MSBuild Projects="$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExamplePlugin\Quantum.ExamplePlugin.csproj;$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExampleDependentPlugin\Quantum.ExampleDependentPlugin.csproj;$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExampleCalendarPlugin\Quantum.ExampleCalendarPlugin.csproj"
              Targets="Restore;Build"
              Properties="Configuration=$(Configuration);TargetFramework=net10.0"
              RemoveProperties="RuntimeIdentifier;TargetFrameworks" />
@@ -86,6 +86,26 @@
     <Copy SourceFiles="@(ExamplePluginBinary)" DestinationFolder="$(ExamplePluginTarget)" SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(ExamplePluginAsset)"
           DestinationFolder="$(ExamplePluginTarget)\wwwroot\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="StageExampleDependentPlugin"
+          AfterTargets="Build"
+          Condition="'$(Configuration)' == 'Debug' And '$(TargetFramework)' != '' And '$(TargetFramework)' != 'net10.0'">
+    <PropertyGroup>
+      <ExampleDependentPluginOutput>$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExampleDependentPlugin\bin\$(Configuration)\net10.0</ExampleDependentPluginOutput>
+      <ExampleDependentPluginTarget>$(TargetDir)Modules\quantum.plugin.example-dependent</ExampleDependentPluginTarget>
+    </PropertyGroup>
+    <ItemGroup>
+      <ExampleDependentPluginBinary Include="$(ExampleDependentPluginOutput)\Quantum.ExampleDependentPlugin.dll" />
+      <ExampleDependentPluginBinary Include="$(ExampleDependentPluginOutput)\Quantum.ExampleDependentPlugin.pdb" Condition="Exists('$(ExampleDependentPluginOutput)\Quantum.ExampleDependentPlugin.pdb')" />
+      <ExampleDependentPluginBinary Include="$(ExampleDependentPluginOutput)\plugin.json" />
+      <ExampleDependentPluginAsset Include="$(ExampleDependentPluginOutput)\wwwroot\**\*" />
+    </ItemGroup>
+    <MakeDir Directories="$(ExampleDependentPluginTarget)\wwwroot" />
+    <Copy SourceFiles="@(ExampleDependentPluginBinary)" DestinationFolder="$(ExampleDependentPluginTarget)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(ExampleDependentPluginAsset)"
+          DestinationFolder="$(ExampleDependentPluginTarget)\wwwroot\%(RecursiveDir)"
           SkipUnchangedFiles="true" />
   </Target>
 

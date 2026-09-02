@@ -1,6 +1,5 @@
 using System.Runtime.CompilerServices;
 using Microsoft.Extensions.DependencyInjection;
-using Quantum.Plugin.Abstraction;
 using Quantum.Plugins;
 
 namespace Quantum.Tests;
@@ -44,8 +43,8 @@ public sealed class PluginEventBusTests
         Assert.Equal("ready", receivedMessage.State);
         Assert.Equal(7, receivedMessage.Sequence);
         Assert.Equal("ready", received.Payload.GetProperty("state").GetString());
-        Assert.Equal("quantum.plugin.publisher", received.Publisher.Id);
-        Assert.Equal("1.0.0", received.Publisher.Version);
+        Assert.Equal("quantum.plugin.publisher", (string)received.Publisher.Id);
+        Assert.Equal("1.0.0", received.Publisher.Version.ToString());
         Assert.InRange(
             received.PublishedAt,
             DateTimeOffset.UtcNow.AddMinutes(-1),
@@ -219,7 +218,7 @@ public sealed class PluginEventBusTests
             .PublishAsync(new PublisherMessage("ready", 1));
 
         Assert.NotNull(received);
-        Assert.Equal("quantum.plugin.web", received.Publisher.Id);
+        Assert.Equal("quantum.plugin.web", (string)received.Publisher.Id);
     }
 
     [Fact]

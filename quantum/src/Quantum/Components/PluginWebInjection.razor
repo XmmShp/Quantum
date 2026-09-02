@@ -35,7 +35,7 @@
 
         var contributions = PluginCatalog.Plugins.Select(plugin => new
         {
-            PluginId = plugin.Manifest.Id.Value,
+            PluginId = (string)plugin.Manifest.Id,
             plugin.Manifest.Web.Head,
             plugin.Manifest.Web.PostBlazor
         }).ToArray();
@@ -43,13 +43,13 @@
             .Where(static plugin => plugin.Manifest.Runtime.Kind == PluginRuntimeKind.Web)
             .Select(plugin => new
             {
-                PluginId = plugin.Manifest.Id.Value,
+                PluginId = (string)plugin.Manifest.Id,
                 RuntimeId = plugin.RuntimeId.ToString("N"),
                 Version = plugin.Manifest.Version.ToString(),
                 EntryUrl = Navigation.ToAbsoluteUri(
-                    $"_content/{plugin.Manifest.Id.Value}/{EncodePath(plugin.Manifest.Runtime.Entry)}"
+                    $"_content/{plugin.Manifest.Id}/{EncodePath(plugin.Manifest.Runtime.Entry)}"
                     + $"?runtime={plugin.RuntimeId:N}").ToString(),
-                AssetBaseUrl = Navigation.ToAbsoluteUri($"_content/{plugin.Manifest.Id.Value}/").ToString()
+                AssetBaseUrl = Navigation.ToAbsoluteUri($"_content/{plugin.Manifest.Id}/").ToString()
             })
             .ToArray();
         var previousFailureMessage = _failureMessage;

@@ -11,6 +11,7 @@ namespace Quantum.Tests;
 public sealed class WebPluginInteropBridgeTests
 {
     private const string PluginId = "quantum.plugin.web";
+    private const string TargetPluginId = "quantum.plugin.target";
     private const string Topic = "example.web.status";
 
     [Fact]
@@ -49,9 +50,39 @@ public sealed class WebPluginInteropBridgeTests
         Assert.Equal(1, javaScript.DispatchCount);
     }
 
+    [Fact]
+    public async Task DotNetInvocationDoesNotRequireAnIntegrationDeclaration()
+    {
+        await using var host = CreateHost();
+        var runtimeId = Guid.NewGuid();
+        var catalog = new PluginCatalog([
+            LoadedWebPlugin(runtimeId),
+            LoadedDotNetPlugin(host)
+        ]);
+        using var bridge = CreateBridge(catalog, host, new RejectingEventDeliveryJavaScriptRuntime());
+
+        var result = await bridge.InvokeAsync(
+            PluginId,
+            runtimeId.ToString("N"),
+            Guid.NewGuid().ToString("N"),
+            "dotnet",
+            "invoke",
+            JsonSerializer.SerializeToElement(new
+            {
+                target = TargetPluginId,
+                service = typeof(TestInteropService).FullName,
+                method = nameof(TestInteropService.Echo),
+                arguments = new[] { "hello" },
+                parameterTypes = new[] { typeof(string).FullName }
+            }));
+
+        Assert.Equal("echo:hello", result.GetString());
+    }
+
     private static ServiceProvider CreateHost()
         => new ServiceCollection()
             .AddQuantumPluginEventBus()
+            .AddSingleton<TestInteropService>()
             .BuildServiceProvider(new ServiceProviderOptions
             {
                 ValidateOnBuild = true,
@@ -103,13 +134,30 @@ public sealed class WebPluginInteropBridgeTests
     private static LoadedPlugin LoadedWebPlugin(Guid runtimeId)
         => new(
             new PluginManifest(
-                new PluginId(PluginId),
-                SemanticVersion.Parse("1.0.0"),
+                Quantum.Plugin.Abstraction.PluginId.Of(PluginId),
+                SemanticVersion.Of("1.0.0"),
                 PluginRuntimeDefinition.Web("plugin.js")),
             Path.Combine("plugins", PluginId),
             entryAssembly: null,
             routes: [],
             runtimeId);
+
+    private static LoadedPlugin LoadedDotNetPlugin(IServiceProvider services)
+        => new(
+            new PluginManifest(
+                Quantum.Plugin.Abstraction.PluginId.Of(TargetPluginId),
+                SemanticVersion.Of("1.0.0"),
+                "Target.dll"),
+            Path.Combine("plugins", TargetPluginId),
+            typeof(WebPluginInteropBridgeTests).Assembly,
+            routes: [],
+            runtimeId: Guid.NewGuid(),
+            services: services);
+
+    private sealed class TestInteropService
+    {
+        public string Echo(string value) => $"echo:{value}";
+    }
 
     private sealed class RejectingEventDeliveryJavaScriptRuntime : IJSRuntime
     {

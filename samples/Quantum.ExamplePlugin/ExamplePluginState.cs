@@ -6,7 +6,7 @@ public interface IExamplePluginState
 {
     DateTimeOffset? StartedAt { get; }
 
-    bool WebIntegrationActive { get; }
+    bool WebPluginAvailable { get; }
 
     bool IsRunning { get; }
 
@@ -23,7 +23,7 @@ public sealed record ExamplePluginHandshake(
     string Message,
     int Sequence,
     DateTimeOffset DotNetStartedAt,
-    bool IntegrationActive);
+    bool WebPluginAvailable);
 
 [AutoInject(
     ServiceLifetime.Singleton,
@@ -35,7 +35,7 @@ public sealed class ExamplePluginState
 
     public DateTimeOffset? StartedAt { get; private set; }
 
-    public bool WebIntegrationActive { get; private set; }
+    public bool WebPluginAvailable { get; private set; }
 
     public bool IsRunning { get; private set; }
 
@@ -43,11 +43,11 @@ public sealed class ExamplePluginState
 
     public string? LastWebPluginId => Volatile.Read(ref _lastWebPluginId);
 
-    internal void Start(DateTimeOffset startedAt, bool webIntegrationActive)
+    internal void Start(DateTimeOffset startedAt, bool webPluginAvailable)
     {
         StartedAt = startedAt;
         IsRunning = true;
-        WebIntegrationActive = webIntegrationActive;
+        WebPluginAvailable = webPluginAvailable;
     }
 
     internal void Stop()
@@ -73,6 +73,6 @@ public sealed class ExamplePluginState
             $"来自 .NET 插件的第 {sequence} 次握手：你好，{normalizedPluginId}！",
             sequence,
             StartedAt.Value,
-            WebIntegrationActive));
+            WebPluginAvailable));
     }
 }

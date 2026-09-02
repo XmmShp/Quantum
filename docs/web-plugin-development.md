@@ -74,10 +74,15 @@ Web 插件不能使用 `web.head`/`web.postBlazor` 向宿主页面注入 HTML；
 路由的 `showInNavigation` 默认为 `true`；设为 `false` 后仍可通过路径或 `context.navigation.navigate()`
 打开，但不会显示在宿主主导航中。
 
+manifest 的 `id` 与版本字段和 .NET 插件使用相同约束：id 最长 128 个字符，`version`/`minVersion` 必须是
+写全 `major.minor.patch` 的 SemVer 2.0.0。TypeScript SDK 提供 `PluginId.of()`、`SemanticVersion.parse()`、
+`SemanticVersion.components()` 和 `SemanticVersion.compare()`；它们是带运行时校验的 branded string，JSON
+传输仍保持字符串字段。
+
 `database.migrations` 是 Host 能力，不是 JavaScript API。它与 .NET 插件使用完全相同的发布 artifact：把 Prisma、
 Drizzle 或其他开发期 ORM 的最终升级路径导出为 SQLite SQL，按 `001_init.sql`、`002_add_index.sql` 的形式放入声明目录。
 每个版本携带完整的追加式历史；Host 在 `activate` 之前用事务执行待应用文件，并校验已应用文件的 SHA-256。
-Web iframe 不会获得数据库连接；需要读写业务数据时仍应通过 Host capability 或声明的 .NET integration RPC。
+Web iframe 不会获得数据库连接；需要读写业务数据时仍应通过 Host capability 或已加载 .NET 插件的 RPC 服务。
 
 完整的命名、事务和 forward-only 升级规则见 [.NET 插件开发指南的持久化章节](plugin-development.md#6-提供静态资源和-web-贡献)。
 
@@ -162,8 +167,8 @@ const result = await context.dotnet.invoke<MyResult>({
 }, { signal });
 ```
 
-`target` 可以是 `host`，也可以是 manifest 中已激活的 .NET integration 插件 id；后者从目标插件的私有容器解析服务。
-Quantum 将已安装插件视为受控代码，导航和 .NET 服务调用均可直接使用。
+`target` 可以是 `host`，也可以是任意已加载的 .NET 插件 id；后者从目标插件的私有容器解析服务，不要求调用方
+在 manifest 中声明 `integration`。Quantum 将已安装插件视为受控代码，导航和 .NET 服务调用均可直接使用。
 
 互操作约束：
 
@@ -181,9 +186,8 @@ npm run build
 ```
 
 把 `plugin.json` 和 `wwwroot` 复制到 `Modules/<plugin-id>` 后执行“重新扫描 Modules”。仓库内的
-`samples/Quantum.ExampleWebPlugin` 展示了 iframe 页面、环境查询、导航，以及与
-`samples/Quantum.ExamplePlugin` 的双向 integration 声明和 .NET FQN 异步握手调用；打开 .NET 示例页可以看到
-JS 发起的累计握手次数。
+`samples/Quantum.ExampleWebPlugin` 展示了 iframe 页面、环境查询、导航，以及在没有 integration 声明时对
+`samples/Quantum.ExamplePlugin` 发起 .NET FQN 异步握手调用；打开 .NET 示例页可以看到 JS 发起的累计握手次数。
 
 也可以把 `plugin.json` 与 `wwwroot` 放在同一个插件目录中打成 ZIP，直接拖到 Quantum 窗口中的任意位置安装；单插件包与多插件整合包使用相同流程，包内插件目录不能互相嵌套。宿主会与已安装版本按 SemVer 择优，并在确认前用同一份新快照校验 Web 入口、强依赖和所有 .NET / Web 插件的兼容性。完整包结构、安全限制与事务语义见 [.NET 插件开发指南的分发 ZIP 安装包章节](plugin-development.md#8-分发-zip-安装包)。
 

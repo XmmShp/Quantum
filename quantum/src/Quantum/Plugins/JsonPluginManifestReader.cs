@@ -30,15 +30,15 @@ public sealed class JsonPluginManifestReader
         var runtime = CreateRuntime(document);
 
         var manifest = new PluginManifest(
-            new PluginId(document.Id),
-            SemanticVersion.Parse(document.Version),
+            PluginId.Of(document.Id),
+            SemanticVersion.Of(document.Version),
             runtime,
             document.Dependencies.Select(static dependency => new PluginDependency(
-                new PluginId(dependency.Id),
-                SemanticVersion.Parse(dependency.MinimumVersion))),
+                PluginId.Of(dependency.Id),
+                SemanticVersion.Of(dependency.MinimumVersion))),
             document.Integrations.Select(static integration => new PluginIntegration(
-                new PluginId(integration.Id),
-                SemanticVersion.Parse(integration.MinimumVersion))),
+                PluginId.Of(integration.Id),
+                SemanticVersion.Of(integration.MinimumVersion))),
             document.Ui.Routes.Select(route => runtime.Kind == PluginRuntimeKind.Web
                 ? PluginRouteDefinition.Web(
                     route.Path,

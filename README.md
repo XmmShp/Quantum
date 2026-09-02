@@ -5,7 +5,7 @@ Quantum 是基于 .NET 10、NOF 与 .NET MAUI Blazor Hybrid 的本地优先插�
 ## 核心能力
 
 - `NOFMauiAppBuilder` 驱动 MAUI 应用和 NOF 初始化管线。
-- 插件按 `plugin.json` 发现；`dependencies` 提供强前置约束，`integrations` 提供缺失时不阻塞加载的弱联动与软排序。
+- 插件按 `plugin.json` 发现；`dependencies` 提供强前置约束，`integrations` 只提供声明性软排序提示，不限制联动逻辑或跨插件调用。
 - 每个 .NET 插件使用独立、可回收的 `AssemblyLoadContext` 和 DI 容器；入口 DLL 从影子目录以流方式加载，源文件可随时替换。
 - Web 插件使用独立的 opaque-origin iframe；入口以单文件 ESM 加载，销毁 iframe 即可释放 DOM、定时器和模块运行环境。
 - 静态 `IQuantumPlugin` bootstrap 无需注册到 DI 或创建实例，通过插件运行期 scope 驱动可逆 .NET 生命周期；卸载与热升级无需重启宿主，.NET 启动失败会自动回滚旧快照。
@@ -38,6 +38,7 @@ sdk/
 └── typescript/                  Web 插件生命周期与互操作类型
 samples/
 ├── Quantum.ExamplePlugin/          .NET、Blazor、DI 与静态资源示例
+├── Quantum.ExampleDependentPlugin/ 声明并验证强前置依赖的 .NET 示例
 ├── Quantum.ExampleCalendarPlugin/  bundled CSS + 宿主共享 SQLite 的 NOF CRUD 示例
 └── Quantum.ExampleWebPlugin/       纯 TypeScript iframe 插件示例
 docs/                            架构与插件开发文档
@@ -112,7 +113,7 @@ dotnet run --project quantum/src/Quantum/Quantum.csproj `
 
 ## 插件开发
 
-完整流程见 [插件开发指南](docs/plugin-development.md)，架构边界见 [架构说明](docs/architecture.md)。可直接从 [Quantum.ExamplePlugin](samples/Quantum.ExamplePlugin) 复制起步。
+完整流程见 [插件开发指南](docs/plugin-development.md)，架构边界见 [架构说明](docs/architecture.md)。可直接从 [Quantum.ExamplePlugin](samples/Quantum.ExamplePlugin) 复制起步；需要声明强前置依赖时参考 [Quantum.ExampleDependentPlugin](samples/Quantum.ExampleDependentPlugin)。
 
 ## 平台服务
 

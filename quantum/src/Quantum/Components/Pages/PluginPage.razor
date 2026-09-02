@@ -53,7 +53,7 @@ else
         var relativePath = NavigationManager.ToBaseRelativePath(NavigationManager.Uri);
         var path = $"/{relativePath.Split('?', '#')[0]}";
         _route = PluginCatalog.FindRoute(path);
-        _plugin = _route is null ? null : PluginCatalog.FindPlugin(_route.PluginId.Value);
+        _plugin = _route is null ? null : PluginCatalog.FindPlugin((string)_route.PluginId);
     }
 
     private void OnCatalogChanged(object? sender, EventArgs eventArgs)

@@ -5,7 +5,7 @@
 生产插件应引用发布后的 `Quantum.Plugin.Abstraction` NuGet 包。仓库内的样例使用项目引用，以便 SDK、宿主与样例一起构建和验证。
 
 - `IQuantumPlugin` 是静态启动/停止 bootstrap，不需要注册到 DI 或创建实例；业务状态应放在普通插件服务中。
-- `IQuantumPluginEnvironment` 提供已加载插件列表，并允许插件判断 manifest 中声明的弱联动是否已经激活。
+- `IQuantumPluginEnvironment` 提供已加载插件列表和查询；联动逻辑可以直接按目标插件是否可用来决定。
 - `IQuantumPluginRuntimeContext` 提供当前运行版本和只读影子目录路径。
 - `IQuantumEventBus` 提供 ROS 风格的 Topic Publisher/Subscription；发布者和订阅者只需使用 JSON 结构兼容的消息模型。
 - `IServiceProvider.GetService(string)` 可按 `Type.FullName`（不含程序集名和 `global::`）解析无法在编译期引用的联动服务：
@@ -13,6 +13,38 @@
 ```csharp
 dynamic? service = services.GetService("MyNamespace.MySub.IMyInterface");
 ```
+
+## 插件标识与版本值对象
+
+`QuantumPluginInfo.Id` 和 `QuantumPluginInfo.Version` 分别是 `PluginId` 与 `SemanticVersion`，不再是未校验的
+`string`。两者均直接实现 NOF 的 `IValueObject<string>`；`Of(...)`、底层值转换、相等性、`ToString()` 和 JSON
+converter 由 NOF source generator 提供。`PluginId` 会去除首尾空白并转为小写，限制为 1–128 个 ASCII 字符，只允许字母、数字、点、下划线和
+连字符，首尾必须是字母或数字；`disabled` 是宿主保留值。动态查询也要显式构造值对象：
+
+```csharp
+var themeId = PluginId.Of("quantum.plugin.theme");
+if (environment.IsPluginLoaded(themeId))
+{
+    // 目标插件当前可用。
+}
+```
+
+`SemanticVersion.Of(...)` 严格接受 SemVer 2.0.0（必须包含 `major.minor.patch`），提供 `Major`、`Minor`、
+`Patch`、`PreReleaseIdentifiers`、`BuildMetadataIdentifiers` 和 `IsPreRelease`。三个数字字段使用 `BigInteger`，
+不会额外引入 `Int32` 上限；`CompareTo` 以及 `<`、`<=`、`>`、`>=` 按 SemVer 优先级比较，构建元数据不参与
+优先级：
+
+```csharp
+var current = SemanticVersion.Of("2.1.0-rc.2+linux.arm64");
+var minimum = SemanticVersion.Of("2.1.0-beta.1");
+
+if (current >= minimum)
+{
+    Console.WriteLine(string.Join('.', current.PreReleaseIdentifiers));
+}
+```
+
+两个值对象通过 NOF 生成的 JSON converter 序列化为字符串，所以 EventBus envelope 和 Web Host 协议的字段形状保持不变。
 
 数据库 schema 演进不属于 .NET ABI。插件可以在开发期使用 EF/NOF 模型，但发布包统一通过
 `plugin.json` 的 `database.migrations` 携带 SQLite SQL artifact；Host 在 `StartAsync` 前应用它。具体规则见

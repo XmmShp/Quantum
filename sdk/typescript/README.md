@@ -37,8 +37,33 @@ append-only SQLite SQL history. The Host applies pending scripts before `activat
 database connection. See the repository Web plugin guide for the artifact and upgrade rules.
 
 Installed plugins run as trusted, controlled code. Host navigation and .NET invocation are directly available.
-`target` is `host` or the id of an active .NET plugin integration. Each invocation owns a DI scope, injects
+`target` is `host` or the id of any loaded .NET plugin; an `integration` declaration is not required. Each invocation owns a DI scope, injects
 `CancellationToken` parameters, awaits `Task`/`ValueTask`, serializes the result, and then disposes the scope.
+Entries in `environment.snapshot().integrations` are informational declarations used for soft ordering; their `active`
+field reports target availability and version compatibility but does not authorize or block interaction.
+
+## Plugin identity and version value objects
+
+`QuantumPluginInfo` and `QuantumPluginIdentity` use the branded `PluginId` and `SemanticVersion` string types.
+Construct external values at the boundary instead of casting unchecked strings:
+
+```ts
+import { PluginId, SemanticVersion } from "@quantum/plugin-sdk";
+
+const pluginId = PluginId.of("Quantum.Plugin.Theme");
+const current = SemanticVersion.parse("2.1.0-rc.2+linux.arm64");
+const minimum = SemanticVersion.parse("2.1.0-beta.1");
+const parts = SemanticVersion.components(current);
+
+if (SemanticVersion.compare(current, minimum) >= 0) {
+  console.log(pluginId, parts.major, parts.preReleaseIdentifiers);
+}
+```
+
+`PluginId.of()` applies the same normalization, 128-character limit, character rules, and reserved `disabled`
+check as the .NET SDK. `SemanticVersion.parse()` strictly requires SemVer 2.0.0 `major.minor.patch`; its numeric
+components are `bigint`, and `SemanticVersion.compare()` ignores build metadata when determining precedence.
+Both branded values remain strings on the JSON wire, preserving the existing iframe/Host payload shape.
 
 ## Topic EventBus
 

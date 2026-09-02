@@ -1,0 +1,41 @@
+@namespace Quantum.ExampleDependentPlugin.Pages
+@using Quantum.ExampleDependentPlugin
+@using Microsoft.AspNetCore.Components.Web
+
+<PageTitle>依赖示例 · Quantum</PageTitle>
+
+<section class="dependent-plugin">
+    <p class="dependent-kicker">REQUIRED DEPENDENCY</p>
+    <h1>先有 ExamplePlugin，才有这个页面。</h1>
+    <p class="dependent-lead">
+        <code>quantum.plugin.example-dependent</code> 在 manifest 中声明了强前置依赖。
+        宿主会先校验版本并启动依赖插件；依赖缺失、版本不足或启动失败时，本插件不会加载。
+    </p>
+
+    <div class="dependency-flow" aria-label="插件依赖加载顺序">
+        <article>
+            <span>1 · REQUIRED</span>
+            <strong>@(State.RequiredPlugin is { } requiredPlugin ? requiredPlugin.Id.ToString() : "等待依赖")</strong>
+            <p>最低版本 0.1.0，当前加载版本 @(State.RequiredPlugin?.Version.ToString() ?? "—")。</p>
+        </article>
+        <div class="dependency-arrow" aria-hidden="true">→</div>
+        <article>
+            <span>2 · DEPENDENT</span>
+            <strong>quantum.plugin.example-dependent</strong>
+            <p>启动于 @(State.StartedAt?.ToString("HH:mm:ss") ?? "等待中")。</p>
+        </article>
+    </div>
+
+    <p class="dependency-note">
+        两个插件仍处于各自独立的加载上下文；这里演示的是运行时依赖顺序，不是直接引用另一个插件的实现 DLL。
+    </p>
+</section>
+
+@code {
+    private readonly DependentPluginState State;
+
+    public Index(DependentPluginState state)
+    {
+        State = state;
+    }
+}

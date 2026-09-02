@@ -3,12 +3,7 @@
   "version": "0.1.0",
   "entryAssembly": "Quantum.ExamplePlugin.dll",
   "dependencies": [],
-  "integrations": [
-    {
-      "id": "quantum.plugin.example-web",
-      "minVersion": "0.1.0"
-    }
-  ],
+  "integrations": [],
   "ui": {
     "routes": [
       {

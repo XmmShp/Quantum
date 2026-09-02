@@ -48,7 +48,7 @@ public sealed class PluginStaticAssetFileProvider : IFileProvider, IDisposable
         => catalog.Plugins
             .Select(plugin => new
             {
-                PluginId = plugin.Manifest.Id.Value,
+                PluginId = (string)plugin.Manifest.Id,
                 StaticRoot = Path.Combine(plugin.RootPath, "wwwroot")
             })
             .Where(static plugin => Directory.Exists(plugin.StaticRoot))

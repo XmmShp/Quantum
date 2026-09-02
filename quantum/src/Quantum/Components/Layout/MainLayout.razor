@@ -14,7 +14,7 @@
                 {
                     @foreach (var route in PluginCatalog.NavigationRoutes)
                     {
-                        var title = route.Definition.Title ?? route.PluginId.Value;
+                        var title = route.Definition.Title ?? route.PluginId.ToString();
                         <NavLink href="@route.Definition.Path"
                                  class="nav-item"
                                  aria-label="@title"

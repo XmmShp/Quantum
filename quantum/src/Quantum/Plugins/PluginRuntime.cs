@@ -2,7 +2,6 @@ using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NOF.Infrastructure;
-using Quantum.Plugin.Abstraction;
 using Quantum.Plugins.Persistence;
 
 namespace Quantum.Plugins;
@@ -267,7 +266,7 @@ internal sealed class PluginRuntime
         var runtimeId = Guid.NewGuid();
         var shadowRoot = Path.Combine(
             sessionShadowRoot,
-            candidate.Manifest.Id.Value,
+            (string)candidate.Manifest.Id,
             runtimeId.ToString("N"));
         logger.LogDebug(
             "Copying plugin {PluginId} {PluginVersion} from {PluginSourcePath} to shadow directory "
@@ -349,8 +348,8 @@ internal sealed class PluginRuntime
             var serviceCollection = new ServiceCollection();
             var environment = new PluginEnvironmentProxy(catalog);
             var pluginInfo = new QuantumPluginInfo(
-                candidate.Manifest.Id.Value,
-                candidate.Manifest.Version.ToString());
+                candidate.Manifest.Id,
+                candidate.Manifest.Version);
             var eventHub = hostServices.GetRequiredService<PluginEventHub>();
             serviceCollection.AddSingleton<IQuantumPluginEnvironment>(environment);
             serviceCollection.AddSingleton<IQuantumPluginRuntimeContext>(new PluginRuntimeContext(
@@ -561,10 +560,7 @@ internal sealed class PluginEnvironmentProxy(IQuantumPluginEnvironment target)
 
     public IReadOnlyList<QuantumPluginInfo> LoadedPlugins => Target.LoadedPlugins;
 
-    public bool IsPluginLoaded(string pluginId) => Target.IsPluginLoaded(pluginId);
-
-    public bool IsIntegrationActive(string ownerPluginId, string targetPluginId)
-        => Target.IsIntegrationActive(ownerPluginId, targetPluginId);
+    public bool IsPluginLoaded(PluginId pluginId) => Target.IsPluginLoaded(pluginId);
 }
 
 internal static class PluginShadowCopy

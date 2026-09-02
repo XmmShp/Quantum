@@ -50,6 +50,75 @@ public sealed class PluginCatalogBootstrapperTests
     }
 
     [Fact]
+    public void Bootstrap_LoadsDependentExampleAfterRequiredExample()
+    {
+        var exampleAssembly = Path.Combine(AppContext.BaseDirectory, "Quantum.ExamplePlugin.dll");
+        var dependentAssembly = Path.Combine(AppContext.BaseDirectory, "Quantum.ExampleDependentPlugin.dll");
+        Assert.True(File.Exists(exampleAssembly), $"Example plugin fixture was not found at '{exampleAssembly}'.");
+        Assert.True(
+            File.Exists(dependentAssembly),
+            $"Dependent example plugin fixture was not found at '{dependentAssembly}'.");
+
+        var modulesRoot = Path.Combine(Path.GetTempPath(), $"quantum-dependent-catalog-{Guid.NewGuid():N}");
+        var dependentRoot = Path.Combine(modulesRoot, "01-dependent");
+        var exampleRoot = Path.Combine(modulesRoot, "02-example");
+        Directory.CreateDirectory(dependentRoot);
+        Directory.CreateDirectory(exampleRoot);
+
+        try
+        {
+            File.Copy(exampleAssembly, Path.Combine(exampleRoot, "Quantum.ExamplePlugin.dll"));
+            File.Copy(dependentAssembly, Path.Combine(dependentRoot, "Quantum.ExampleDependentPlugin.dll"));
+            File.WriteAllText(
+                Path.Combine(exampleRoot, "plugin.json"),
+                """
+                {
+                  "id": "quantum.plugin.example",
+                  "version": "0.1.0",
+                  "entryAssembly": "Quantum.ExamplePlugin.dll"
+                }
+                """);
+            File.WriteAllText(
+                Path.Combine(dependentRoot, "plugin.json"),
+                """
+                {
+                  "id": "quantum.plugin.example-dependent",
+                  "version": "0.1.0",
+                  "entryAssembly": "Quantum.ExampleDependentPlugin.dll",
+                  "dependencies": [{
+                    "id": "quantum.plugin.example",
+                    "minVersion": "0.1.0"
+                  }],
+                  "ui": {
+                    "routes": [{
+                      "path": "/plugins/example-dependent",
+                      "component": "Quantum.ExampleDependentPlugin.Pages.Index"
+                    }]
+                  }
+                }
+                """);
+
+            var catalog = new PluginCatalogBootstrapper().Bootstrap(modulesRoot);
+
+            Assert.Empty(catalog.Failures);
+            Assert.Equal(
+                ["quantum.plugin.example", "quantum.plugin.example-dependent"],
+                catalog.Plugins.Select(static plugin => (string)plugin.Manifest.Id));
+            var dependent = catalog.Plugins[1];
+            var dependency = Assert.Single(dependent.Manifest.Dependencies);
+            Assert.Equal("quantum.plugin.example", (string)dependency.Id);
+            Assert.Equal("0.1.0", dependency.MinimumVersion.ToString());
+            Assert.Equal(
+                "/plugins/example-dependent",
+                Assert.Single(dependent.Routes).Definition.Path);
+        }
+        finally
+        {
+            Directory.Delete(modulesRoot, recursive: true);
+        }
+    }
+
+    [Fact]
     public void Bootstrap_LoadsWebPluginWithoutAssemblyLoadContext()
     {
         var modulesRoot = Path.Combine(Path.GetTempPath(), $"quantum-web-catalog-{Guid.NewGuid():N}");

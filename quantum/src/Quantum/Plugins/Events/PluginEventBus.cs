@@ -5,7 +5,6 @@ using System.Text.Json.Serialization.Metadata;
 using Microsoft.Extensions.DependencyInjection;
 using NOF.Abstraction;
 using NOF.Contract;
-using Quantum.Plugin.Abstraction;
 
 namespace Quantum.Plugins;
 

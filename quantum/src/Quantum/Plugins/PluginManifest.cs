@@ -33,8 +33,10 @@ public sealed class PluginManifest
         PluginWebContributions? web = null,
         PluginDatabaseDefinition? database = null)
     {
+        _ = (string)id;
+        _ = (string)version;
         Id = id;
-        Version = version ?? throw new ArgumentNullException(nameof(version));
+        Version = version;
         Runtime = runtime ?? throw new ArgumentNullException(nameof(runtime));
         Dependencies = (dependencies ?? []).ToArray();
         Integrations = (integrations ?? []).ToArray();

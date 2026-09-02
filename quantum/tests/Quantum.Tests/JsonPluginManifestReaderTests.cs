@@ -1,3 +1,4 @@
+using NOF.Domain;
 using Quantum.Plugins;
 
 namespace Quantum.Tests;
@@ -7,7 +8,7 @@ public sealed class JsonPluginManifestReaderTests
     [Fact]
     public void PluginId_RejectsReservedDisabledName()
     {
-        var exception = Assert.Throws<ArgumentException>(() => new PluginId("disabled"));
+        var exception = Assert.Throws<DomainValidationException>(() => PluginId.Of("disabled"));
 
         Assert.Contains("reserved", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
@@ -48,11 +49,11 @@ public sealed class JsonPluginManifestReaderTests
 
         var candidate = new JsonPluginManifestReader().Read(directory.Path);
 
-        Assert.Equal("quantum.plugin.test", candidate.Manifest.Id.Value);
+        Assert.Equal("quantum.plugin.test", (string)candidate.Manifest.Id);
         Assert.Equal("1.2.0-beta.1", candidate.Manifest.Version.ToString());
         Assert.Single(candidate.Manifest.Dependencies);
         var integration = Assert.Single(candidate.Manifest.Integrations);
-        Assert.Equal("optional-addon", integration.Id.Value);
+        Assert.Equal("optional-addon", (string)integration.Id);
         Assert.Equal("2.0.0", integration.MinimumVersion.ToString());
         var route = Assert.Single(candidate.Manifest.Routes);
         Assert.False(route.ShowInNavigation);

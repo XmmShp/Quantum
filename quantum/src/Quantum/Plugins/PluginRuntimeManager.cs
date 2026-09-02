@@ -228,11 +228,11 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             var dependents = FindStrongDependentIds(
                     plugins.Select(static plugin => plugin.Manifest),
                     normalized)
-                .Select(static id => id.Value)
+                .Select(static id => (string)id)
                 .ToArray();
             if (revision == _catalog.Revision)
             {
-                return new PluginOperationImpact(normalized.Value, dependents, revision);
+                return new PluginOperationImpact((string)normalized, dependents, revision);
             }
         }
     }
@@ -330,9 +330,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
     public IReadOnlyList<DisabledPluginInfo> GetDisabledPlugins()
         => ReadDisabledModuleCandidates()
             .Candidates
-            .OrderBy(static candidate => candidate.Manifest.Id.Value, StringComparer.Ordinal)
+            .OrderBy(static candidate => (string)candidate.Manifest.Id, StringComparer.Ordinal)
             .Select(static candidate => new DisabledPluginInfo(
-                candidate.Manifest.Id.Value,
+                (string)candidate.Manifest.Id,
                 candidate.Manifest.Version.ToString()))
             .ToArray();
 
@@ -590,7 +590,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                             evaluation = evaluation with
                             {
                                 Issues = staged.Failures.Select(static failure =>
-                                    new PluginInstallIssue(failure.PluginId?.Value, failure.Reason)).ToArray()
+                                    new PluginInstallIssue(failure.PluginId?.ToString(), failure.Reason)).ToArray()
                             };
                         }
                     }
@@ -684,7 +684,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
 
             var selectedPackages = evaluation.Items
                 .Where(static item => item.Action is PluginInstallAction.Install or PluginInstallAction.Upgrade)
-                .Select(item => evaluation.PackageCandidates[new PluginId(item.PluginId)])
+                .Select(item => evaluation.PackageCandidates[PluginId.Of(item.PluginId)])
                 .ToArray();
             var transactionRoot = Path.Combine(
                 Path.GetFullPath(_options.ModulesRootPath),
@@ -705,10 +705,10 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                     var pluginId = package.Manifest.Id;
                     var destinationPath = evaluation.InstalledCandidates.TryGetValue(pluginId, out var installed)
                         ? installed.RootPath
-                        : Path.Combine(_options.ModulesRootPath, pluginId.Value);
+                        : Path.Combine(_options.ModulesRootPath, (string)pluginId);
                     EnsureDirectModuleChild(destinationPath);
-                    var incomingPath = Path.Combine(incomingRoot, pluginId.Value);
-                    var backupPath = Path.Combine(backupRoot, pluginId.Value);
+                    var incomingPath = Path.Combine(incomingRoot, (string)pluginId);
+                    var backupPath = Path.Combine(backupRoot, (string)pluginId);
                     PluginShadowCopy.Copy(package.RootPath, incomingPath);
                     operations.Add(new PluginFileInstallOperation(
                         pluginId,
@@ -984,7 +984,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             + "{PluginCount} active plugin(s): {PluginIds}.",
             _catalog.Revision,
             _runtimes.Count,
-            _runtimes.Select(static runtime => runtime.Candidate.Manifest.Id.Value).ToArray());
+            _runtimes.Select(static runtime => (string)runtime.Candidate.Manifest.Id).ToArray());
         return PluginOperationResult.Success("插件运行时快照已更新。");
     }
 
@@ -1086,7 +1086,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             .Where(runtime => excludedPluginIds is null
                 || !excludedPluginIds.Contains(runtime.Candidate.Manifest.Id))
             .Where(runtime => !plannedIds.Contains(runtime.Candidate.Manifest.Id))
-            .Select(runtime => runtime.Candidate.Manifest.Id.Value)
+            .Select(runtime => (string)runtime.Candidate.Manifest.Id)
             .Order(StringComparer.Ordinal)
             .ToArray();
     }
@@ -1136,7 +1136,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
     {
         var moduleScan = ReadModuleCandidates();
         var issues = moduleScan.Failures
-            .Select(static failure => new PluginInstallIssue(failure.PluginId?.Value, failure.Reason))
+            .Select(static failure => new PluginInstallIssue(failure.PluginId?.ToString(), failure.Reason))
             .ToList();
 
         var installedCandidates = new Dictionary<PluginId, PluginCandidate>();
@@ -1147,7 +1147,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             if (ordered.Length > 1)
             {
                 issues.Add(new PluginInstallIssue(
-                    group.Key.Value,
+                    (string)group.Key,
                     "Modules 中有多个目录声明了同一个插件 id，无法生成唯一版本清单。"));
             }
         }
@@ -1158,10 +1158,11 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             var ordered = OrderByNewest(group);
             var newest = ordered[0];
             selectedPackages[group.Key] = newest;
-            if (ordered.Skip(1).Any(candidate => candidate.Manifest.Version.Equals(newest.Manifest.Version)))
+            if (ordered.Skip(1).Any(candidate =>
+                candidate.Manifest.Version.CompareTo(newest.Manifest.Version) == 0))
             {
                 issues.Add(new PluginInstallIssue(
-                    group.Key.Value,
+                    (string)group.Key,
                     $"ZIP 中有多个 {newest.Manifest.Version} 版本，无法确定应安装的目录。"));
             }
         }
@@ -1172,14 +1173,14 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         foreach (var disabledPluginId in selectedPackages.Keys.Where(disabledPluginIds.Contains))
         {
             issues.Add(new PluginInstallIssue(
-                disabledPluginId.Value,
+                (string)disabledPluginId,
                 "该插件当前已禁用，请先重新启用或清理禁用版本后再安装。"));
         }
 
         var mergedCandidates = installedCandidates.ToDictionary(static pair => pair.Key, static pair => pair.Value);
         var items = new List<PluginInstallPreviewItem>();
         foreach (var package in selectedPackages.Values
-                     .OrderBy(static candidate => candidate.Manifest.Id.Value, StringComparer.Ordinal))
+                     .OrderBy(static candidate => (string)candidate.Manifest.Id, StringComparer.Ordinal))
         {
             installedCandidates.TryGetValue(package.Manifest.Id, out var installed);
             var comparison = installed is null
@@ -1196,18 +1197,18 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             }
 
             items.Add(new PluginInstallPreviewItem(
-                package.Manifest.Id.Value,
+                (string)package.Manifest.Id,
                 package.Manifest.Version.ToString(),
                 installed?.Manifest.Version.ToString(),
                 action));
 
             if (action == PluginInstallAction.Install)
             {
-                var canonicalDestination = Path.Combine(_options.ModulesRootPath, package.Manifest.Id.Value);
+                var canonicalDestination = Path.Combine(_options.ModulesRootPath, (string)package.Manifest.Id);
                 if (Directory.Exists(canonicalDestination))
                 {
                     issues.Add(new PluginInstallIssue(
-                        package.Manifest.Id.Value,
+                        (string)package.Manifest.Id,
                         $"目标目录 '{canonicalDestination}' 已存在但不是有效的已安装插件。"));
                 }
             }
@@ -1215,7 +1216,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
 
         var plan = _dependencyPlanner.CreatePlan(mergedCandidates.Values);
         issues.AddRange(plan.Failures.Select(static failure =>
-            new PluginInstallIssue(failure.PluginId?.Value, failure.Reason)));
+            new PluginInstallIssue(failure.PluginId?.ToString(), failure.Reason)));
         var plannedIds = plan.OrderedCandidates
             .Select(static candidate => candidate.Manifest.Id)
             .ToHashSet();
@@ -1223,7 +1224,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                      !plannedIds.Contains(runtime.Candidate.Manifest.Id)))
         {
             issues.Add(new PluginInstallIssue(
-                current.Candidate.Manifest.Id.Value,
+                (string)current.Candidate.Manifest.Id,
                 "新的插件版本清单会使当前已加载插件失效。"));
         }
 
@@ -1480,7 +1481,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         {
             _logger.LogWarning(
                 "Plugin dependency planning rejected {PluginId}: {FailureReason}",
-                failure.PluginId?.Value ?? "<unknown>",
+                failure.PluginId?.ToString() ?? "<unknown>",
                 failure.Reason);
         }
 
@@ -1490,7 +1491,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             candidates.Count,
             plan.OrderedCandidates.Count,
             failures.Count,
-            plan.OrderedCandidates.Select(static candidate => candidate.Manifest.Id.Value).ToArray());
+            plan.OrderedCandidates.Select(static candidate => (string)candidate.Manifest.Id).ToArray());
         return new PluginDiscovery(plan, failures);
     }
 
@@ -1610,7 +1611,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
     private static PluginId NormalizePluginId(string pluginId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(pluginId);
-        return new PluginId(pluginId.Trim().ToLowerInvariant());
+        return PluginId.Of(pluginId);
     }
 
     private sealed record PluginDiscovery(

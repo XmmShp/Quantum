@@ -13,7 +13,7 @@ public sealed class PluginDependencyPlannerTests
         var feature = Candidate(
             "feature",
             "1.0.0",
-            dependencies: [new PluginDependency(core.Manifest.Id, SemanticVersion.Parse("1.0.0"))]);
+            dependencies: [new PluginDependency(core.Manifest.Id, SemanticVersion.Of("1.0.0"))]);
 
         var plan = _planner.CreatePlan([feature, core]);
 
@@ -27,11 +27,11 @@ public sealed class PluginDependencyPlannerTests
         var feature = Candidate(
             "feature",
             "1.0.0",
-            dependencies: [new PluginDependency(new PluginId("missing"), SemanticVersion.Parse("1.0.0"))]);
+            dependencies: [new PluginDependency(PluginId.Of("missing"), SemanticVersion.Of("1.0.0"))]);
         var child = Candidate(
             "child",
             "1.0.0",
-            dependencies: [new PluginDependency(feature.Manifest.Id, SemanticVersion.Parse("1.0.0"))]);
+            dependencies: [new PluginDependency(feature.Manifest.Id, SemanticVersion.Of("1.0.0"))]);
 
         var plan = _planner.CreatePlan([child, feature]);
 
@@ -46,7 +46,7 @@ public sealed class PluginDependencyPlannerTests
         var feature = Candidate(
             "feature",
             "1.0.0",
-            dependencies: [new PluginDependency(core.Manifest.Id, SemanticVersion.Parse("2.0.0"))]);
+            dependencies: [new PluginDependency(core.Manifest.Id, SemanticVersion.Of("2.0.0"))]);
 
         var plan = _planner.CreatePlan([core, feature]);
 
@@ -57,16 +57,16 @@ public sealed class PluginDependencyPlannerTests
     [Fact]
     public void CreatePlan_RejectsDependencyCycles()
     {
-        var firstId = new PluginId("first");
-        var secondId = new PluginId("second");
+        var firstId = PluginId.Of("first");
+        var secondId = PluginId.Of("second");
         var first = Candidate(
             "first",
             "1.0.0",
-            dependencies: [new PluginDependency(secondId, SemanticVersion.Parse("1.0.0"))]);
+            dependencies: [new PluginDependency(secondId, SemanticVersion.Of("1.0.0"))]);
         var second = Candidate(
             "second",
             "1.0.0",
-            dependencies: [new PluginDependency(firstId, SemanticVersion.Parse("1.0.0"))]);
+            dependencies: [new PluginDependency(firstId, SemanticVersion.Of("1.0.0"))]);
 
         var plan = _planner.CreatePlan([first, second]);
 
@@ -80,7 +80,7 @@ public sealed class PluginDependencyPlannerTests
         var plugin = Candidate(
             "standalone",
             "1.0.0",
-            integrations: [new PluginIntegration(new PluginId("optional-addon"), SemanticVersion.Parse("1.0.0"))]);
+            integrations: [new PluginIntegration(PluginId.Of("optional-addon"), SemanticVersion.Of("1.0.0"))]);
 
         var plan = _planner.CreatePlan([plugin]);
 
@@ -95,7 +95,7 @@ public sealed class PluginDependencyPlannerTests
         var owner = Candidate(
             "a-owner",
             "1.0.0",
-            integrations: [new PluginIntegration(target.Manifest.Id, SemanticVersion.Parse("1.1.0"))]);
+            integrations: [new PluginIntegration(target.Manifest.Id, SemanticVersion.Of("1.1.0"))]);
 
         var plan = _planner.CreatePlan([owner, target]);
 
@@ -110,7 +110,7 @@ public sealed class PluginDependencyPlannerTests
         var owner = Candidate(
             "a-owner",
             "1.0.0",
-            integrations: [new PluginIntegration(target.Manifest.Id, SemanticVersion.Parse("2.0.0"))]);
+            integrations: [new PluginIntegration(target.Manifest.Id, SemanticVersion.Of("2.0.0"))]);
 
         var plan = _planner.CreatePlan([target, owner]);
 
@@ -121,16 +121,16 @@ public sealed class PluginDependencyPlannerTests
     [Fact]
     public void CreatePlan_BreaksIntegrationCyclesWithoutRejectingPlugins()
     {
-        var firstId = new PluginId("first");
-        var secondId = new PluginId("second");
+        var firstId = PluginId.Of("first");
+        var secondId = PluginId.Of("second");
         var first = Candidate(
             "first",
             "1.0.0",
-            integrations: [new PluginIntegration(secondId, SemanticVersion.Parse("1.0.0"))]);
+            integrations: [new PluginIntegration(secondId, SemanticVersion.Of("1.0.0"))]);
         var second = Candidate(
             "second",
             "1.0.0",
-            integrations: [new PluginIntegration(firstId, SemanticVersion.Parse("1.0.0"))]);
+            integrations: [new PluginIntegration(firstId, SemanticVersion.Of("1.0.0"))]);
 
         var plan = _planner.CreatePlan([second, first]);
 
@@ -141,13 +141,13 @@ public sealed class PluginDependencyPlannerTests
     [Fact]
     public void Manifest_RejectsDuplicateStrongAndWeakRelationship()
     {
-        var targetId = new PluginId("target");
+        var targetId = PluginId.Of("target");
 
         Assert.Throws<ArgumentException>(() => Candidate(
             "owner",
             "1.0.0",
-            dependencies: [new PluginDependency(targetId, SemanticVersion.Parse("1.0.0"))],
-            integrations: [new PluginIntegration(targetId, SemanticVersion.Parse("1.0.0"))]));
+            dependencies: [new PluginDependency(targetId, SemanticVersion.Of("1.0.0"))],
+            integrations: [new PluginIntegration(targetId, SemanticVersion.Of("1.0.0"))]));
     }
 
     private static PluginCandidate Candidate(
@@ -157,8 +157,8 @@ public sealed class PluginDependencyPlannerTests
         IReadOnlyList<PluginIntegration>? integrations = null)
         => new(
             new PluginManifest(
-                new PluginId(id),
-                SemanticVersion.Parse(version),
+                PluginId.Of(id),
+                SemanticVersion.Of(version),
                 $"{id}.dll",
                 dependencies,
                 integrations),

@@ -64,7 +64,7 @@
             @foreach (var plugin in PluginCatalog.Plugins)
             {
                 <article class="plugin-row">
-                    <span class="plugin-avatar">@plugin.Manifest.Id.Value[0].ToString().ToUpperInvariant()</span>
+                    <span class="plugin-avatar">@((string)plugin.Manifest.Id)[0].ToString().ToUpperInvariant()</span>
                     <div class="plugin-meta">
                         <strong>@plugin.Manifest.Id</strong>
                         <span>v@(plugin.Manifest.Version) · @plugin.Routes.Count 个页面</span>
@@ -72,16 +72,16 @@
                     <span class="healthy-pill">运行中</span>
                     <div class="plugin-actions">
                         <button disabled="@IsBusy"
-                                @onclick="() => ReloadAsync(plugin.Manifest.Id.Value)">
+                                @onclick="() => ReloadAsync((string)plugin.Manifest.Id)">
                             热升级
                         </button>
                         <button disabled="@IsBusy"
-                                @onclick="() => PrepareDisable(plugin.Manifest.Id.Value)">
+                                @onclick="() => PrepareDisable((string)plugin.Manifest.Id)">
                             禁用
                         </button>
                         <button class="danger"
                                 disabled="@IsBusy"
-                                @onclick="() => PrepareUninstall(plugin.Manifest.Id.Value)">
+                                @onclick="() => PrepareUninstall((string)plugin.Manifest.Id)">
                             卸载
                         </button>
                     </div>
@@ -223,7 +223,7 @@
         @foreach (var failure in PluginCatalog.Failures)
         {
             <div class="failure-row">
-                <strong>@(failure.PluginId?.Value ?? "未知插件")</strong>
+                <strong>@(failure.PluginId?.ToString() ?? "未知插件")</strong>
                 <span>@failure.Reason</span>
             </div>
         }

@@ -6,7 +6,6 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.JSInterop;
-using Quantum.Plugin.Abstraction;
 using Quantum.Plugins;
 
 namespace Quantum.WebPlugins;
@@ -79,7 +78,7 @@ public sealed class WebPluginInteropBridge(
                     .ConfigureAwait(false),
                 "assets" => await InvokeAssetsAsync(plugin, method, arguments, cancellation.Token)
                     .ConfigureAwait(false),
-                "dotnet" => await InvokeDotNetAsync(plugin, method, arguments, cancellation.Token)
+                "dotnet" => await InvokeDotNetAsync(method, arguments, cancellation.Token)
                     .ConfigureAwait(false),
                 _ => throw new InvalidOperationException($"Unknown Web plugin capability '{capability}'.")
             };
@@ -184,17 +183,22 @@ public sealed class WebPluginInteropBridge(
             throw new InvalidOperationException($"Unknown environment method '{method}'.");
         }
 
-        var integrations = plugin.Manifest.Integrations.Select(integration => new
+        var integrations = plugin.Manifest.Integrations.Select(integration =>
         {
-            PluginId = integration.Id.Value,
-            MinimumVersion = integration.MinimumVersion.ToString(),
-            Active = catalog.IsIntegrationActive(plugin.Manifest.Id.Value, integration.Id.Value)
+            var target = catalog.FindPlugin((string)integration.Id);
+            return new
+            {
+                PluginId = (string)integration.Id,
+                MinimumVersion = integration.MinimumVersion.ToString(),
+                Active = target is not null
+                    && target.Manifest.Version.CompareTo(integration.MinimumVersion) >= 0
+            };
         });
         return Serialize(new
         {
             Plugin = new
             {
-                Id = plugin.Manifest.Id.Value,
+                Id = (string)plugin.Manifest.Id,
                 Version = plugin.Manifest.Version.ToString(),
                 RuntimeId = plugin.RuntimeId.ToString("N")
             },
@@ -251,7 +255,7 @@ public sealed class WebPluginInteropBridge(
             var subscription = runtime.Bus.Subscribe(
                 topic,
                 (@event, eventCancellationToken) => DispatchEventAsync(
-                    plugin.Manifest.Id.Value,
+                    (string)plugin.Manifest.Id,
                     runtimeId,
                     subscriptionId,
                     @event,
@@ -284,12 +288,12 @@ public sealed class WebPluginInteropBridge(
     private WebEventBusRuntime GetOrCreateEventBusRuntime(LoadedPlugin plugin, string runtimeId)
     {
         var runtime = _eventBuses.GetOrAdd(
-            CreateRuntimeKey(plugin.Manifest.Id.Value, runtimeId),
+            CreateRuntimeKey((string)plugin.Manifest.Id, runtimeId),
             _ => new Lazy<WebEventBusRuntime>(
                 () => new WebEventBusRuntime(eventBusFactory.Create(
                     new QuantumPluginInfo(
-                        plugin.Manifest.Id.Value,
-                        plugin.Manifest.Version.ToString()))),
+                        plugin.Manifest.Id,
+                        plugin.Manifest.Version))),
                 LazyThreadSafetyMode.ExecutionAndPublication));
         return runtime.Value;
     }
@@ -358,7 +362,6 @@ public sealed class WebPluginInteropBridge(
     }
 
     private async Task<JsonElement> InvokeDotNetAsync(
-        LoadedPlugin owner,
         string method,
         JsonElement arguments,
         CancellationToken cancellationToken)
@@ -372,7 +375,7 @@ public sealed class WebPluginInteropBridge(
         var serviceTypeName = RequireString(arguments, "service");
         var methodName = RequireString(arguments, "method");
 
-        var provider = ResolveTargetProvider(owner, target);
+        var provider = ResolveTargetProvider(target);
         AsyncServiceScope? scope = null;
         if (provider.GetService<IServiceScopeFactory>() is { } scopeFactory)
         {
@@ -436,21 +439,18 @@ public sealed class WebPluginInteropBridge(
         }
     }
 
-    private IServiceProvider ResolveTargetProvider(LoadedPlugin owner, string target)
+    private IServiceProvider ResolveTargetProvider(string target)
     {
         if (string.Equals(target, "host", StringComparison.Ordinal))
         {
             return hostServices;
         }
 
-        if (!catalog.IsIntegrationActive(owner.Manifest.Id.Value, target))
-        {
-            throw new InvalidOperationException(
-                $"Plugin '{owner.Manifest.Id}' does not have an active integration with '{target}'.");
-        }
-
-        return catalog.FindPlugin(target)?.Services
-            ?? throw new InvalidOperationException($"Target plugin '{target}' does not expose a .NET service provider.");
+        var targetPlugin = catalog.FindPlugin(target)
+            ?? throw new InvalidOperationException($"Target plugin '{target}' is not loaded.");
+        return targetPlugin.Services
+            ?? throw new InvalidOperationException(
+                $"Target plugin '{target}' does not expose a .NET service provider.");
     }
 
     private static BoundInvocation BindMethod(

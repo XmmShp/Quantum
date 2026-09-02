@@ -1,5 +1,3 @@
-using Quantum.Plugin.Abstraction;
-
 namespace Quantum.Plugins;
 
 /// <summary>
