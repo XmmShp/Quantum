@@ -1,6 +1,7 @@
 using NOF.Application;
 using NOF.Domain;
 using Quantum.ExampleCalendarPlugin.Domain;
+using Quantum.ExampleCalendarPlugin.Localization;
 
 namespace Quantum.ExampleCalendarPlugin.Application;
 
@@ -16,7 +17,9 @@ internal sealed class CalendarItemApplicationService(
     {
         if (endDate < startDate)
         {
-            throw new ArgumentOutOfRangeException(nameof(endDate), "结束日期不能早于开始日期。");
+            throw new ArgumentOutOfRangeException(
+                nameof(endDate),
+                PluginText.Get("结束日期不能早于开始日期。"));
         }
 
         return await calendarItems.AsNoTracking()
@@ -63,7 +66,7 @@ internal sealed class CalendarItemApplicationService(
         var item = await calendarItems
             .Where(candidate => candidate.Id == id)
             .SingleOrDefaultAsync(cancellationToken)
-            ?? throw new KeyNotFoundException($"未找到事项 '{id}'。");
+            ?? throw new KeyNotFoundException(PluginText.Get("未找到事项 '{0}'。", id));
         item.Update(
             request.Title,
             request.Description,
@@ -82,7 +85,7 @@ internal sealed class CalendarItemApplicationService(
         var item = await calendarItems
             .Where(candidate => candidate.Id == id)
             .SingleOrDefaultAsync(cancellationToken)
-            ?? throw new KeyNotFoundException($"未找到事项 '{id}'。");
+            ?? throw new KeyNotFoundException(PluginText.Get("未找到事项 '{0}'。", id));
         calendarItems.Remove(item);
         await dbContext.SaveChangesAsync(cancellationToken);
     }

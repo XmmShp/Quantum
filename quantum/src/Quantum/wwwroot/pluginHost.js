@@ -1,5 +1,12 @@
 window.quantum = window.quantum || {};
 
+window.quantum.localization = {
+  setCulture(cultureName, textDirection) {
+    document.documentElement.lang = cultureName;
+    document.documentElement.dir = textDirection;
+  }
+};
+
 window.quantum.pluginInstallerDropTarget = {
   registrations: new Map(),
 
@@ -219,7 +226,16 @@ window.quantum.plugins = {
   },
 
   async attachWebPlugin(pluginId, hostElement, route) {
-    const binding = { hostElement, route };
+    const documentLanguage = globalThis.document?.documentElement?.lang || "en-US";
+    const binding = {
+      hostElement,
+      route: route?.route ?? route,
+      locale: route?.locale ?? {
+        cultureName: documentLanguage,
+        languageName: documentLanguage.split("-")[0],
+        textDirection: globalThis.document?.documentElement?.dir || "ltr"
+      }
+    };
     this.bindings.set(pluginId, binding);
     const record = this.records.get(pluginId);
     if (record) {
@@ -360,7 +376,7 @@ window.quantum.plugins = {
 
     this.placeRecord(record, binding.hostElement);
     const mounted = this.waitFor(record, "mounted", 30000);
-    this.post(record, "mount", { route: binding.route });
+    this.post(record, "mount", { route: binding.route, locale: binding.locale });
     await mounted;
     record.mounted = true;
   },

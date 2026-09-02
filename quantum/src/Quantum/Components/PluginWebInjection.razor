@@ -4,6 +4,7 @@
 @inject PluginCatalog PluginCatalog
 @inject IJSRuntime JavaScript
 @inject ILogger<PluginWebInjection> Logger
+@inject IStringLocalizer<AppStrings> L
 @inject NavigationManager Navigation
 @inject WebPluginInteropBridge InteropBridge
 @implements IAsyncDisposable
@@ -11,7 +12,7 @@
 @if (!string.IsNullOrWhiteSpace(_failureMessage))
 {
     <div class="web-contribution-warning" role="status">
-        插件 Web 扩展更新失败：@_failureMessage
+        @L["插件 Web 扩展更新失败：{0}", _failureMessage]
     </div>
 }
 

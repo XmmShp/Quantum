@@ -1,4 +1,5 @@
 @inject PluginCatalog PluginCatalog
+@inject IStringLocalizer<AppStrings> L
 
 <Router AppAssembly="typeof(PluginCatalog).Assembly">
     <Found Context="routeData">
@@ -9,9 +10,9 @@
         <LayoutView Layout="typeof(MainLayout)">
             <div class="empty-state">
                 <p class="eyebrow">404</p>
-                <h1>这里还没有内容</h1>
-                <p>该地址既不属于 Quantum，也未被任何插件注册。</p>
-                <a class="primary-button" href="/settings">打开设置</a>
+                <h1>@L["这里还没有内容"]</h1>
+                <p>@L["该地址既不属于 Quantum，也未被任何插件注册。"]</p>
+                <a class="primary-button" href="/settings">@L["打开设置"]</a>
             </div>
         </LayoutView>
     </NotFound>

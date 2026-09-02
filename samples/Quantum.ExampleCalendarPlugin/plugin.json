@@ -13,6 +13,7 @@
         "path": "/plugins/calendar",
         "component": "Quantum.ExampleCalendarPlugin.Pages.Calendar",
         "title": "日历",
+        "titles": { "en-US": "Calendar" },
         "icon": "日",
         "order": 105,
         "showInNavigation": true

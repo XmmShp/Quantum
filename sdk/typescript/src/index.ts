@@ -509,10 +509,20 @@ export interface QuantumRoute {
   readonly title?: string | null;
 }
 
+/** Locale selected by the Host for the mounted plugin view. */
+export interface QuantumLocale {
+  /** Normalized BCP-47 culture name, such as `en-US` or `zh-CN`. */
+  readonly cultureName: string;
+  /** ISO language name, such as `en` or `zh`. */
+  readonly languageName: string;
+  readonly textDirection: "ltr" | "rtl";
+}
+
 export interface QuantumPluginViewContext extends Omit<QuantumPluginContext, "signal"> {
   /** The root element inside the plugin's isolated document. */
   readonly element: HTMLElement;
   readonly route: QuantumRoute;
+  readonly locale: QuantumLocale;
   /** Aborted whenever the view is unmounted. */
   readonly signal: AbortSignal;
 }

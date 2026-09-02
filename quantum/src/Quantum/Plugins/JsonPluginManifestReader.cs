@@ -39,7 +39,7 @@ public sealed class JsonPluginManifestReader
             document.Integrations.Select(static integration => new PluginIntegration(
                 PluginId.Of(integration.Id),
                 VersionRange.Of(integration.VersionRange))),
-            document.Ui.Routes.Select(route => runtime.Kind == PluginRuntimeKind.Web
+            document.Ui.Routes.Select(route => (runtime.Kind == PluginRuntimeKind.Web
                 ? PluginRouteDefinition.Web(
                     route.Path,
                     route.View,
@@ -53,7 +53,8 @@ public sealed class JsonPluginManifestReader
                     route.Title,
                     route.Icon,
                     route.Order,
-                    route.ShowInNavigation)),
+                    route.ShowInNavigation))
+                .WithLocalizedTitles(route.Titles)),
             new PluginWebContributions(document.Web.Head, document.Web.PostBlazor),
             document.Database is null
                 ? null
@@ -164,6 +165,9 @@ public sealed class JsonPluginManifestReader
         public string View { get; init; } = string.Empty;
 
         public string? Title { get; init; }
+
+        public IReadOnlyDictionary<string, string> Titles { get; init; }
+            = new Dictionary<string, string>();
 
         public string? Icon { get; init; }
 

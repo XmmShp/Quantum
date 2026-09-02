@@ -10,6 +10,7 @@
         "path": "/plugins/example",
         "component": "Quantum.ExamplePlugin.Pages.Index",
         "title": "示例插件",
+        "titles": { "en-US": "Example plugin" },
         "icon": "✦",
         "order": 100,
         "showInNavigation": true

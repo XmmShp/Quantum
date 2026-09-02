@@ -13,6 +13,7 @@
         "path": "/plugins/example-web",
         "view": "main",
         "title": "TypeScript 示例",
+        "titles": { "en-US": "TypeScript example" },
         "icon": "TS",
         "order": 110,
         "showInNavigation": true

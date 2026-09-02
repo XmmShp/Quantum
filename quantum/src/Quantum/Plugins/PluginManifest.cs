@@ -1,3 +1,6 @@
+using System.Collections.ObjectModel;
+using System.Globalization;
+
 namespace Quantum.Plugins;
 
 public sealed class PluginManifest
@@ -218,7 +221,8 @@ public sealed record PluginRouteDefinition
         string? title,
         string? icon,
         int order,
-        bool showInNavigation)
+        bool showInNavigation,
+        IReadOnlyDictionary<string, string>? localizedTitles = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         if (!path.StartsWith('/'))
@@ -230,6 +234,7 @@ public sealed record PluginRouteDefinition
         Component = string.IsNullOrWhiteSpace(component) ? null : component.Trim();
         View = string.IsNullOrWhiteSpace(view) ? null : view.Trim();
         Title = string.IsNullOrWhiteSpace(title) ? null : title.Trim();
+        LocalizedTitles = NormalizeLocalizedTitles(localizedTitles);
         Icon = string.IsNullOrWhiteSpace(icon) ? null : icon.Trim();
         Order = order;
         ShowInNavigation = showInNavigation;
@@ -242,6 +247,8 @@ public sealed record PluginRouteDefinition
     public string? View { get; }
 
     public string? Title { get; }
+
+    public IReadOnlyDictionary<string, string> LocalizedTitles { get; }
 
     public string? Icon { get; }
 
@@ -264,6 +271,16 @@ public sealed record PluginRouteDefinition
         string? icon,
         int order,
         bool showInNavigation)
+        => Web(path, view, title, icon, order, showInNavigation, localizedTitles: null);
+
+    public static PluginRouteDefinition Web(
+        string path,
+        string view,
+        string? title,
+        string? icon,
+        int order,
+        bool showInNavigation,
+        IReadOnlyDictionary<string, string>? localizedTitles)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(view);
         return new PluginRouteDefinition(
@@ -273,7 +290,67 @@ public sealed record PluginRouteDefinition
             title,
             icon,
             order,
-            showInNavigation);
+            showInNavigation,
+            localizedTitles);
+    }
+
+    public PluginRouteDefinition WithLocalizedTitles(
+        IReadOnlyDictionary<string, string>? localizedTitles)
+        => new(
+            Path,
+            Component,
+            View,
+            Title,
+            Icon,
+            Order,
+            ShowInNavigation,
+            localizedTitles);
+
+    public string? GetTitle(CultureInfo culture)
+    {
+        ArgumentNullException.ThrowIfNull(culture);
+        if (LocalizedTitles.TryGetValue(culture.Name, out var exact))
+        {
+            return exact;
+        }
+
+        if (LocalizedTitles.TryGetValue(culture.TwoLetterISOLanguageName, out var neutral))
+        {
+            return neutral;
+        }
+
+        var languageMatch = LocalizedTitles.FirstOrDefault(pair =>
+            string.Equals(
+                CultureInfo.GetCultureInfo(pair.Key).TwoLetterISOLanguageName,
+                culture.TwoLetterISOLanguageName,
+                StringComparison.OrdinalIgnoreCase));
+        return languageMatch.Value ?? Title;
+    }
+
+    private static IReadOnlyDictionary<string, string> NormalizeLocalizedTitles(
+        IReadOnlyDictionary<string, string>? localizedTitles)
+    {
+        if (localizedTitles is null || localizedTitles.Count == 0)
+        {
+            return ReadOnlyDictionary<string, string>.Empty;
+        }
+
+        var normalized = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+        foreach (var (cultureName, title) in localizedTitles)
+        {
+            if (string.IsNullOrWhiteSpace(cultureName) || string.IsNullOrWhiteSpace(title))
+            {
+                throw new ArgumentException("Localized route titles require a culture name and non-empty title.");
+            }
+
+            var culture = CultureInfo.GetCultureInfo(cultureName.Trim());
+            if (!normalized.TryAdd(culture.Name, title.Trim()))
+            {
+                throw new ArgumentException($"Localized route title culture '{culture.Name}' is duplicated.");
+            }
+        }
+
+        return new ReadOnlyDictionary<string, string>(normalized);
     }
 }
 

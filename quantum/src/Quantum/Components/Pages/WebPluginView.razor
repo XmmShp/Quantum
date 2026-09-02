@@ -2,13 +2,15 @@
 @using Microsoft.Extensions.Logging
 @inject IJSRuntime JavaScript
 @inject ILogger<WebPluginView> Logger
+@inject IStringLocalizer<AppStrings> L
+@inject CultureService CultureService
 
 <div class="web-plugin-view" @ref="_hostElement">
     @if (!string.IsNullOrWhiteSpace(_failureMessage))
     {
         <div class="empty-state">
-            <p class="eyebrow">WEB PLUGIN ERROR</p>
-            <h1>插件页面启动失败</h1>
+            <p class="eyebrow">@L["WEB PLUGIN ERROR"]</p>
+            <h1>@L["插件页面启动失败"]</h1>
             <p>@_failureMessage</p>
         </div>
     }
@@ -21,6 +23,9 @@
     [Parameter, EditorRequired]
     public PluginRouteRegistration Route { get; set; } = null!;
 
+    [CascadingParameter(Name = "CultureName")]
+    public string CultureName { get; set; } = CultureService.EnglishCultureName;
+
     private ElementReference _hostElement;
     private string? _attachedKey;
     private string? _attemptedKey;
@@ -28,7 +33,7 @@
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        var key = $"{Plugin.RuntimeId:N}:{Route.Definition.Path}";
+        var key = $"{Plugin.RuntimeId:N}:{Route.Definition.Path}:{CultureName}";
         if (string.Equals(_attemptedKey, key, StringComparison.Ordinal))
         {
             return;
@@ -52,9 +57,18 @@
                 _hostElement,
                 new
                 {
-                    Route.Definition.Path,
-                    Route.Definition.View,
-                    Route.Definition.Title
+                    Route = new
+                    {
+                        Route.Definition.Path,
+                        Route.Definition.View,
+                        Title = Route.Definition.GetTitle(CultureService.CurrentCulture)
+                    },
+                    Locale = new
+                    {
+                        CultureName = CultureService.CurrentCulture.Name,
+                        LanguageName = CultureService.CurrentCulture.TwoLetterISOLanguageName,
+                        TextDirection = CultureService.TextDirection
+                    }
             });
             _attachedKey = key;
             _failureMessage = null;

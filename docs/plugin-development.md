@@ -54,6 +54,7 @@ Infrastructure 项目。插件不得携带自己的 ABI 副本版本并尝试覆
         "path": "/plugins/example",
         "component": "Quantum.ExamplePlugin.Pages.Index",
         "title": "示例插件",
+        "titles": { "en-US": "Example plugin" },
         "icon": "✦",
         "order": 100
       },
@@ -92,6 +93,8 @@ Infrastructure 项目。插件不得携带自己的 ABI 副本版本并尝试覆
 - 旧版 `entryAssembly` 继续受支持，等价于 `{ "runtime": { "kind": "dotnet", "entry": "..." } }`；DLL 入口只能是插件根目录下的文件名。
 - .NET 路由的 `component` 必须是入口程序集内实现 `IComponent` 的完整类型名；Web 路由改用 `view`。
 - `showInNavigation` 默认为 `true`；设为 `false` 的页面不会出现在主导航中，但仍可通过其路径或导航 API 打开。
+- `title` 是路由标题的默认回退；`titles` 可用 BCP-47 culture name 提供本地化标题。宿主先匹配完整 culture，
+  再匹配语言，最后回退到 `title`。
 - `database.migrations` 对 .NET 和 Web 插件含义相同，指向插件根目录内的 SQL migration artifact。
 - 同一目标不能同时出现在 `dependencies` 和 `integrations`，各类关系和路由不能重复；未知 manifest 字段会被拒绝，避免拼写错误静默失效。
 
@@ -333,6 +336,22 @@ var subscription = events.Subscribe(
 ```
 
 宿主校验类型后使用 `DynamicComponent` 渲染，并根据 manifest 的 `title`、`icon` 和 `order` 生成菜单。插件私有服务必须使用构造注入；Blazor 的 `@inject` 属性仍由宿主渲染器处理，只适合注入宿主公开的稳定服务。为避免 Router 缓存旧程序集，动态插件页面只使用 manifest 路由，不支持插件程序集内的 `@page` 自动发现。
+
+### 本地化插件页面
+
+.NET 插件使用标准 `IStringLocalizer<T>` 与 `.resx`。把中性资源和语言资源放在 marker type 对应路径下，例如
+`Localization/PluginStrings.resx` 与 `Localization/PluginStrings.en-US.resx`，然后在组件中注入：
+
+```razor
+@using Microsoft.Extensions.Localization
+@inject IStringLocalizer<PluginStrings> L
+
+<h1>@L["页面标题"]</h1>
+```
+
+日期、数字和复数相关逻辑应读取 `CultureInfo.CurrentCulture`，不要固定 `zh-CN` 或 `en-US`。构建/分发插件时必须保留
+`<culture>/<PluginAssembly>.resources.dll` 目录；宿主的可回收加载上下文会按当前 culture 探测这些卫星程序集。
+宿主切换语言后会以新 culture 重新创建当前动态插件页面。
 
 ## 6. 提供静态资源和 Web 贡献
 

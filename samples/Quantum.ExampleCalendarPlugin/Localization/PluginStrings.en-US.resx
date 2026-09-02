@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="PERSISTENT CALENDAR" xml:space="preserve"><value>PERSISTENT CALENDAR</value></data>
+  <data name="SELECTED DAY" xml:space="preserve"><value>SELECTED DAY</value></data>
+  <data name="{0}日历" xml:space="preserve"><value>{0} calendar</value></data>
+  <data name="{0}，{1} 个事项" xml:space="preserve"><value>{0}, {1} events</value></data>
+  <data name="上个月" xml:space="preserve"><value>Previous month</value></data>
+  <data name="下个月" xml:space="preserve"><value>Next month</value></data>
+  <data name="事项由 NOF.Application 管理，并持久化到宿主共享 SQLite。" xml:space="preserve"><value>Events are managed by NOF.Application and persisted to the host's shared SQLite database.</value></data>
+  <data name="今天" xml:space="preserve"><value>Today</value></data>
+  <data name="保存修改" xml:space="preserve"><value>Save changes</value></data>
+  <data name="关闭" xml:space="preserve"><value>Close</value></data>
+  <data name="关闭编辑器" xml:space="preserve"><value>Close editor</value></data>
+  <data name="删除" xml:space="preserve"><value>Delete</value></data>
+  <data name="取消" xml:space="preserve"><value>Cancel</value></data>
+  <data name="新建" xml:space="preserve"><value>New</value></data>
+  <data name="日历" xml:space="preserve"><value>Calendar</value></data>
+  <data name="日期" xml:space="preserve"><value>Date</value></data>
+  <data name="时间" xml:space="preserve"><value>Time</value></data>
+  <data name="月份导航" xml:space="preserve"><value>Month navigation</value></data>
+  <data name="本月事项" xml:space="preserve"><value>Events this month</value></data>
+  <data name="标题" xml:space="preserve"><value>Title</value></data>
+  <data name="添加事项" xml:space="preserve"><value>Add event</value></data>
+  <data name="点击“新建”，添加一条会在下次启动后继续保留的事项。" xml:space="preserve"><value>Select “New” to add an event that will still be here after the next launch.</value></data>
+  <data name="编辑" xml:space="preserve"><value>Edit</value></data>
+  <data name="编辑事项" xml:space="preserve"><value>Edit event</value></data>
+  <data name="自由日" xml:space="preserve"><value>Free days</value></data>
+  <data name="补充一些细节…" xml:space="preserve"><value>Add a few details…</value></data>
+  <data name="要做什么？" xml:space="preserve"><value>What needs to be done?</value></data>
+  <data name="说明" xml:space="preserve"><value>Description</value></data>
+  <data name="这一天还很自由" xml:space="preserve"><value>This day is still wide open</value></data>
+  <data name="颜色" xml:space="preserve"><value>Color</value></data>
+  <data name="紫色" xml:space="preserve"><value>Violet</value></data>
+  <data name="蓝色" xml:space="preserve"><value>Blue</value></data>
+  <data name="珊瑚色" xml:space="preserve"><value>Coral</value></data>
+  <data name="绿色" xml:space="preserve"><value>Green</value></data>
+  <data name="事项标题不能超过 120 个字符。" xml:space="preserve"><value>Event titles cannot exceed 120 characters.</value></data>
+  <data name="事项说明不能超过 1000 个字符。" xml:space="preserve"><value>Event descriptions cannot exceed 1,000 characters.</value></data>
+  <data name="事项颜色不受支持。" xml:space="preserve"><value>The selected event color is not supported.</value></data>
+  <data name="结束日期不能早于开始日期。" xml:space="preserve"><value>The end date cannot be earlier than the start date.</value></data>
+  <data name="未找到事项 '{0}'。" xml:space="preserve"><value>Event '{0}' was not found.</value></data>
+  <data name="{0}，{1} 个事项（单数）" xml:space="preserve"><value>{0}, {1} event</value></data>
+</root>

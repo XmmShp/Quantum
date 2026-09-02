@@ -15,6 +15,7 @@
         "path": "/plugins/example-dependent",
         "component": "Quantum.ExampleDependentPlugin.Pages.Index",
         "title": "依赖示例",
+        "titles": { "en-US": "Dependency example" },
         "icon": "⇢",
         "order": 101,
         "showInNavigation": true

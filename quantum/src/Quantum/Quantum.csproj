@@ -34,6 +34,7 @@
     <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
     <PackageReference Include="Microsoft.Extensions.FileProviders.Physical" />
     <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="Microsoft.Extensions.Localization" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="NOF.Abstraction" />
     <PackageReference Include="NOF.Application" />
@@ -80,10 +81,14 @@
       <ExamplePluginBinary Include="$(ExamplePluginOutput)\Quantum.ExamplePlugin.dll" />
       <ExamplePluginBinary Include="$(ExamplePluginOutput)\Quantum.ExamplePlugin.pdb" Condition="Exists('$(ExamplePluginOutput)\Quantum.ExamplePlugin.pdb')" />
       <ExamplePluginBinary Include="$(ExamplePluginOutput)\plugin.json" />
+      <ExamplePluginResource Include="$(ExamplePluginOutput)\**\*.resources.dll" />
       <ExamplePluginAsset Include="$(ExamplePluginOutput)\wwwroot\**\*" />
     </ItemGroup>
     <MakeDir Directories="$(ExamplePluginTarget)\wwwroot" />
     <Copy SourceFiles="@(ExamplePluginBinary)" DestinationFolder="$(ExamplePluginTarget)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(ExamplePluginResource)"
+          DestinationFolder="$(ExamplePluginTarget)\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(ExamplePluginAsset)"
           DestinationFolder="$(ExamplePluginTarget)\wwwroot\%(RecursiveDir)"
           SkipUnchangedFiles="true" />
@@ -100,10 +105,14 @@
       <ExampleDependentPluginBinary Include="$(ExampleDependentPluginOutput)\Quantum.ExampleDependentPlugin.dll" />
       <ExampleDependentPluginBinary Include="$(ExampleDependentPluginOutput)\Quantum.ExampleDependentPlugin.pdb" Condition="Exists('$(ExampleDependentPluginOutput)\Quantum.ExampleDependentPlugin.pdb')" />
       <ExampleDependentPluginBinary Include="$(ExampleDependentPluginOutput)\plugin.json" />
+      <ExampleDependentPluginResource Include="$(ExampleDependentPluginOutput)\**\*.resources.dll" />
       <ExampleDependentPluginAsset Include="$(ExampleDependentPluginOutput)\wwwroot\**\*" />
     </ItemGroup>
     <MakeDir Directories="$(ExampleDependentPluginTarget)\wwwroot" />
     <Copy SourceFiles="@(ExampleDependentPluginBinary)" DestinationFolder="$(ExampleDependentPluginTarget)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(ExampleDependentPluginResource)"
+          DestinationFolder="$(ExampleDependentPluginTarget)\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(ExampleDependentPluginAsset)"
           DestinationFolder="$(ExampleDependentPluginTarget)\wwwroot\%(RecursiveDir)"
           SkipUnchangedFiles="true" />
@@ -120,11 +129,15 @@
       <ExampleCalendarPluginBinary Include="$(ExampleCalendarPluginOutput)\Quantum.ExampleCalendarPlugin.dll" />
       <ExampleCalendarPluginBinary Include="$(ExampleCalendarPluginOutput)\Quantum.ExampleCalendarPlugin.pdb" Condition="Exists('$(ExampleCalendarPluginOutput)\Quantum.ExampleCalendarPlugin.pdb')" />
       <ExampleCalendarPluginBinary Include="$(ExampleCalendarPluginOutput)\plugin.json" />
+      <ExampleCalendarPluginResource Include="$(ExampleCalendarPluginOutput)\**\*.resources.dll" />
       <ExampleCalendarPluginAsset Include="$(ExampleCalendarPluginOutput)\wwwroot\**\*" />
       <ExampleCalendarPluginMigration Include="$(ExampleCalendarPluginOutput)\migrations\**\*.sql" />
     </ItemGroup>
     <MakeDir Directories="$(ExampleCalendarPluginTarget)\wwwroot;$(ExampleCalendarPluginTarget)\migrations" />
     <Copy SourceFiles="@(ExampleCalendarPluginBinary)" DestinationFolder="$(ExampleCalendarPluginTarget)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="@(ExampleCalendarPluginResource)"
+          DestinationFolder="$(ExampleCalendarPluginTarget)\%(RecursiveDir)"
+          SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(ExampleCalendarPluginAsset)"
           DestinationFolder="$(ExampleCalendarPluginTarget)\wwwroot\%(RecursiveDir)"
           SkipUnchangedFiles="true" />

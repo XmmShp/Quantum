@@ -3,6 +3,7 @@ using Microsoft.AspNetCore.Components;
 using NOF.Hosting;
 using NOF.Hosting.Maui;
 using Quantum.Logging;
+using Quantum.Localization;
 using Quantum.Plugins;
 using Quantum.WebPlugins;
 
@@ -34,6 +35,13 @@ public static class MauiProgram
             .UseMauiApp<App>();
 
         builder.Services.AddMauiBlazorWebView();
+        builder.Services.AddLocalization();
+        var requestedCulture = Preferences.Default.Get(
+            CultureService.PreferenceKey,
+            System.Globalization.CultureInfo.CurrentUICulture.Name);
+        builder.Services.AddSingleton(new CultureService(
+            requestedCulture,
+            cultureName => Preferences.Default.Set(CultureService.PreferenceKey, cultureName)));
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
 #endif

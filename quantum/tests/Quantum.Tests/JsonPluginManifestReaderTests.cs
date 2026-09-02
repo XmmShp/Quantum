@@ -33,6 +33,10 @@ public sealed class JsonPluginManifestReaderTests
                   "path": "/plugins/test",
                   "component": "Test.Pages.Index",
                   "title": "Test",
+                  "titles": {
+                    "zh-CN": "测试",
+                    "en-US": "Test"
+                  },
                   "showInNavigation": false
                 }]
               },
@@ -58,6 +62,8 @@ public sealed class JsonPluginManifestReaderTests
         Assert.Equal("{2.0.0,2.1.0}", integration.VersionRange.ToString());
         var route = Assert.Single(candidate.Manifest.Routes);
         Assert.False(route.ShowInNavigation);
+        Assert.Equal("测试", route.GetTitle(System.Globalization.CultureInfo.GetCultureInfo("zh-Hans")));
+        Assert.Equal("Test", route.GetTitle(System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
         Assert.Single(candidate.Manifest.Web.Head);
         Assert.Equal("migrations", candidate.Manifest.Database?.Migrations);
     }

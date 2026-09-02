@@ -12,6 +12,7 @@ Quantum 是基于 .NET 10、NOF 与 .NET MAUI Blazor Hybrid 的本地优先插�
 - NOF `AutoInject` 生成的注册元数据在插件私有容器内执行，不会让宿主根 DI 持有插件类型。
 - .NET 与 TypeScript 插件共享 Topic EventBus；Host 使用 NOF 内存事件和 JSON envelope 在 ALC、iframe 运行代之间转发，并等待异步订阅者完成。
 - manifest 页面通过 `DynamicComponent`（.NET）或 iframe view（Web）注入路由和菜单。
+- 宿主、.NET 插件和 iframe Web 插件共享当前 BCP-47 locale；设置页可即时切换简体中文/English，并持久化到下次启动。
 - `.NET` 与 Web 插件通过同一个 `database.migrations` manifest 能力发布追加式 SQLite SQL migrations；Host 统一排序、事务执行并校验历史 checksum。
 - 插件 `wwwroot` 通过自定义 `IFileProvider` 映射为 `_content/{pluginId}/...`。
 - 整个应用窗口支持拖拽插件整合包 ZIP；单插件包使用相同流程。宿主会按 SemVer 合并版本、预检整份依赖/运行时快照，用户确认后再事务化写入 `Modules`。

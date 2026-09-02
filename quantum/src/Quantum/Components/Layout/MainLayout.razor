@@ -1,20 +1,25 @@
 @inherits LayoutComponentBase
 @implements IDisposable
 @inject PluginCatalog PluginCatalog
+@inject CultureService CultureService
+@inject IStringLocalizer<AppStrings> L
+@inject IJSRuntime JavaScript
 
-<GlobalPluginInstaller>
-    <div class="app-shell">
+<CascadingValue Name="CultureName" Value="CultureService.CurrentCulture.Name">
+    <GlobalPluginInstaller>
+        <div class="app-shell">
         <aside class="sidebar">
-            <a class="brand" href="/" aria-label="Quantum 首页" title="Quantum">
+            <a class="brand" href="/" aria-label="@L["Quantum 首页"]" title="Quantum">
                 <span class="brand-mark" aria-hidden="true">Q</span>
             </a>
 
-            <nav aria-label="插件导航">
+            <nav aria-label="@L["插件导航"]">
                 @if (PluginCatalog.NavigationRoutes.Count > 0)
                 {
                     @foreach (var route in PluginCatalog.NavigationRoutes)
                     {
-                        var title = route.Definition.Title ?? route.PluginId.ToString();
+                        var title = route.Definition.GetTitle(CultureService.CurrentCulture)
+                            ?? route.PluginId.ToString();
                         <NavLink href="@route.Definition.Path"
                                  class="nav-item"
                                  aria-label="@title"
@@ -27,8 +32,8 @@
 
             <NavLink href="/settings"
                      class="nav-item settings-nav-item"
-                     aria-label="设置"
-                     title="设置">
+                     aria-label="@L["设置"]"
+                     title="@L["设置"]">
                 <span class="nav-icon settings-gear" aria-hidden="true">⚙</span>
             </NavLink>
         </aside>
@@ -36,22 +41,48 @@
         <main class="content">
             @Body
         </main>
-    </div>
-</GlobalPluginInstaller>
+        </div>
+    </GlobalPluginInstaller>
+</CascadingValue>
 
 @code {
     protected override void OnInitialized()
     {
         PluginCatalog.Changed += OnCatalogChanged;
+        CultureService.Changed += OnCultureChanged;
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            await UpdateDocumentCultureAsync();
+        }
     }
 
     public void Dispose()
     {
         PluginCatalog.Changed -= OnCatalogChanged;
+        CultureService.Changed -= OnCultureChanged;
     }
 
     private void OnCatalogChanged(object? sender, EventArgs eventArgs)
     {
         _ = InvokeAsync(StateHasChanged);
     }
+
+    private void OnCultureChanged(object? sender, EventArgs eventArgs)
+    {
+        _ = InvokeAsync(async () =>
+        {
+            await UpdateDocumentCultureAsync();
+            StateHasChanged();
+        });
+    }
+
+    private ValueTask UpdateDocumentCultureAsync()
+        => JavaScript.InvokeVoidAsync(
+            "quantum.localization.setCulture",
+            CultureService.CurrentCulture.Name,
+            CultureService.TextDirection);
 }

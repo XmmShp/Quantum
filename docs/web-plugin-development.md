@@ -59,6 +59,7 @@ npm install --save-dev typescript esbuild
         "path": "/plugins/notes",
         "view": "main",
         "title": "Notes",
+        "titles": { "zh-CN": "笔记" },
         "icon": "N"
       },
       {
@@ -75,6 +76,7 @@ npm install --save-dev typescript esbuild
 Web 插件不能使用 `web.head`/`web.postBlazor` 向宿主页面注入 HTML；样式和页面只能写入自己的 iframe。
 路由的 `showInNavigation` 默认为 `true`；设为 `false` 后仍可通过路径或 `context.navigation.navigate()`
 打开，但不会显示在宿主主导航中。
+`title` 是默认回退，`titles` 使用 BCP-47 culture name 提供菜单和页面标题的本地化值。
 
 manifest 的 `id` 与版本字段和 .NET 插件使用相同约束：id 最长 128 个字符，`version` 必须是写全
 `major.minor.patch` 的 SemVer 2.0.0；`dependencies`/`integrations` 使用 `versionRange`，不再接受
@@ -101,8 +103,8 @@ export default definePlugin({
     return () => context.log.info("stopped");
   },
 
-  async mount({ element, route, signal }) {
-    element.textContent = route.view;
+  async mount({ element, route, locale, signal }) {
+    element.textContent = locale.languageName === "zh" ? "你好" : "Hello";
     signal.addEventListener("abort", () => element.replaceChildren(), { once: true });
     return () => element.replaceChildren();
   }
@@ -111,6 +113,8 @@ export default definePlugin({
 
 - `activate` 每代 runtime 调用一次；其返回的 cleanup 在 `deactivate` 前调用。
 - `mount` 在路由展示时调用；切走路由时先 abort `signal`，再调用 cleanup 和 `unmount`。
+- `locale` 包含当前 `cultureName`、`languageName` 和 `textDirection`。语言变化时宿主会 unmount 后使用新 locale 再次 mount；
+  插件应在每次 mount 中选择文案并使用 `Intl`/`toLocaleString` 格式化日期与数字。
 - `context.signal` 在整个 runtime 停止时 abort。
 - 即使插件没有正确清理，宿主最终也会删除 iframe，浏览上下文中的 DOM、定时器和事件随之释放。
 

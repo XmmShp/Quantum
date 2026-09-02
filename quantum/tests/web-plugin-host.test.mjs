@@ -236,6 +236,39 @@ test("concurrent mounts for one runtime are serialized", async () => {
   assert.equal(record.mounted, true);
 });
 
+test("mount forwards the selected locale to the isolated frame", async () => {
+  const posted = [];
+  const record = {
+    pluginId: "quantum.plugin.web",
+    runtimeId: "runtime",
+    frame: {},
+    mounted: false,
+    disposed: false,
+    lifecycleOperation: null
+  };
+  const host = createHost({
+    placeRecord() {},
+    waitFor() { return Promise.resolve(); },
+    post(_record, type, payload) { posted.push([type, payload]); }
+  });
+  const locale = {
+    cultureName: "zh-CN",
+    languageName: "zh",
+    textDirection: "ltr"
+  };
+
+  await host.mountRecord(record, {
+    hostElement: {},
+    route: { path: "/plugins/web", view: "main" },
+    locale
+  });
+
+  assert.deepEqual(posted, [["mount", {
+    route: { path: "/plugins/web", view: "main" },
+    locale
+  }]]);
+});
+
 test("mounting keeps the live iframe attached to the document portal", async () => {
   const listeners = [];
   const frame = {

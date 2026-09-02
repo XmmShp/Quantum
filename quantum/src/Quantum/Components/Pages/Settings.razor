@@ -2,28 +2,47 @@
 @implements IDisposable
 @inject PluginCatalog PluginCatalog
 @inject IPluginRuntimeManager PluginRuntimeManager
+@inject CultureService CultureService
+@inject IStringLocalizer<AppStrings> L
 
-<PageTitle>设置 · Quantum</PageTitle>
+<PageTitle>@L["设置"] · Quantum</PageTitle>
 
 <header class="settings-header">
-    <p class="eyebrow">SETTINGS</p>
-    <h1>设置</h1>
-    <p>管理插件安装、运行时版本与加载异常。</p>
+    <p class="eyebrow">@L["SETTINGS"]</p>
+    <h1>@L["设置"]</h1>
+    <p>@L["管理插件安装、运行时版本与加载异常。"]</p>
 </header>
 
 <section class="section-block">
     <div class="section-heading">
         <div>
-            <p class="eyebrow">INSTALL</p>
-            <h2>安装插件整合包</h2>
+            <p class="eyebrow">@L["LANGUAGE"]</p>
+            <h2>@L["语言与区域"]</h2>
         </div>
-        <span class="package-limit">单包最多 512 MiB · 256 个插件</span>
+        <label class="language-picker">
+            <span>@L["显示语言"]</span>
+            <select value="@CultureService.CurrentCulture.Name" @onchange="ChangeCulture">
+                <option value="zh-CN">简体中文</option>
+                <option value="en-US">English</option>
+            </select>
+        </label>
+    </div>
+    <p class="section-description">@L["语言选择会立即应用到宿主、.NET 插件和 Web 插件，并在下次启动时保留。"]</p>
+</section>
+
+<section class="section-block">
+    <div class="section-heading">
+        <div>
+            <p class="eyebrow">@L["INSTALL"]</p>
+            <h2>@L["安装插件整合包"]</h2>
+        </div>
+        <span class="package-limit">@L["单包最多 512 MiB · 256 个插件"]</span>
     </div>
     <div class="global-drop-hint">
         <span class="drop-symbol">⇩</span>
         <div>
-            <strong>将 ZIP 拖到窗口中的任意位置</strong>
-            <p>松开后会扫描包内插件、选择最新版本并执行整份兼容性预检；只有一个插件时流程完全相同。</p>
+            <strong>@L["将 ZIP 拖到窗口中的任意位置"]</strong>
+            <p>@L["松开后会扫描包内插件、选择最新版本并执行整份兼容性预检；只有一个插件时流程完全相同。"]</p>
         </div>
     </div>
 </section>
@@ -31,13 +50,13 @@
 <section class="section-block">
     <div class="section-heading">
         <div>
-            <p class="eyebrow">RUNTIME</p>
-            <h2>插件运行状态</h2>
+            <p class="eyebrow">@L["RUNTIME"]</p>
+            <h2>@L["插件运行状态"]</h2>
         </div>
         <button class="secondary-button"
                 disabled="@IsBusy"
                 @onclick="RefreshAsync">
-            重新扫描 Modules
+            @L["重新扫描 Modules"]
         </button>
     </div>
 
@@ -53,8 +72,8 @@
         <div class="empty-card">
             <span class="empty-symbol">＋</span>
             <div>
-                <strong>尚未发现插件</strong>
-                <p>将插件 ZIP 拖到窗口中，或通过 QUANTUM_MODULES_PATH 指定开发目录。</p>
+                <strong>@L["尚未发现插件"]</strong>
+                <p>@L["将插件 ZIP 拖到窗口中，或通过 QUANTUM_MODULES_PATH 指定开发目录。"]</p>
             </div>
         </div>
     }
@@ -67,22 +86,22 @@
                     <span class="plugin-avatar">@(((string)plugin.Manifest.Id)[0].ToString().ToUpperInvariant())</span>
                     <div class="plugin-meta">
                         <strong>@plugin.Manifest.Id</strong>
-                        <span>v@(plugin.Manifest.Version) · @plugin.Routes.Count 个页面</span>
+                        <span>@GetPluginVersionText(plugin)</span>
                     </div>
-                    <span class="healthy-pill">运行中</span>
+                    <span class="healthy-pill">@L["运行中"]</span>
                     <div class="plugin-actions">
                         <button disabled="@IsBusy"
                                 @onclick="() => ReloadAsync((string)plugin.Manifest.Id)">
-                            热升级
+                            @L["热升级"]
                         </button>
                         <button disabled="@IsBusy"
                                 @onclick="() => PrepareDisable((string)plugin.Manifest.Id)">
-                            禁用
+                            @L["禁用"]
                         </button>
                         <button class="danger"
                                 disabled="@IsBusy"
                                 @onclick="() => PrepareUninstall((string)plugin.Manifest.Id)">
-                            卸载
+                            @L["卸载"]
                         </button>
                     </div>
                 </article>
@@ -94,10 +113,10 @@
 <section class="section-block">
     <div class="section-heading">
         <div>
-            <p class="eyebrow">DISABLED</p>
-            <h2>已禁用插件</h2>
+            <p class="eyebrow">@L["DISABLED"]</p>
+            <h2>@L["已禁用插件"]</h2>
         </div>
-        <span class="package-limit">文件保存在 Modules/disabled</span>
+        <span class="package-limit">@L["文件保存在 Modules/disabled"]</span>
     </div>
 
     @if (_disabledPlugins.Count == 0)
@@ -105,8 +124,8 @@
         <div class="empty-card compact">
             <span class="empty-symbol">—</span>
             <div>
-                <strong>没有已禁用插件</strong>
-                <p>禁用插件后可随时在这里重新启用。</p>
+                <strong>@L["没有已禁用插件"]</strong>
+                <p>@L["禁用插件后可随时在这里重新启用。"]</p>
             </div>
         </div>
     }
@@ -121,16 +140,16 @@
                         <strong>@plugin.PluginId</strong>
                         <span>v@plugin.Version</span>
                     </div>
-                    <span class="disabled-pill">已禁用</span>
+                    <span class="disabled-pill">@L["已禁用"]</span>
                     <div class="plugin-actions">
                         <button disabled="@IsBusy"
                                 @onclick="() => EnableAsync(plugin.PluginId)">
-                            重新启用
+                            @L["重新启用"]
                         </button>
                         <button class="danger"
                                 disabled="@IsBusy"
                                 @onclick="() => PrepareUninstall(plugin.PluginId)">
-                            卸载
+                            @L["卸载"]
                         </button>
                     </div>
                 </article>
@@ -146,15 +165,15 @@
                  role="alertdialog"
                  aria-modal="true"
                  aria-labelledby="disable-dialog-title">
-            <p class="eyebrow">DISABLE PLUGIN</p>
-            <h2 id="disable-dialog-title">确认禁用 @disableImpact.PluginId？</h2>
+            <p class="eyebrow">@L["DISABLE PLUGIN"]</p>
+            <h2 id="disable-dialog-title">@L["确认禁用 {0}？", disableImpact.PluginId]</h2>
             @if (disableImpact.DependentPluginIds.Count == 0)
             {
-                <p>该插件没有下游强依赖插件。</p>
+                <p>@L["该插件没有下游强依赖插件。"]</p>
             }
             else
             {
-                <p>以下直接或传递强依赖插件会被一起禁用：</p>
+                <p>@L["以下直接或传递强依赖插件会被一起禁用："]</p>
                 <ul>
                     @foreach (var dependentPluginId in disableImpact.DependentPluginIds)
                     {
@@ -162,13 +181,13 @@
                     }
                 </ul>
             }
-            <p class="dialog-note">插件目录会移动到 Modules/disabled，可稍后重新启用。</p>
+            <p class="dialog-note">@L["插件目录会移动到 Modules/disabled，可稍后重新启用。"]</p>
             <div class="dialog-actions">
                 <button type="button" class="secondary-button" @onclick="CancelDisable">
-                    取消
+                    @L["取消"]
                 </button>
                 <button type="button" class="primary-button" @onclick="ConfirmDisableAsync">
-                    确认禁用
+                    @L["确认禁用"]
                 </button>
             </div>
         </section>
@@ -182,15 +201,15 @@
                  role="alertdialog"
                  aria-modal="true"
                  aria-labelledby="uninstall-dialog-title">
-            <p class="eyebrow">UNINSTALL PLUGIN</p>
-            <h2 id="uninstall-dialog-title">永久卸载 @uninstallImpact.PluginId？</h2>
+            <p class="eyebrow">@L["UNINSTALL PLUGIN"]</p>
+            <h2 id="uninstall-dialog-title">@L["永久卸载 {0}？", uninstallImpact.PluginId]</h2>
             @if (uninstallImpact.DependentPluginIds.Count == 0)
             {
-                <p>该插件没有下游强依赖插件。</p>
+                <p>@L["该插件没有下游强依赖插件。"]</p>
             }
             else
             {
-                <p>以下直接或传递强依赖插件也会被永久卸载：</p>
+                <p>@L["以下直接或传递强依赖插件也会被永久卸载："]</p>
                 <ul>
                     @foreach (var dependentPluginId in uninstallImpact.DependentPluginIds)
                     {
@@ -198,13 +217,13 @@
                     }
                 </ul>
             }
-            <p class="dialog-note danger-note">此操作会直接删除物理文件，无法通过重新扫描恢复。</p>
+            <p class="dialog-note danger-note">@L["此操作会直接删除物理文件，无法通过重新扫描恢复。"]</p>
             <div class="dialog-actions">
                 <button type="button" class="secondary-button" @onclick="CancelUninstall">
-                    取消
+                    @L["取消"]
                 </button>
                 <button type="button" class="danger-button" @onclick="ConfirmUninstallAsync">
-                    永久卸载
+                    @L["永久卸载"]
                 </button>
             </div>
         </section>
@@ -216,14 +235,14 @@
     <section class="section-block failures">
         <div class="section-heading">
             <div>
-                <p class="eyebrow">ATTENTION</p>
-                <h2>未加载的插件</h2>
+                <p class="eyebrow">@L["ATTENTION"]</p>
+                <h2>@L["未加载的插件"]</h2>
             </div>
         </div>
         @foreach (var failure in PluginCatalog.Failures)
         {
             <div class="failure-row">
-                <strong>@(failure.PluginId?.ToString() ?? "未知插件")</strong>
+                <strong>@(failure.PluginId?.ToString() ?? L["未知插件"].Value)</strong>
                 <span>@failure.Reason</span>
             </div>
         }
@@ -241,6 +260,14 @@
     private bool IsBusy => _busyPluginId is not null
         || _pendingDisableImpact is not null
         || _pendingUninstallImpact is not null;
+
+    private string GetPluginVersionText(LoadedPlugin plugin)
+        => plugin.Routes.Count == 1
+            ? L["v{0} · {1} 个页面（单数）", plugin.Manifest.Version, plugin.Routes.Count]
+            : L["v{0} · {1} 个页面", plugin.Manifest.Version, plugin.Routes.Count];
+
+    private void ChangeCulture(ChangeEventArgs eventArgs)
+        => CultureService.SetCulture(eventArgs.Value?.ToString());
 
     protected override void OnInitialized()
     {
@@ -274,7 +301,7 @@
         catch (Exception exception)
         {
             _operationSucceeded = false;
-            _operationMessage = $"无法准备禁用：{exception.Message}";
+            _operationMessage = L["无法准备禁用：{0}", exception.Message];
         }
     }
 
@@ -310,7 +337,7 @@
         catch (Exception exception)
         {
             _operationSucceeded = false;
-            _operationMessage = $"无法准备卸载：{exception.Message}";
+            _operationMessage = L["无法准备卸载：{0}", exception.Message];
         }
     }
 
@@ -354,7 +381,7 @@
         catch (Exception exception)
         {
             _operationSucceeded = false;
-            _operationMessage = $"插件操作失败：{exception.Message}";
+            _operationMessage = L["插件操作失败：{0}", exception.Message];
         }
         finally
         {

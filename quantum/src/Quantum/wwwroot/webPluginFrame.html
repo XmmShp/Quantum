@@ -313,6 +313,13 @@
           if (message.type === "mount") {
             await unmount();
             mountController = new AbortController();
+            const locale = Object.freeze(message.locale ?? {
+              cultureName: "en-US",
+              languageName: "en",
+              textDirection: "ltr"
+            });
+            document.documentElement.lang = locale.cultureName;
+            document.documentElement.dir = locale.textDirection;
             if (typeof definition?.mount !== "function") {
               throw new Error("The plugin does not export mount().");
             }
@@ -320,6 +327,7 @@
               ...context,
               element: root,
               route: Object.freeze(message.route),
+              locale,
               signal: mountController.signal
             }));
             post("mounted");

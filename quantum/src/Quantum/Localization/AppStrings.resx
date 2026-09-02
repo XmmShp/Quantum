@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="LANGUAGE" xml:space="preserve"><value>语言</value></data>
+  <data name="Quantum 首页" xml:space="preserve"><value>Quantum 首页</value></data>
+  <data name="v{0} · {1} 个页面" xml:space="preserve"><value>v{0} · {1} 个页面</value></data>
+  <data name="以下直接或传递强依赖插件也会被永久卸载：" xml:space="preserve"><value>以下直接或传递强依赖插件也会被永久卸载：</value></data>
+  <data name="以下直接或传递强依赖插件会被一起禁用：" xml:space="preserve"><value>以下直接或传递强依赖插件会被一起禁用：</value></data>
+  <data name="保留 v{0}（包内 v{1}）" xml:space="preserve"><value>保留 v{0}（包内 v{1}）</value></data>
+  <data name="关闭" xml:space="preserve"><value>关闭</value></data>
+  <data name="关闭消息" xml:space="preserve"><value>关闭消息</value></data>
+  <data name="兼容性检查未通过" xml:space="preserve"><value>兼容性检查未通过</value></data>
+  <data name="升级" xml:space="preserve"><value>升级</value></data>
+  <data name="单包最多 512 MiB · 256 个插件" xml:space="preserve"><value>单包最多 512 MiB · 256 个插件</value></data>
+  <data name="即将安装 {0} 个插件" xml:space="preserve"><value>即将安装 {0} 个插件</value></data>
+  <data name="卸载" xml:space="preserve"><value>卸载</value></data>
+  <data name="取消" xml:space="preserve"><value>取消</value></data>
+  <data name="安装插件整合包" xml:space="preserve"><value>安装插件整合包</value></data>
+  <data name="将 ZIP 拖到窗口中的任意位置" xml:space="preserve"><value>将 ZIP 拖到窗口中的任意位置</value></data>
+  <data name="将插件 ZIP 拖到窗口中，或通过 QUANTUM_MODULES_PATH 指定开发目录。" xml:space="preserve"><value>将插件 ZIP 拖到窗口中，或通过 QUANTUM_MODULES_PATH 指定开发目录。</value></data>
+  <data name="尚未发现插件" xml:space="preserve"><value>尚未发现插件</value></data>
+  <data name="已禁用" xml:space="preserve"><value>已禁用</value></data>
+  <data name="已禁用插件" xml:space="preserve"><value>已禁用插件</value></data>
+  <data name="打开设置" xml:space="preserve"><value>打开设置</value></data>
+  <data name="插件安装失败：{0}" xml:space="preserve"><value>插件安装失败：{0}</value></data>
+  <data name="插件导航" xml:space="preserve"><value>插件导航</value></data>
+  <data name="插件操作失败：{0}" xml:space="preserve"><value>插件操作失败：{0}</value></data>
+  <data name="插件目录会移动到 Modules/disabled，可稍后重新启用。" xml:space="preserve"><value>插件目录会移动到 Modules/disabled，可稍后重新启用。</value></data>
+  <data name="插件运行状态" xml:space="preserve"><value>插件运行状态</value></data>
+  <data name="插件页面不存在" xml:space="preserve"><value>插件页面不存在</value></data>
+  <data name="插件页面启动失败" xml:space="preserve"><value>插件页面启动失败</value></data>
+  <data name="文件保存在 Modules/disabled" xml:space="preserve"><value>文件保存在 Modules/disabled</value></data>
+  <data name="新安装" xml:space="preserve"><value>新安装</value></data>
+  <data name="无法准备卸载：{0}" xml:space="preserve"><value>无法准备卸载：{0}</value></data>
+  <data name="无法准备禁用：{0}" xml:space="preserve"><value>无法准备禁用：{0}</value></data>
+  <data name="无法读取插件 ZIP：{0}" xml:space="preserve"><value>无法读取插件 ZIP：{0}</value></data>
+  <data name="显示语言" xml:space="preserve"><value>显示语言</value></data>
+  <data name="未加载的插件" xml:space="preserve"><value>未加载的插件</value></data>
+  <data name="未知插件" xml:space="preserve"><value>未知插件</value></data>
+  <data name="松开以安装插件整合包" xml:space="preserve"><value>松开以安装插件整合包</value></data>
+  <data name="松开后会扫描包内插件、选择最新版本并执行整份兼容性预检；只有一个插件时流程完全相同。" xml:space="preserve"><value>松开后会扫描包内插件、选择最新版本并执行整份兼容性预检；只有一个插件时流程完全相同。</value></data>
+  <data name="松开鼠标，扫描插件整合包" xml:space="preserve"><value>松开鼠标，扫描插件整合包</value></data>
+  <data name="正在处理插件包" xml:space="preserve"><value>正在处理插件包</value></data>
+  <data name="正在安装…" xml:space="preserve"><value>正在安装…</value></data>
+  <data name="此操作会直接删除物理文件，无法通过重新扫描恢复。" xml:space="preserve"><value>此操作会直接删除物理文件，无法通过重新扫描恢复。</value></data>
+  <data name="每个插件一个文件夹；只包含一个插件时使用完全相同的安装流程。" xml:space="preserve"><value>每个插件一个文件夹；只包含一个插件时使用完全相同的安装流程。</value></data>
+  <data name="永久卸载 {0}？" xml:space="preserve"><value>永久卸载 {0}？</value></data>
+  <data name="永久卸载" xml:space="preserve"><value>永久卸载</value></data>
+  <data name="没有已禁用插件" xml:space="preserve"><value>没有已禁用插件</value></data>
+  <data name="没有插件为" xml:space="preserve"><value>没有插件为</value></data>
+  <data name="注册页面。" xml:space="preserve"><value>注册页面。</value></data>
+  <data name="热升级" xml:space="preserve"><value>热升级</value></data>
+  <data name="确认后才会写入 Modules；安装失败时会保留当前运行版本并恢复插件文件。" xml:space="preserve"><value>确认后才会写入 Modules；安装失败时会保留当前运行版本并恢复插件文件。</value></data>
+  <data name="确认安装" xml:space="preserve"><value>确认安装</value></data>
+  <data name="确认禁用 {0}？" xml:space="preserve"><value>确认禁用 {0}？</value></data>
+  <data name="确认禁用" xml:space="preserve"><value>确认禁用</value></data>
+  <data name="禁用" xml:space="preserve"><value>禁用</value></data>
+  <data name="禁用插件后可随时在这里重新启用。" xml:space="preserve"><value>禁用插件后可随时在这里重新启用。</value></data>
+  <data name="管理插件安装、运行时版本与加载异常。" xml:space="preserve"><value>管理插件安装、运行时版本与加载异常。</value></data>
+  <data name="设置" xml:space="preserve"><value>设置</value></data>
+  <data name="该地址既不属于 Quantum，也未被任何插件注册。" xml:space="preserve"><value>该地址既不属于 Quantum，也未被任何插件注册。</value></data>
+  <data name="该插件没有下游强依赖插件。" xml:space="preserve"><value>该插件没有下游强依赖插件。</value></data>
+  <data name="语言与区域" xml:space="preserve"><value>语言与区域</value></data>
+  <data name="语言选择会立即应用到宿主、.NET 插件和 Web 插件，并在下次启动时保留。" xml:space="preserve"><value>语言选择会立即应用到宿主、.NET 插件和 Web 插件，并在下次启动时保留。</value></data>
+  <data name="跳过" xml:space="preserve"><value>跳过</value></data>
+  <data name="运行中" xml:space="preserve"><value>运行中</value></data>
+  <data name="这个插件包无法安装" xml:space="preserve"><value>这个插件包无法安装</value></data>
+  <data name="这里还没有内容" xml:space="preserve"><value>这里还没有内容</value></data>
+  <data name="重新启用" xml:space="preserve"><value>重新启用</value></data>
+  <data name="重新扫描 Modules" xml:space="preserve"><value>重新扫描 Modules</value></data>
+  <data name="插件 Web 扩展更新失败：{0}" xml:space="preserve"><value>插件 Web 扩展更新失败：{0}</value></data>
+  <data name="插件 '{0}' 当前未加载，请使用重新扫描。" xml:space="preserve"><value>插件 '{0}' 当前未加载，请使用重新扫描。</value></data>
+  <data name="插件 '{0}' 的磁盘版本无效或已不存在，当前版本继续运行。" xml:space="preserve"><value>插件 '{0}' 的磁盘版本无效或已不存在，当前版本继续运行。</value></data>
+  <data name="新快照会使已加载插件失效，热升级已取消：{0}。" xml:space="preserve"><value>新快照会使已加载插件失效，热升级已取消：{0}。</value></data>
+  <data name="插件 '{0}' 已从 {1} 热切换到 {2}。" xml:space="preserve"><value>插件 '{0}' 已从 {1} 热切换到 {2}。</value></data>
+  <data name="插件 '{0}' 已从 {1} 热切换到 {2}；下游强依赖插件已按顺序停用并恢复：{3}。" xml:space="preserve"><value>插件 '{0}' 已从 {1} 热切换到 {2}；下游强依赖插件已按顺序停用并恢复：{3}。</value></data>
+  <data name="插件 '{0}' 当前未加载。" xml:space="preserve"><value>插件 '{0}' 当前未加载。</value></data>
+  <data name="插件清单已经变化，请按最新清单重新确认禁用插件 '{0}'。" xml:space="preserve"><value>插件清单已经变化，请按最新清单重新确认禁用插件 '{0}'。</value></data>
+  <data name="禁用目录中已存在 '{0}'，未修改任何插件。" xml:space="preserve"><value>禁用目录中已存在 '{0}'，未修改任何插件。</value></data>
+  <data name="新快照会使其他已加载插件失效，禁用已取消：{0}。" xml:space="preserve"><value>新快照会使其他已加载插件失效，禁用已取消：{0}。</value></data>
+  <data name="插件 '{0}' 已禁用并移动到 Modules/disabled。" xml:space="preserve"><value>插件 '{0}' 已禁用并移动到 Modules/disabled。</value></data>
+  <data name="插件 '{0}' 及其下游强依赖插件已禁用并移动到 Modules/disabled：{1}。" xml:space="preserve"><value>插件 '{0}' 及其下游强依赖插件已禁用并移动到 Modules/disabled：{1}。</value></data>
+  <data name="禁用插件 '{0}' 失败，目录已回滚：{1}" xml:space="preserve"><value>禁用插件 '{0}' 失败，目录已回滚：{1}</value></data>
+  <data name="禁用目录中没有插件 '{0}'。" xml:space="preserve"><value>禁用目录中没有插件 '{0}'。</value></data>
+  <data name="禁用目录中有多个插件 '{0}'，无法确定启用哪一个。" xml:space="preserve"><value>禁用目录中有多个插件 '{0}'，无法确定启用哪一个。</value></data>
+  <data name="Modules 中已存在目录 '{0}'，无法启用插件 '{1}'。" xml:space="preserve"><value>Modules 中已存在目录 '{0}'，无法启用插件 '{1}'。</value></data>
+  <data name="依赖或兼容性检查未通过。" xml:space="preserve"><value>依赖或兼容性检查未通过。</value></data>
+  <data name="插件 '{0}' 无法启用：{1}" xml:space="preserve"><value>插件 '{0}' 无法启用：{1}</value></data>
+  <data name="启用会使已加载插件失效，操作已取消：{0}。" xml:space="preserve"><value>启用会使已加载插件失效，操作已取消：{0}。</value></data>
+  <data name="插件 '{0}' 已启用并移回 Modules。" xml:space="preserve"><value>插件 '{0}' 已启用并移回 Modules。</value></data>
+  <data name="启用插件 '{0}' 失败，目录已回滚：{1}" xml:space="preserve"><value>启用插件 '{0}' 失败，目录已回滚：{1}</value></data>
+  <data name="插件清单已经变化，请按最新清单重新确认卸载插件 '{0}'。" xml:space="preserve"><value>插件清单已经变化，请按最新清单重新确认卸载插件 '{0}'。</value></data>
+  <data name="插件 '{0}' 当前未安装。" xml:space="preserve"><value>插件 '{0}' 当前未安装。</value></data>
+  <data name="禁用目录中有多个插件 '{0}'，无法确定卸载哪一个。" xml:space="preserve"><value>禁用目录中有多个插件 '{0}'，无法确定卸载哪一个。</value></data>
+  <data name="插件 '{0}' 的物理文件删除失败：'{1}'。" xml:space="preserve"><value>插件 '{0}' 的物理文件删除失败：'{1}'。</value></data>
+  <data name="已禁用插件 '{0}' 已永久卸载，物理文件已删除。" xml:space="preserve"><value>已禁用插件 '{0}' 已永久卸载，物理文件已删除。</value></data>
+  <data name="新快照会使其他已加载插件失效，卸载已取消：{0}。" xml:space="preserve"><value>新快照会使其他已加载插件失效，卸载已取消：{0}。</value></data>
+  <data name="插件已停止运行，但物理文件删除失败：'{0}'。请关闭占用文件的程序后清理该目录。" xml:space="preserve"><value>插件已停止运行，但物理文件删除失败：'{0}'。请关闭占用文件的程序后清理该目录。</value></data>
+  <data name="插件 '{0}' 已永久卸载，物理文件已删除。" xml:space="preserve"><value>插件 '{0}' 已永久卸载，物理文件已删除。</value></data>
+  <data name="插件 '{0}' 及其下游强依赖插件已永久卸载并删除物理文件：{1}。" xml:space="preserve"><value>插件 '{0}' 及其下游强依赖插件已永久卸载并删除物理文件：{1}。</value></data>
+  <data name="卸载插件 '{0}' 失败，目录已回滚：{1}" xml:space="preserve"><value>卸载插件 '{0}' 失败，目录已回滚：{1}</value></data>
+  <data name="Modules 已重新扫描，插件运行时快照已热切换。" xml:space="preserve"><value>Modules 已重新扫描，插件运行时快照已热切换。</value></data>
+  <data name="仅支持 ZIP 格式的插件包。" xml:space="preserve"><value>仅支持 ZIP 格式的插件包。</value></data>
+  <data name="安装预览已失效，请重新拖入 ZIP 包。" xml:space="preserve"><value>安装预览已失效，请重新拖入 ZIP 包。</value></data>
+  <data name="插件清单在确认前已变化，请重新拖入 ZIP 包并确认最新清单。" xml:space="preserve"><value>插件清单在确认前已变化，请重新拖入 ZIP 包并确认最新清单。</value></data>
+  <data name="插件文件或依赖状态在确认前已变化，请重新拖入 ZIP 包。" xml:space="preserve"><value>插件文件或依赖状态在确认前已变化，请重新拖入 ZIP 包。</value></data>
+  <data name="安装后的插件清单不兼容，未安装任何插件：{0}" xml:space="preserve"><value>安装后的插件清单不兼容，未安装任何插件：{0}</value></data>
+  <data name="插件 '{0}' 的安装版本清单发生变化，未安装任何插件。" xml:space="preserve"><value>插件 '{0}' 的安装版本清单发生变化，未安装任何插件。</value></data>
+  <data name="安装会使已加载插件失效，未安装任何插件：{0}。" xml:space="preserve"><value>安装会使已加载插件失效，未安装任何插件：{0}。</value></data>
+  <data name="{0} Modules 文件已恢复。" xml:space="preserve"><value>{0} Modules 文件已恢复。</value></data>
+  <data name="已安装 {0} 个插件：{1}。" xml:space="preserve"><value>已安装 {0} 个插件：{1}。</value></data>
+  <data name="插件安装已取消，但 Modules 文件恢复未完成。" xml:space="preserve"><value>插件安装已取消，但 Modules 文件恢复未完成。</value></data>
+  <data name="插件安装失败且文件恢复未完成，请检查 Modules：{0}；恢复错误：{1}" xml:space="preserve"><value>插件安装失败且文件恢复未完成，请检查 Modules：{0}；恢复错误：{1}</value></data>
+  <data name="插件安装失败，未安装任何插件：{0}" xml:space="preserve"><value>插件安装失败，未安装任何插件：{0}</value></data>
+  <data name="新插件快照加载失败，已保留当前版本：{0}" xml:space="preserve"><value>新插件快照加载失败，已保留当前版本：{0}</value></data>
+  <data name="旧插件生命周期停止失败，热切换已取消：{0}" xml:space="preserve"><value>旧插件生命周期停止失败，热切换已取消：{0}</value></data>
+  <data name="新插件生命周期启动失败，已回滚到当前版本：{0}" xml:space="preserve"><value>新插件生命周期启动失败，已回滚到当前版本：{0}</value></data>
+  <data name="插件运行时快照已更新。" xml:space="preserve"><value>插件运行时快照已更新。</value></data>
+  <data name="Modules 中有多个目录声明了同一个插件 id，无法生成唯一版本清单。" xml:space="preserve"><value>Modules 中有多个目录声明了同一个插件 id，无法生成唯一版本清单。</value></data>
+  <data name="ZIP 中有多个 {0} 版本，无法确定应安装的目录。" xml:space="preserve"><value>ZIP 中有多个 {0} 版本，无法确定应安装的目录。</value></data>
+  <data name="该插件当前已禁用，请先重新启用或清理禁用版本后再安装。" xml:space="preserve"><value>该插件当前已禁用，请先重新启用或清理禁用版本后再安装。</value></data>
+  <data name="目标目录 '{0}' 已存在但不是有效的已安装插件。" xml:space="preserve"><value>目标目录 '{0}' 已存在但不是有效的已安装插件。</value></data>
+  <data name="新的插件版本清单会使当前已加载插件失效。" xml:space="preserve"><value>新的插件版本清单会使当前已加载插件失效。</value></data>
+  <data name="ZIP 中没有比当前已安装版本更新的插件。" xml:space="preserve"><value>ZIP 中没有比当前已安装版本更新的插件。</value></data>
+  <data name="插件 ZIP 为空或文件数量超过限制。" xml:space="preserve"><value>插件 ZIP 为空或文件数量超过限制。</value></data>
+  <data name="插件 ZIP 包含重复路径 '{0}'。" xml:space="preserve"><value>插件 ZIP 包含重复路径 '{0}'。</value></data>
+  <data name="插件 ZIP 不能包含符号链接 '{0}'。" xml:space="preserve"><value>插件 ZIP 不能包含符号链接 '{0}'。</value></data>
+  <data name="插件 ZIP 解压后的大小超过限制。" xml:space="preserve"><value>插件 ZIP 解压后的大小超过限制。</value></data>
+  <data name="插件 ZIP 包含不安全路径 '{0}'。" xml:space="preserve"><value>插件 ZIP 包含不安全路径 '{0}'。</value></data>
+  <data name="ZIP 中未找到插件目录；每个插件文件夹的根目录必须包含 plugin.json。" xml:space="preserve"><value>ZIP 中未找到插件目录；每个插件文件夹的根目录必须包含 plugin.json。</value></data>
+  <data name="ZIP 中的插件数量超过限制。" xml:space="preserve"><value>ZIP 中的插件数量超过限制。</value></data>
+  <data name="ZIP 中的插件目录不能互相嵌套。" xml:space="preserve"><value>ZIP 中的插件目录不能互相嵌套。</value></data>
+  <data name="插件 ZIP 大小超过限制。" xml:space="preserve"><value>插件 ZIP 大小超过限制。</value></data>
+  <data name="插件 ZIP 为空。" xml:space="preserve"><value>插件 ZIP 为空。</value></data>
+  <data name="插件 ZIP 条目 '{0}' 解压长度超过声明值。" xml:space="preserve"><value>插件 ZIP 条目 '{0}' 解压长度超过声明值。</value></data>
+  <data name="插件 ZIP 条目 '{0}' 解压长度不一致。" xml:space="preserve"><value>插件 ZIP 条目 '{0}' 解压长度不一致。</value></data>
+  <data name="插件安装目标 '{0}' 不在 Modules 根目录中。" xml:space="preserve"><value>插件安装目标 '{0}' 不在 Modules 根目录中。</value></data>
+  <data name="禁用插件目录 '{0}' 不在 Modules/disabled 中。" xml:space="preserve"><value>禁用插件目录 '{0}' 不在 Modules/disabled 中。</value></data>
+  <data name="插件目录不存在：'{0}'。" xml:space="preserve"><value>插件目录不存在：'{0}'。</value></data>
+  <data name="目标插件目录已存在：'{0}'。" xml:space="preserve"><value>目标插件目录已存在：'{0}'。</value></data>
+  <data name="v{0} · {1} 个页面（单数）" xml:space="preserve"><value>v{0} · {1} 个页面</value></data>
+  <data name="即将安装 {0} 个插件（单数）" xml:space="preserve"><value>即将安装 {0} 个插件</value></data>
+  <data name="已安装 {0} 个插件（单数）：{1}。" xml:space="preserve"><value>已安装 {0} 个插件：{1}。</value></data>
+  <data name="SETTINGS" xml:space="preserve"><value>SETTINGS</value></data>
+  <data name="INSTALL" xml:space="preserve"><value>INSTALL</value></data>
+  <data name="RUNTIME" xml:space="preserve"><value>RUNTIME</value></data>
+  <data name="DISABLED" xml:space="preserve"><value>DISABLED</value></data>
+  <data name="DISABLE PLUGIN" xml:space="preserve"><value>DISABLE PLUGIN</value></data>
+  <data name="UNINSTALL PLUGIN" xml:space="preserve"><value>UNINSTALL PLUGIN</value></data>
+  <data name="ATTENTION" xml:space="preserve"><value>ATTENTION</value></data>
+  <data name="INSTALL PLUGINS" xml:space="preserve"><value>INSTALL PLUGINS</value></data>
+  <data name="WEB PLUGIN ERROR" xml:space="preserve"><value>WEB PLUGIN ERROR</value></data>
+  <data name="PLUGIN ROUTE" xml:space="preserve"><value>PLUGIN ROUTE</value></data>
+</root>

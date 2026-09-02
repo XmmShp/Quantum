@@ -26,12 +26,16 @@ export default definePlugin({
     return () => subscription.dispose();
   },
 
-  mount({ element, route, signal }) {
-    element.textContent = route.path;
+  mount({ element, route, locale, signal }) {
+    element.textContent = `${route.path} (${locale.cultureName})`;
     signal.addEventListener("abort", () => element.replaceChildren(), { once: true });
   }
 });
 ```
+
+`QuantumPluginViewContext.locale` carries the Host-selected BCP-47 culture, ISO language, and text direction.
+The Host remounts the view when the user changes language, so render localized copy and create locale-sensitive
+`Intl` formatters inside `mount`.
 
 The emitted plugin entry must be a single self-contained ESM file. Bundle dependencies into the entry with
 esbuild, Rollup, Vite, or another ESM-capable bundler; runtime imports are intentionally unavailable inside the

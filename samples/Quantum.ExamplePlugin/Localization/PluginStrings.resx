@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="示例插件" xml:space="preserve"><value>示例插件</value></data>
+  <data name="页面来自独立 DLL。" xml:space="preserve"><value>页面来自独立 DLL。</value></data>
+  <data name="这个组件、服务、样式和脚本都由" xml:space="preserve"><value>这个组件、服务、样式和脚本都由</value></data>
+  <data name="提供，宿主只负责组合与受控加载。" xml:space="preserve"><value>提供，宿主只负责组合与受控加载。</value></data>
+  <data name="业务状态是普通 Singleton 服务，不存放在 IQuantumPlugin bootstrap 中。" xml:space="preserve"><value>业务状态是普通 Singleton 服务，不存放在 IQuantumPlugin bootstrap 中。</value></data>
+  <data name="第三方依赖在插件自己的可回收上下文中解析。" xml:space="preserve"><value>第三方依赖在插件自己的可回收上下文中解析。</value></data>
+  <data name="等待中" xml:space="preserve"><value>等待中</value></data>
+  <data name="静态 bootstrap 使用插件运行期 scope 编排普通服务。" xml:space="preserve"><value>静态 bootstrap 使用插件运行期 scope 编排普通服务。</value></data>
+  <data name="LOADED" xml:space="preserve"><value>LOADED</value></data>
+  <data name="STANDALONE" xml:space="preserve"><value>STANDALONE</value></data>
+  <data name="直接从运行环境发现 TypeScript 示例，不要求声明 integration。" xml:space="preserve"><value>直接从运行环境发现 TypeScript 示例，不要求声明 integration。</value></data>
+  <data name="等待 TypeScript 插件发起名称路由 RPC。" xml:space="preserve"><value>等待 TypeScript 插件发起名称路由 RPC。</value></data>
+  <data name="最近调用方：{0}" xml:space="preserve"><value>最近调用方：{0}</value></data>
+  <data name="FIRST-CLASS PLUGIN" xml:space="preserve"><value>FIRST-CLASS PLUGIN</value></data>
+  <data name="PLUGIN CONTAINER" xml:space="preserve"><value>PLUGIN CONTAINER</value></data>
+  <data name="LOAD CONTEXT" xml:space="preserve"><value>LOAD CONTEXT</value></data>
+  <data name="STARTED AT" xml:space="preserve"><value>STARTED AT</value></data>
+  <data name="WEB PLUGIN" xml:space="preserve"><value>WEB PLUGIN</value></data>
+  <data name="JS → .NET RPC" xml:space="preserve"><value>JS → .NET RPC</value></data>
+</root>

@@ -1,5 +1,7 @@
 namespace Quantum.ExampleCalendarPlugin.Domain;
 
+using Quantum.ExampleCalendarPlugin.Localization;
+
 public sealed class CalendarItem
 {
     private static readonly HashSet<string> SupportedStyles =
@@ -80,17 +82,17 @@ public sealed class CalendarItem
         var normalizedStyle = style.Trim();
         if (normalizedTitle.Length > 120)
         {
-            throw new ArgumentException("事项标题不能超过 120 个字符。", nameof(title));
+            throw new ArgumentException(PluginText.Get("事项标题不能超过 120 个字符。"), nameof(title));
         }
 
         if (normalizedDescription.Length > 1000)
         {
-            throw new ArgumentException("事项说明不能超过 1000 个字符。", nameof(description));
+            throw new ArgumentException(PluginText.Get("事项说明不能超过 1000 个字符。"), nameof(description));
         }
 
         if (!SupportedStyles.Contains(normalizedStyle))
         {
-            throw new ArgumentException("事项颜色不受支持。", nameof(style));
+            throw new ArgumentException(PluginText.Get("事项颜色不受支持。"), nameof(style));
         }
 
         Title = normalizedTitle;

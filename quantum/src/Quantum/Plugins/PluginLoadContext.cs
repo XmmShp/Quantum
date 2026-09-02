@@ -60,7 +60,9 @@ public sealed class PluginLoadContext : AssemblyLoadContext
 
     private string? ResolveManagedAssemblyFromPluginDirectory(AssemblyName assemblyName)
     {
-        var candidatePath = Path.Combine(_pluginDirectory, $"{assemblyName.Name}.dll");
+        var candidatePath = string.IsNullOrWhiteSpace(assemblyName.CultureName)
+            ? Path.Combine(_pluginDirectory, $"{assemblyName.Name}.dll")
+            : Path.Combine(_pluginDirectory, assemblyName.CultureName, $"{assemblyName.Name}.dll");
         return File.Exists(candidatePath) ? candidatePath : null;
     }
 

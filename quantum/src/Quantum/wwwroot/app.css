@@ -198,6 +198,31 @@ a {
   font-size: 11px;
 }
 
+.language-picker {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #777184;
+  font-size: 12px;
+}
+
+.language-picker select {
+  min-width: 142px;
+  border: 1px solid #ded9ee;
+  border-radius: 10px;
+  padding: 8px 32px 8px 11px;
+  color: #302a43;
+  background: #fff;
+  font: inherit;
+}
+
+.section-description {
+  margin: 0;
+  color: #7d778b;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
 .global-drop-hint {
   position: relative;
   display: flex;

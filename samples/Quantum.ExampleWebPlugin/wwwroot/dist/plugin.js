@@ -283,6 +283,7 @@ var index_default = definePlugin({
     };
   },
   async mount(context) {
+    const text = createMessages(context.locale.languageName);
     context.element.innerHTML = `
       <style>
         body { color: #29243d; background: #fff; font-family: Inter, system-ui, sans-serif; }
@@ -298,20 +299,20 @@ var index_default = definePlugin({
         button:disabled { cursor: wait; opacity: .65; }
       </style>
       <section class="page">
-        <div class="tag">ISOLATED TYPESCRIPT PLUGIN</div>
-        <h1>Quantum Web Runtime</h1>
-        <p>\u5F53\u524D\u89C6\u56FE\uFF1A${escapeHtml(context.route.view)}</p>
-        <p data-environment-status>\u6B63\u5728\u8BFB\u53D6 Quantum \u63D2\u4EF6\u73AF\u5883\u2026</p>
-        <p data-host-status>\u8C03\u7528\u53EA\u643A\u5E26 RPC \u540D\u79F0\u4E0E JSON Payload\uFF0C\u4E0D\u4F9D\u8D56\u4EFB\u4F55 CLR \u7C7B\u578B\u3002</p>
+        <div class="tag">${text.tag}</div>
+        <h1>${text.heading}</h1>
+        <p>${text.currentView}: ${escapeHtml(context.route.view)}</p>
+        <p data-environment-status>${text.readingEnvironment}</p>
+        <p data-host-status>${text.rpcDescription}</p>
         <div class="interop">
-          <strong>TypeScript \u2192 Quantum RPC \u2192 .NET Handler</strong>
-          <p data-handshake-status>\u7B49\u5F85\u73AF\u5883\u67E5\u8BE2\u5B8C\u6210\u2026</p>
+          <strong>${text.interopHeading}</strong>
+          <p data-handshake-status>${text.waitingForEnvironment}</p>
           <small data-handshake-meta></small>
         </div>
         <div class="actions">
-          <button type="button" data-action="handshake">\u518D\u6B21\u63E1\u624B</button>
-          <button type="button" class="secondary" data-action="dotnet">\u6253\u5F00 .NET \u793A\u4F8B</button>
-          <button type="button" class="secondary" data-action="home">\u8FD4\u56DE\u6982\u89C8</button>
+          <button type="button" data-action="handshake">${text.handshakeAgain}</button>
+          <button type="button" class="secondary" data-action="dotnet">${text.openDotNet}</button>
+          <button type="button" class="secondary" data-action="home">${text.backHome}</button>
         </div>
       </section>
     `;
@@ -323,7 +324,7 @@ var index_default = definePlugin({
     const requestHandshake = async () => {
       if (dotNetPluginAvailable === false) {
         if (status) {
-          status.textContent = ".NET \u793A\u4F8B\u672A\u5B89\u88C5\uFF0CWeb \u63D2\u4EF6\u7EE7\u7EED\u72EC\u7ACB\u8FD0\u884C\u3002";
+          status.textContent = text.dotNetUnavailable;
         }
         return;
       }
@@ -332,7 +333,7 @@ var index_default = definePlugin({
       }
       try {
         if (status) {
-          status.textContent = "\u6B63\u5728\u8FDE\u63A5 quantum.plugin.example\u2026";
+          status.textContent = text.connecting;
         }
         if (metadata) {
           metadata.textContent = "";
@@ -351,12 +352,18 @@ var index_default = definePlugin({
           status.textContent = handshake.message;
         }
         if (metadata) {
-          const startedAt = new Date(handshake.dotNetStartedAt).toLocaleTimeString();
-          metadata.textContent = `\u8C03\u7528\u5E8F\u53F7 ${handshake.sequence} \xB7 .NET runtime \u542F\u52A8\u4E8E ${startedAt} \xB7 Web \u63D2\u4EF6 ${handshake.webPluginAvailable ? "LOADED" : "STANDALONE"}`;
+          const startedAt = new Date(handshake.dotNetStartedAt).toLocaleTimeString(context.locale.cultureName);
+          metadata.textContent = text.handshakeMetadata(
+            handshake.sequence,
+            startedAt,
+            handshake.webPluginAvailable
+          );
         }
       } catch (error) {
         if (!context.signal.aborted && status) {
-          status.textContent = `\u63E1\u624B\u5931\u8D25\uFF1A${error instanceof Error ? error.message : String(error)}`;
+          status.textContent = text.handshakeFailed(
+            error instanceof Error ? error.message : String(error)
+          );
         }
       } finally {
         if (handshakeButton && !context.signal.aborted) {
@@ -371,11 +378,14 @@ var index_default = definePlugin({
           (plugin) => plugin.id === "quantum.plugin.example"
         );
         if (!context.signal.aborted && environmentStatus) {
-          environmentStatus.textContent = `\u5DF2\u52A0\u8F7D ${environment.loadedPlugins.length} \u4E2A\u63D2\u4EF6\uFF1B.NET \u793A\u4F8B\uFF1A${dotNetPluginAvailable ? "LOADED" : "NOT LOADED"}\u3002`;
+          environmentStatus.textContent = text.environmentLoaded(
+            environment.loadedPlugins.length,
+            dotNetPluginAvailable
+          );
         }
       } catch (error) {
         if (!context.signal.aborted && environmentStatus) {
-          environmentStatus.textContent = `\u73AF\u5883\u67E5\u8BE2\u5931\u8D25\uFF1A${errorMessage(error)}`;
+          environmentStatus.textContent = text.environmentFailed(errorMessage(error));
         }
       }
       await requestHandshake();
@@ -402,6 +412,46 @@ function escapeHtml(value) {
 }
 function errorMessage(error) {
   return error instanceof Error ? error.message : String(error);
+}
+function createMessages(languageName) {
+  if (languageName.toLowerCase() === "zh") {
+    return {
+      tag: "ISOLATED TYPESCRIPT PLUGIN",
+      heading: "Quantum Web Runtime",
+      interopHeading: "TypeScript \u2192 Quantum RPC \u2192 .NET Handler",
+      currentView: "\u5F53\u524D\u89C6\u56FE",
+      readingEnvironment: "\u6B63\u5728\u8BFB\u53D6 Quantum \u63D2\u4EF6\u73AF\u5883\u2026",
+      rpcDescription: "\u8C03\u7528\u53EA\u643A\u5E26 RPC \u540D\u79F0\u4E0E JSON Payload\uFF0C\u4E0D\u4F9D\u8D56\u4EFB\u4F55 CLR \u7C7B\u578B\u3002",
+      waitingForEnvironment: "\u7B49\u5F85\u73AF\u5883\u67E5\u8BE2\u5B8C\u6210\u2026",
+      handshakeAgain: "\u518D\u6B21\u63E1\u624B",
+      openDotNet: "\u6253\u5F00 .NET \u793A\u4F8B",
+      backHome: "\u8FD4\u56DE\u6982\u89C8",
+      dotNetUnavailable: ".NET \u793A\u4F8B\u672A\u5B89\u88C5\uFF0CWeb \u63D2\u4EF6\u7EE7\u7EED\u72EC\u7ACB\u8FD0\u884C\u3002",
+      connecting: "\u6B63\u5728\u8FDE\u63A5 quantum.plugin.example\u2026",
+      handshakeMetadata: (sequence, startedAt, available) => `\u8C03\u7528\u5E8F\u53F7 ${sequence} \xB7 .NET runtime \u542F\u52A8\u4E8E ${startedAt} \xB7 Web \u63D2\u4EF6 ${available ? "LOADED" : "STANDALONE"}`,
+      handshakeFailed: (message) => `\u63E1\u624B\u5931\u8D25\uFF1A${message}`,
+      environmentLoaded: (count, available) => `\u5DF2\u52A0\u8F7D ${count} \u4E2A\u63D2\u4EF6\uFF1B.NET \u793A\u4F8B\uFF1A${available ? "LOADED" : "NOT LOADED"}\u3002`,
+      environmentFailed: (message) => `\u73AF\u5883\u67E5\u8BE2\u5931\u8D25\uFF1A${message}`
+    };
+  }
+  return {
+    tag: "ISOLATED TYPESCRIPT PLUGIN",
+    heading: "Quantum Web Runtime",
+    interopHeading: "TypeScript \u2192 Quantum RPC \u2192 .NET Handler",
+    currentView: "Current view",
+    readingEnvironment: "Reading the Quantum plugin environment\u2026",
+    rpcDescription: "Calls carry only an RPC name and JSON payload, with no dependency on CLR types.",
+    waitingForEnvironment: "Waiting for the environment query\u2026",
+    handshakeAgain: "Handshake again",
+    openDotNet: "Open .NET example",
+    backHome: "Back to overview",
+    dotNetUnavailable: "The .NET example is not installed; the Web plugin will continue standalone.",
+    connecting: "Connecting to quantum.plugin.example\u2026",
+    handshakeMetadata: (sequence, startedAt, available) => `Call ${sequence} \xB7 .NET runtime started at ${startedAt} \xB7 Web plugin ${available ? "LOADED" : "STANDALONE"}`,
+    handshakeFailed: (message) => `Handshake failed: ${message}`,
+    environmentLoaded: (count, available) => `${count} ${count === 1 ? "plugin" : "plugins"} loaded; .NET example: ${available ? "LOADED" : "NOT LOADED"}.`,
+    environmentFailed: (message) => `Environment query failed: ${message}`
+  };
 }
 export {
   index_default as default

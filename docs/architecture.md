@@ -85,6 +85,16 @@ Web adapter 通过 capability RPC 完成 publish/subscribe/unsubscribe。Host �
 主动释放 subscription，以免一次运行代内的 stop/start 回滚产生重复订阅。总线释放时还会清除该运行代的 JSON
 metadata，以及 System.Text.Json 用于动态 DTO 的 member-accessor 缓存，避免缓存委托阻止 collectible ALC 回收。
 
+## 本地化边界
+
+宿主把用户选择归一化为受支持的 BCP-47 culture，并同时更新 `CurrentCulture`、`CurrentUICulture` 和页面
+`lang/dir`。路由标题按 manifest 的 `titles` 完整 culture、语言、默认 `title` 顺序回退。.NET 插件与宿主共享
+进程 culture，使用标准 `.resx` / `IStringLocalizer<T>`，其卫星程序集由插件 ALC 从 culture 子目录加载。
+
+Web iframe 不继承 .NET 线程 culture，因此 TypeScript adapter 在每次 `mount` 的
+`QuantumPluginViewContext.locale` 中显式传递等价的 culture、语言和文字方向；语言变化会重挂载当前 view。这是两个
+runtime adapter 的有意接口差异：本地化语义相同，传递机制分别遵循 .NET culture 与隔离 iframe 消息边界。
+
 ## ALC 边界
 
 每个插件拥有自己的 collectible ALC。Windows 使用 `AssemblyDependencyResolver`；Mac Catalyst 不提供该 API，因此按插件目录中的同名 DLL/本机库进行确定性解析。两种平台遵循相同边界：

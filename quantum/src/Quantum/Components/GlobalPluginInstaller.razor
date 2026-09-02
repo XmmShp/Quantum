@@ -2,6 +2,7 @@
 @implements IAsyncDisposable
 @inject IPluginRuntimeManager PluginRuntimeManager
 @inject IJSRuntime JSRuntime
+@inject IStringLocalizer<AppStrings> L
 
 <div class="global-install-surface">
     @ChildContent
@@ -11,13 +12,13 @@
                    class="global-plugin-drop-input"
                    accept=".zip,application/zip,application/x-zip-compressed"
                    disabled="@_isProcessing"
-                   aria-label="松开以安装插件整合包"
+                   aria-label="@L["松开以安装插件整合包"]"
                    OnChange="PrepareInstallAsync" />
         <div class="global-drop-prompt">
             <span class="global-drop-icon">⇩</span>
-            <p class="eyebrow">INSTALL PLUGINS</p>
-            <strong>@(_isProcessing ? "正在处理插件包" : "松开鼠标，扫描插件整合包")</strong>
-            <span>每个插件一个文件夹；只包含一个插件时使用完全相同的安装流程。</span>
+            <p class="eyebrow">@L["INSTALL PLUGINS"]</p>
+            <strong>@(_isProcessing ? L["正在处理插件包"] : L["松开鼠标，扫描插件整合包"])</strong>
+            <span>@L["每个插件一个文件夹；只包含一个插件时使用完全相同的安装流程。"]</span>
         </div>
     </div>
 
@@ -28,11 +29,9 @@
                      role="alertdialog"
                      aria-modal="true"
                      aria-labelledby="install-dialog-title">
-                <p class="eyebrow">INSTALL PLUGINS</p>
+                <p class="eyebrow">@L["INSTALL PLUGINS"]</p>
                 <h2 id="install-dialog-title">
-                    @(preview.CanInstall
-                        ? $"即将安装 {preview.InstallCount} 个插件"
-                        : "这个插件包无法安装")
+                    @(preview.CanInstall ? GetInstallHeading(preview.InstallCount) : L["这个插件包无法安装"])
                 </h2>
                 <p class="dialog-note">@preview.ArchiveFileName</p>
 
@@ -57,7 +56,7 @@
                 @if (preview.Issues.Count > 0)
                 {
                     <div class="install-issues">
-                        <strong>兼容性检查未通过</strong>
+                        <strong>@L["兼容性检查未通过"]</strong>
                         <ul>
                             @foreach (var issue in preview.Issues)
                             {
@@ -74,12 +73,12 @@
                 }
                 else
                 {
-                    <p class="dialog-note">确认后才会写入 Modules；安装失败时会保留当前运行版本并恢复插件文件。</p>
+                    <p class="dialog-note">@L["确认后才会写入 Modules；安装失败时会保留当前运行版本并恢复插件文件。"]</p>
                 }
 
                 <div class="dialog-actions">
                     <button type="button" class="secondary-button" @onclick="CancelPreviewAsync">
-                        @(preview.CanInstall ? "取消" : "关闭")
+                        @(preview.CanInstall ? L["取消"] : L["关闭"])
                     </button>
                     @if (preview.CanInstall)
                     {
@@ -87,7 +86,7 @@
                                 class="primary-button"
                                 disabled="@_isProcessing"
                                 @onclick="ConfirmInstallAsync">
-                            @(_isProcessing ? "正在安装…" : "确认安装")
+                            @(_isProcessing ? L["正在安装…"] : L["确认安装"])
                         </button>
                     }
                 </div>
@@ -100,7 +99,7 @@
         <div class="global-operation-message @(_operationSucceeded ? "success" : "error")"
              role="status">
             <span>@_operationMessage</span>
-            <button type="button" aria-label="关闭消息" @onclick="DismissMessage">×</button>
+            <button type="button" aria-label="@L["关闭消息"]" @onclick="DismissMessage">×</button>
         </div>
     }
 </div>
@@ -162,7 +161,7 @@
         catch (Exception exception)
         {
             _operationSucceeded = false;
-            _operationMessage = $"无法读取插件 ZIP：{exception.Message}";
+            _operationMessage = L["无法读取插件 ZIP：{0}", exception.Message];
         }
         finally
         {
@@ -201,7 +200,7 @@
         catch (Exception exception)
         {
             _operationSucceeded = false;
-            _operationMessage = $"插件安装失败：{exception.Message}";
+            _operationMessage = L["插件安装失败：{0}", exception.Message];
         }
         finally
         {
@@ -212,20 +211,28 @@
     private void DismissMessage()
         => _operationMessage = null;
 
-    private static string GetInstallVersionText(PluginInstallPreviewItem plugin)
+    private string GetInstallHeading(int count)
+        => count == 1
+            ? L["即将安装 {0} 个插件（单数）", count]
+            : L["即将安装 {0} 个插件", count];
+
+    private string GetInstallVersionText(PluginInstallPreviewItem plugin)
         => plugin.Action switch
         {
             PluginInstallAction.Install => $"v{plugin.PackageVersion}",
             PluginInstallAction.Upgrade => $"v{plugin.InstalledVersion} → v{plugin.PackageVersion}",
-            _ => $"保留 v{plugin.InstalledVersion}（包内 v{plugin.PackageVersion}）"
+            _ => L[
+                "保留 v{0}（包内 v{1}）",
+                plugin.InstalledVersion ?? string.Empty,
+                plugin.PackageVersion]
         };
 
-    private static string GetInstallActionText(PluginInstallAction action)
+    private string GetInstallActionText(PluginInstallAction action)
         => action switch
         {
-            PluginInstallAction.Install => "新安装",
-            PluginInstallAction.Upgrade => "升级",
-            _ => "跳过"
+            PluginInstallAction.Install => L["新安装"],
+            PluginInstallAction.Upgrade => L["升级"],
+            _ => L["跳过"]
         };
 
     private static string GetInstallActionClass(PluginInstallAction action)

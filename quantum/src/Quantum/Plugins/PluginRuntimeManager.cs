@@ -1,6 +1,8 @@
 using System.Reflection;
 using System.Text.Json;
 using Microsoft.Extensions.Logging;
+using Quantum.Localization;
+
 namespace Quantum.Plugins;
 
 public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposable
@@ -165,7 +167,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             if (current is null)
             {
                 _logger.LogWarning("Cannot reload plugin {PluginId} because it is not loaded.", normalized);
-                return PluginOperationResult.Failure($"插件 '{normalized}' 当前未加载，请使用重新扫描。");
+                return PluginOperationResult.Failure(AppText.Get(
+                    "插件 '{0}' 当前未加载，请使用重新扫描。",
+                    normalized));
             }
 
             var dependentPluginIds = FindStrongDependentIds(
@@ -178,8 +182,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                 _logger.LogWarning(
                     "Cannot reload plugin {PluginId} because no valid on-disk candidate was discovered.",
                     normalized);
-                return PluginOperationResult.Failure(
-                    $"插件 '{normalized}' 的磁盘版本无效或已不存在，当前版本继续运行。");
+                return PluginOperationResult.Failure(AppText.Get(
+                    "插件 '{0}' 的磁盘版本无效或已不存在，当前版本继续运行。",
+                    normalized));
             }
 
             var missingCurrent = FindMissingCurrentPlugins(discovery.Plan, excludedPluginIds: null);
@@ -190,8 +195,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                     + "currently loaded plugins: {MissingPluginIds}.",
                     normalized,
                     missingCurrent);
-                return PluginOperationResult.Failure(
-                    $"新快照会使已加载插件失效，热升级已取消：{string.Join(", ", missingCurrent)}。");
+                return PluginOperationResult.Failure(AppText.Get(
+                    "新快照会使已加载插件失效，热升级已取消：{0}。",
+                    string.Join(", ", missingCurrent)));
             }
 
             var result = await ReplaceAllAsync(discovery, cancellationToken).ConfigureAwait(false);
@@ -202,9 +208,17 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
 
             return PluginOperationResult.Success(
                 dependentPluginIds.Count == 0
-                    ? $"插件 '{normalized}' 已从 {current.Candidate.Manifest.Version} 热切换到 {candidate.Manifest.Version}。"
-                    : $"插件 '{normalized}' 已从 {current.Candidate.Manifest.Version} 热切换到 {candidate.Manifest.Version}；"
-                        + $"下游强依赖插件已按顺序停用并恢复：{string.Join(", ", dependentPluginIds)}。");
+                    ? AppText.Get(
+                        "插件 '{0}' 已从 {1} 热切换到 {2}。",
+                        normalized,
+                        current.Candidate.Manifest.Version,
+                        candidate.Manifest.Version)
+                    : AppText.Get(
+                        "插件 '{0}' 已从 {1} 热切换到 {2}；下游强依赖插件已按顺序停用并恢复：{3}。",
+                        normalized,
+                        current.Candidate.Manifest.Version,
+                        candidate.Manifest.Version,
+                        string.Join(", ", dependentPluginIds)));
         }
         finally
         {
@@ -252,7 +266,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             if (current is null)
             {
                 _logger.LogWarning("Cannot disable plugin {PluginId} because it is not loaded.", normalized);
-                return PluginOperationResult.Failure($"插件 '{normalized}' 当前未加载。");
+                return PluginOperationResult.Failure(AppText.Get("插件 '{0}' 当前未加载。", normalized));
             }
 
             var dependentPluginIds = FindStrongDependentIds(
@@ -264,8 +278,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                     "Disable confirmation for plugin {PluginId} is stale at catalog revision {CatalogRevision}.",
                     normalized,
                     _catalog.Revision);
-                return PluginOperationResult.Failure(
-                    $"插件清单已经变化，请按最新清单重新确认禁用插件 '{normalized}'。");
+                return PluginOperationResult.Failure(AppText.Get(
+                    "插件清单已经变化，请按最新清单重新确认禁用插件 '{0}'。",
+                    normalized));
             }
 
             var affectedPluginIds = dependentPluginIds.Append(normalized).ToHashSet();
@@ -283,8 +298,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                     var destinationPath = Path.Combine(disabledRoot, Path.GetFileName(sourcePath));
                     if (Directory.Exists(destinationPath))
                     {
-                        return PluginOperationResult.Failure(
-                            $"禁用目录中已存在 '{Path.GetFileName(sourcePath)}'，未修改任何插件。");
+                        return PluginOperationResult.Failure(AppText.Get(
+                            "禁用目录中已存在 '{0}'，未修改任何插件。",
+                            Path.GetFileName(sourcePath)));
                     }
 
                     moves.Add(new PluginDirectoryMove(sourcePath, destinationPath));
@@ -297,8 +313,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                 if (missingCurrent.Length > 0)
                 {
                     RestorePluginDirectories(moves);
-                    return PluginOperationResult.Failure(
-                        $"新快照会使其他已加载插件失效，禁用已取消：{string.Join(", ", missingCurrent)}。");
+                    return PluginOperationResult.Failure(AppText.Get(
+                        "新快照会使其他已加载插件失效，禁用已取消：{0}。",
+                        string.Join(", ", missingCurrent)));
                 }
 
                 var result = await ReplaceAllAsync(discovery, cancellationToken).ConfigureAwait(false);
@@ -310,15 +327,22 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
 
                 return PluginOperationResult.Success(
                     dependentPluginIds.Count == 0
-                        ? $"插件 '{normalized}' 已禁用并移动到 Modules/disabled。"
-                        : $"插件 '{normalized}' 及其下游强依赖插件已禁用并移动到 Modules/disabled："
-                            + $"{string.Join(", ", dependentPluginIds)}。");
+                        ? AppText.Get(
+                            "插件 '{0}' 已禁用并移动到 Modules/disabled。",
+                            normalized)
+                        : AppText.Get(
+                            "插件 '{0}' 及其下游强依赖插件已禁用并移动到 Modules/disabled：{1}。",
+                            normalized,
+                            string.Join(", ", dependentPluginIds)));
             }
             catch (Exception exception)
             {
                 RestorePluginDirectories(moves);
                 _logger.LogError(exception, "Could not disable plugin {PluginId}; file moves were rolled back.", normalized);
-                return PluginOperationResult.Failure($"禁用插件 '{normalized}' 失败，目录已回滚：{exception.Message}");
+                return PluginOperationResult.Failure(AppText.Get(
+                    "禁用插件 '{0}' 失败，目录已回滚：{1}",
+                    normalized,
+                    exception.Message));
             }
         }
         finally
@@ -350,12 +374,16 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                 .ToArray();
             if (matches.Length == 0)
             {
-                return PluginOperationResult.Failure($"禁用目录中没有插件 '{normalized}'。");
+                return PluginOperationResult.Failure(AppText.Get(
+                    "禁用目录中没有插件 '{0}'。",
+                    normalized));
             }
 
             if (matches.Length > 1)
             {
-                return PluginOperationResult.Failure($"禁用目录中有多个插件 '{normalized}'，无法确定启用哪一个。");
+                return PluginOperationResult.Failure(AppText.Get(
+                    "禁用目录中有多个插件 '{0}'，无法确定启用哪一个。",
+                    normalized));
             }
 
             var sourcePath = Path.GetFullPath(matches[0].RootPath);
@@ -365,8 +393,10 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             EnsureDirectModuleChild(destinationPath);
             if (Directory.Exists(destinationPath))
             {
-                return PluginOperationResult.Failure(
-                    $"Modules 中已存在目录 '{Path.GetFileName(destinationPath)}'，无法启用插件 '{normalized}'。");
+                return PluginOperationResult.Failure(AppText.Get(
+                    "Modules 中已存在目录 '{0}'，无法启用插件 '{1}'。",
+                    Path.GetFileName(destinationPath),
+                    normalized));
             }
 
             var moves = new[] { new PluginDirectoryMove(sourcePath, destinationPath) };
@@ -382,11 +412,13 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                     var reason = discovery.Failures
                         .FirstOrDefault(failure => failure.PluginId == normalized)?.Reason
                         ?? discovery.Failures.FirstOrDefault()?.Reason
-                        ?? "依赖或兼容性检查未通过。";
+                        ?? AppText.Get("依赖或兼容性检查未通过。");
                     return PluginOperationResult.Failure(
                         !enabled
-                            ? $"插件 '{normalized}' 无法启用：{reason}"
-                            : $"启用会使已加载插件失效，操作已取消：{string.Join(", ", missingCurrent)}。");
+                            ? AppText.Get("插件 '{0}' 无法启用：{1}", normalized, reason)
+                            : AppText.Get(
+                                "启用会使已加载插件失效，操作已取消：{0}。",
+                                string.Join(", ", missingCurrent)));
                 }
 
                 var result = await ReplaceAllAsync(discovery, cancellationToken).ConfigureAwait(false);
@@ -396,13 +428,18 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                     return result;
                 }
 
-                return PluginOperationResult.Success($"插件 '{normalized}' 已启用并移回 Modules。");
+                return PluginOperationResult.Success(AppText.Get(
+                    "插件 '{0}' 已启用并移回 Modules。",
+                    normalized));
             }
             catch (Exception exception)
             {
                 RestorePluginDirectories(moves);
                 _logger.LogError(exception, "Could not enable plugin {PluginId}; file move was rolled back.", normalized);
-                return PluginOperationResult.Failure($"启用插件 '{normalized}' 失败，目录已回滚：{exception.Message}");
+                return PluginOperationResult.Failure(AppText.Get(
+                    "启用插件 '{0}' 失败，目录已回滚：{1}",
+                    normalized,
+                    exception.Message));
             }
         }
         finally
@@ -423,8 +460,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             EnsureReady();
             if (confirmedCatalogRevision != _catalog.Revision)
             {
-                return PluginOperationResult.Failure(
-                    $"插件清单已经变化，请按最新清单重新确认卸载插件 '{normalized}'。");
+                return PluginOperationResult.Failure(AppText.Get(
+                    "插件清单已经变化，请按最新清单重新确认卸载插件 '{0}'。",
+                    normalized));
             }
 
             var current = _runtimes.FirstOrDefault(runtime => runtime.Candidate.Manifest.Id == normalized);
@@ -435,25 +473,31 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                     .ToArray();
                 if (disabledMatches.Length == 0)
                 {
-                    return PluginOperationResult.Failure($"插件 '{normalized}' 当前未安装。");
+                    return PluginOperationResult.Failure(AppText.Get(
+                        "插件 '{0}' 当前未安装。",
+                        normalized));
                 }
 
                 if (disabledMatches.Length > 1)
                 {
-                    return PluginOperationResult.Failure(
-                        $"禁用目录中有多个插件 '{normalized}'，无法确定卸载哪一个。");
+                    return PluginOperationResult.Failure(AppText.Get(
+                        "禁用目录中有多个插件 '{0}'，无法确定卸载哪一个。",
+                        normalized));
                 }
 
                 var disabledPath = Path.GetFullPath(disabledMatches[0].RootPath);
                 EnsureDirectDisabledChild(disabledPath);
                 if (!PluginShadowCopy.TryDelete(disabledPath))
                 {
-                    return PluginOperationResult.Failure(
-                        $"插件 '{normalized}' 的物理文件删除失败：'{disabledPath}'。");
+                    return PluginOperationResult.Failure(AppText.Get(
+                        "插件 '{0}' 的物理文件删除失败：'{1}'。",
+                        normalized,
+                        disabledPath));
                 }
 
-                return PluginOperationResult.Success(
-                    $"已禁用插件 '{normalized}' 已永久卸载，物理文件已删除。");
+                return PluginOperationResult.Success(AppText.Get(
+                    "已禁用插件 '{0}' 已永久卸载，物理文件已删除。",
+                    normalized));
             }
 
             var dependentPluginIds = FindStrongDependentIds(
@@ -486,8 +530,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                 {
                     RestorePluginDirectories(moves);
                     PluginShadowCopy.TryDelete(transactionRoot);
-                    return PluginOperationResult.Failure(
-                        $"新快照会使其他已加载插件失效，卸载已取消：{string.Join(", ", missingCurrent)}。");
+                    return PluginOperationResult.Failure(AppText.Get(
+                        "新快照会使其他已加载插件失效，卸载已取消：{0}。",
+                        string.Join(", ", missingCurrent)));
                 }
 
                 var result = await ReplaceAllAsync(discovery, cancellationToken).ConfigureAwait(false);
@@ -504,22 +549,30 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                         "Plugin {PluginId} was removed from the runtime, but uninstall transaction {TransactionRoot} could not be deleted.",
                         normalized,
                         transactionRoot);
-                    return PluginOperationResult.Failure(
-                        $"插件已停止运行，但物理文件删除失败：'{transactionRoot}'。请关闭占用文件的程序后清理该目录。");
+                    return PluginOperationResult.Failure(AppText.Get(
+                        "插件已停止运行，但物理文件删除失败：'{0}'。请关闭占用文件的程序后清理该目录。",
+                        transactionRoot));
                 }
 
                 return PluginOperationResult.Success(
                     dependentPluginIds.Count == 0
-                        ? $"插件 '{normalized}' 已永久卸载，物理文件已删除。"
-                        : $"插件 '{normalized}' 及其下游强依赖插件已永久卸载并删除物理文件："
-                            + $"{string.Join(", ", dependentPluginIds)}。");
+                        ? AppText.Get(
+                            "插件 '{0}' 已永久卸载，物理文件已删除。",
+                            normalized)
+                        : AppText.Get(
+                            "插件 '{0}' 及其下游强依赖插件已永久卸载并删除物理文件：{1}。",
+                            normalized,
+                            string.Join(", ", dependentPluginIds)));
             }
             catch (Exception exception)
             {
                 RestorePluginDirectories(moves);
                 PluginShadowCopy.TryDelete(transactionRoot);
                 _logger.LogError(exception, "Could not uninstall plugin {PluginId}; file moves were rolled back.", normalized);
-                return PluginOperationResult.Failure($"卸载插件 '{normalized}' 失败，目录已回滚：{exception.Message}");
+                return PluginOperationResult.Failure(AppText.Get(
+                    "卸载插件 '{0}' 失败，目录已回滚：{1}",
+                    normalized,
+                    exception.Message));
             }
         }
         finally
@@ -538,7 +591,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             var discovery = Discover(excludedPluginIds: null);
             var result = await ReplaceAllAsync(discovery, cancellationToken).ConfigureAwait(false);
             return result.Succeeded
-                ? PluginOperationResult.Success("Modules 已重新扫描，插件运行时快照已热切换。")
+                ? PluginOperationResult.Success(AppText.Get("Modules 已重新扫描，插件运行时快照已热切换。"))
                 : result;
         }
         finally
@@ -557,7 +610,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         var displayFileName = Path.GetFileName(archiveFileName.Trim());
         if (!displayFileName.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
         {
-            return RejectedInstallPreview(displayFileName, "仅支持 ZIP 格式的插件包。");
+            return RejectedInstallPreview(displayFileName, AppText.Get("仅支持 ZIP 格式的插件包。"));
         }
 
         await _gate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -665,13 +718,14 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             var pending = _pendingInstall;
             if (pending is null || !string.Equals(pending.Preview.PreviewId, previewId, StringComparison.Ordinal))
             {
-                return PluginOperationResult.Failure("安装预览已失效，请重新拖入 ZIP 包。");
+                return PluginOperationResult.Failure(AppText.Get("安装预览已失效，请重新拖入 ZIP 包。"));
             }
 
             if (pending.CatalogRevision != _catalog.Revision)
             {
                 ClearPendingInstall();
-                return PluginOperationResult.Failure("插件清单在确认前已变化，请重新拖入 ZIP 包并确认最新清单。");
+                return PluginOperationResult.Failure(AppText.Get(
+                    "插件清单在确认前已变化，请重新拖入 ZIP 包并确认最新清单。"));
             }
 
             var evaluation = EvaluateInstall(pending.PackageCandidates);
@@ -679,7 +733,8 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                 || !evaluation.Items.SequenceEqual(pending.Preview.Plugins))
             {
                 ClearPendingInstall();
-                return PluginOperationResult.Failure("插件文件或依赖状态在确认前已变化，请重新拖入 ZIP 包。");
+                return PluginOperationResult.Failure(AppText.Get(
+                    "插件文件或依赖状态在确认前已变化，请重新拖入 ZIP 包。"));
             }
 
             var selectedPackages = evaluation.Items
@@ -736,8 +791,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                     await RestoreInstalledFilesAsync(operations).ConfigureAwait(false);
                     filesCommitted = false;
                     ClearPendingInstall();
-                    return PluginOperationResult.Failure(
-                        $"安装后的插件清单不兼容，未安装任何插件：{compatibilityFailure.Reason}");
+                    return PluginOperationResult.Failure(AppText.Get(
+                        "安装后的插件清单不兼容，未安装任何插件：{0}",
+                        compatibilityFailure.Reason));
                 }
 
                 foreach (var package in selectedPackages)
@@ -749,8 +805,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                         await RestoreInstalledFilesAsync(operations).ConfigureAwait(false);
                         filesCommitted = false;
                         ClearPendingInstall();
-                        return PluginOperationResult.Failure(
-                            $"插件 '{package.Manifest.Id}' 的安装版本清单发生变化，未安装任何插件。");
+                        return PluginOperationResult.Failure(AppText.Get(
+                            "插件 '{0}' 的安装版本清单发生变化，未安装任何插件。",
+                            package.Manifest.Id));
                     }
                 }
 
@@ -760,8 +817,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                     await RestoreInstalledFilesAsync(operations).ConfigureAwait(false);
                     filesCommitted = false;
                     ClearPendingInstall();
-                    return PluginOperationResult.Failure(
-                        $"安装会使已加载插件失效，未安装任何插件：{string.Join(", ", missingCurrent)}。");
+                    return PluginOperationResult.Failure(AppText.Get(
+                        "安装会使已加载插件失效，未安装任何插件：{0}。",
+                        string.Join(", ", missingCurrent)));
                 }
 
                 var result = await ReplaceAllAsync(discovery, cancellationToken).ConfigureAwait(false);
@@ -770,14 +828,25 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                     await RestoreInstalledFilesAsync(operations).ConfigureAwait(false);
                     filesCommitted = false;
                     ClearPendingInstall();
-                    return PluginOperationResult.Failure($"{result.Message} Modules 文件已恢复。");
+                    return PluginOperationResult.Failure(AppText.Get(
+                        "{0} Modules 文件已恢复。",
+                        result.Message));
                 }
 
                 filesCommitted = false;
                 ClearPendingInstall();
+                var installedPluginList = string.Join(", ", selectedPackages.Select(static plugin =>
+                    $"{plugin.Manifest.Id} {plugin.Manifest.Version}"));
                 return PluginOperationResult.Success(
-                    $"已安装 {selectedPackages.Length} 个插件："
-                    + $"{string.Join(", ", selectedPackages.Select(static plugin => $"{plugin.Manifest.Id} {plugin.Manifest.Version}"))}。");
+                    selectedPackages.Length == 1
+                        ? AppText.Get(
+                            "已安装 {0} 个插件（单数）：{1}。",
+                            selectedPackages.Length,
+                            installedPluginList)
+                        : AppText.Get(
+                            "已安装 {0} 个插件：{1}。",
+                            selectedPackages.Length,
+                            installedPluginList));
             }
             catch (OperationCanceledException exception)
             {
@@ -791,7 +860,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                     {
                         preserveTransaction = true;
                         throw new InvalidOperationException(
-                            "插件安装已取消，但 Modules 文件恢复未完成。",
+                            AppText.Get("插件安装已取消，但 Modules 文件恢复未完成。"),
                             new AggregateException(exception, rollbackException));
                     }
                 }
@@ -814,15 +883,18 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                             rollbackException,
                             "Plugin package file rollback failed for preview {PreviewId}.",
                             previewId);
-                        return PluginOperationResult.Failure(
-                            $"插件安装失败且文件恢复未完成，请检查 Modules：{exception.Message}；"
-                            + $"恢复错误：{rollbackException.Message}");
+                        return PluginOperationResult.Failure(AppText.Get(
+                            "插件安装失败且文件恢复未完成，请检查 Modules：{0}；恢复错误：{1}",
+                            exception.Message,
+                            rollbackException.Message));
                     }
                 }
 
                 _logger.LogError(exception, "Plugin package installation failed for preview {PreviewId}.", previewId);
                 ClearPendingInstall();
-                return PluginOperationResult.Failure($"插件安装失败，未安装任何插件：{exception.Message}");
+                return PluginOperationResult.Failure(AppText.Get(
+                    "插件安装失败，未安装任何插件：{0}",
+                    exception.Message));
             }
             finally
             {
@@ -924,8 +996,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                 "Plugin snapshot replacement was rejected during staging: {FailureReason}",
                 staged.Failures[0].Reason);
             await DisposeRuntimesAsync(staged.Runtimes).ConfigureAwait(false);
-            return PluginOperationResult.Failure(
-                $"新插件快照加载失败，已保留当前版本：{staged.Failures[0].Reason}");
+            return PluginOperationResult.Failure(AppText.Get(
+                "新插件快照加载失败，已保留当前版本：{0}",
+                staged.Failures[0].Reason));
         }
 
         if (cancellationToken.IsCancellationRequested)
@@ -948,8 +1021,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                 "Plugin snapshot replacement was cancelled because an existing runtime failed to stop.");
             await RestartRuntimesAsync(oldRuntimes, CancellationToken.None).ConfigureAwait(false);
             await DisposeRuntimesAsync(staged.Runtimes).ConfigureAwait(false);
-            return PluginOperationResult.Failure(
-                $"旧插件生命周期停止失败，热切换已取消：{stopFailures[0].Message}");
+            return PluginOperationResult.Failure(AppText.Get(
+                "旧插件生命周期停止失败，热切换已取消：{0}",
+                stopFailures[0].Message));
         }
 
         try
@@ -969,8 +1043,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             await StopRuntimesAsync(staged.Runtimes, CancellationToken.None).ConfigureAwait(false);
             await RestartRuntimesAsync(oldRuntimes, CancellationToken.None).ConfigureAwait(false);
             await DisposeRuntimesAsync(staged.Runtimes).ConfigureAwait(false);
-            return PluginOperationResult.Failure(
-                $"新插件生命周期启动失败，已回滚到当前版本：{exception.Message}");
+            return PluginOperationResult.Failure(AppText.Get(
+                "新插件生命周期启动失败，已回滚到当前版本：{0}",
+                exception.Message));
         }
 
         _runtimes = staged.Runtimes;
@@ -985,7 +1060,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             _catalog.Revision,
             _runtimes.Count,
             _runtimes.Select(static runtime => (string)runtime.Candidate.Manifest.Id).ToArray());
-        return PluginOperationResult.Success("插件运行时快照已更新。");
+        return PluginOperationResult.Success(AppText.Get("插件运行时快照已更新。"));
     }
 
     private async Task<PluginStageResult> StageAsync(
@@ -1154,7 +1229,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             {
                 issues.Add(new PluginInstallIssue(
                     (string)group.Key,
-                    "Modules 中有多个目录声明了同一个插件 id，无法生成唯一版本清单。"));
+                    AppText.Get("Modules 中有多个目录声明了同一个插件 id，无法生成唯一版本清单。")));
             }
         }
 
@@ -1169,7 +1244,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
             {
                 issues.Add(new PluginInstallIssue(
                     (string)group.Key,
-                    $"ZIP 中有多个 {newest.Manifest.Version} 版本，无法确定应安装的目录。"));
+                    AppText.Get(
+                        "ZIP 中有多个 {0} 版本，无法确定应安装的目录。",
+                        newest.Manifest.Version)));
             }
         }
 
@@ -1180,7 +1257,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         {
             issues.Add(new PluginInstallIssue(
                 (string)disabledPluginId,
-                "该插件当前已禁用，请先重新启用或清理禁用版本后再安装。"));
+                AppText.Get("该插件当前已禁用，请先重新启用或清理禁用版本后再安装。")));
         }
 
         var mergedCandidates = installedCandidates.ToDictionary(static pair => pair.Key, static pair => pair.Value);
@@ -1215,7 +1292,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                 {
                     issues.Add(new PluginInstallIssue(
                         (string)package.Manifest.Id,
-                        $"目标目录 '{canonicalDestination}' 已存在但不是有效的已安装插件。"));
+                        AppText.Get(
+                            "目标目录 '{0}' 已存在但不是有效的已安装插件。",
+                            canonicalDestination)));
                 }
             }
         }
@@ -1231,7 +1310,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         {
             issues.Add(new PluginInstallIssue(
                 (string)current.Candidate.Manifest.Id,
-                "新的插件版本清单会使当前已加载插件失效。"));
+                AppText.Get("新的插件版本清单会使当前已加载插件失效。")));
         }
 
         if (!items.Any(static item =>
@@ -1239,7 +1318,7 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         {
             issues.Add(new PluginInstallIssue(
                 null,
-                "ZIP 中没有比当前已安装版本更新的插件。"));
+                AppText.Get("ZIP 中没有比当前已安装版本更新的插件。")));
         }
 
         return new PluginInstallEvaluation(items, issues, selectedPackages, installedCandidates, plan);
@@ -1355,7 +1434,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                 modulesRoot,
                 comparison))
         {
-            throw new InvalidOperationException($"插件安装目标 '{fullPath}' 不在 Modules 根目录中。");
+            throw new InvalidOperationException(AppText.Get(
+                "插件安装目标 '{0}' 不在 Modules 根目录中。",
+                fullPath));
         }
     }
 
@@ -1373,7 +1454,9 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
                 disabledRoot,
                 comparison))
         {
-            throw new InvalidOperationException($"禁用插件目录 '{fullPath}' 不在 Modules/disabled 中。");
+            throw new InvalidOperationException(AppText.Get(
+                "禁用插件目录 '{0}' 不在 Modules/disabled 中。",
+                fullPath));
         }
     }
 
@@ -1383,12 +1466,16 @@ public sealed class PluginRuntimeManager : IPluginRuntimeManager, IAsyncDisposab
         {
             if (!Directory.Exists(move.SourcePath))
             {
-                throw new DirectoryNotFoundException($"插件目录不存在：'{move.SourcePath}'。");
+                throw new DirectoryNotFoundException(AppText.Get(
+                    "插件目录不存在：'{0}'。",
+                    move.SourcePath));
             }
 
             if (Directory.Exists(move.DestinationPath))
             {
-                throw new IOException($"目标插件目录已存在：'{move.DestinationPath}'。");
+                throw new IOException(AppText.Get(
+                    "目标插件目录已存在：'{0}'。",
+                    move.DestinationPath));
             }
 
             Directory.CreateDirectory(Path.GetDirectoryName(move.DestinationPath)!);

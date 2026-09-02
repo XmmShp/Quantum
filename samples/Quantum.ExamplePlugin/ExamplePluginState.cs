@@ -1,4 +1,5 @@
 using Quantum.Plugin.Abstraction;
+using System.Globalization;
 
 namespace Quantum.ExamplePlugin;
 
@@ -55,7 +56,9 @@ public sealed class ExamplePluginState
             throw new InvalidOperationException("The .NET example plugin is not running.");
         }
 
-        return $"你好，{callerPluginId}！这条消息来自 {PluginId.Of("quantum.plugin.example")} 的 DI 服务。";
+        return IsChinese
+            ? $"你好，{callerPluginId}！这条消息来自 {PluginId.Of("quantum.plugin.example")} 的 DI 服务。"
+            : $"Hello, {callerPluginId}! This message comes from the DI service in {PluginId.Of("quantum.plugin.example")}.";
     }
 
     internal Task<ExamplePluginHandshake> CreateWebHandshakeAsync(
@@ -72,10 +75,19 @@ public sealed class ExamplePluginState
         var normalizedPluginId = webPluginId.Trim();
         var sequence = Interlocked.Increment(ref _webHandshakeCount);
         Volatile.Write(ref _lastWebPluginId, normalizedPluginId);
+        var message = IsChinese
+            ? $"来自 .NET 插件的第 {sequence} 次握手：你好，{normalizedPluginId}！"
+            : $"Handshake {sequence} from the .NET plugin: hello, {normalizedPluginId}!";
         return Task.FromResult(new ExamplePluginHandshake(
-            $"来自 .NET 插件的第 {sequence} 次握手：你好，{normalizedPluginId}！",
+            message,
             sequence,
             StartedAt.Value,
             WebPluginAvailable));
     }
+
+    private static bool IsChinese
+        => string.Equals(
+            CultureInfo.CurrentUICulture.TwoLetterISOLanguageName,
+            "zh",
+            StringComparison.OrdinalIgnoreCase);
 }

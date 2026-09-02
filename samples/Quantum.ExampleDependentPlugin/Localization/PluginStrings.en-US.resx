@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="依赖示例" xml:space="preserve"><value>Dependency example</value></data>
+  <data name="先有 ExamplePlugin，才有这个页面。" xml:space="preserve"><value>This page only exists when ExamplePlugin is available.</value></data>
+  <data name="在 manifest 中声明了强前置依赖。宿主会先校验版本并启动依赖插件；依赖缺失、版本不足或启动失败时，本插件不会加载。" xml:space="preserve"><value>declares a required dependency in its manifest. The host validates the version and starts the dependency first; this plugin will not load if the dependency is missing, too old, or fails to start.</value></data>
+  <data name="插件依赖加载顺序" xml:space="preserve"><value>Plugin dependency load order</value></data>
+  <data name="等待依赖" xml:space="preserve"><value>Waiting for dependency</value></data>
+  <data name="最低版本 0.1.0，当前加载版本 {0}。" xml:space="preserve"><value>Minimum version 0.1.0; currently loaded: {0}.</value></data>
+  <data name="启动于 {0}。" xml:space="preserve"><value>Started at {0}.</value></data>
+  <data name="等待中" xml:space="preserve"><value>Waiting</value></data>
+  <data name="等待调用" xml:space="preserve"><value>Waiting for call</value></data>
+  <data name="本插件只向" xml:space="preserve"><value>This plugin only submits a name and JSON payload to</value></data>
+  <data name="提交名称和 JSON Payload；Host 路由到" xml:space="preserve"><value>; the host routes the call to</value></data>
+  <data name="的 NOF RpcServer Handler，全程不共享服务实例或 CLR 类型。" xml:space="preserve"><value>'s NOF RpcServer handler without sharing service instances or CLR types.</value></data>
+  <data name="两个插件仍处于各自独立的加载上下文；强依赖保证服务提供方先启动、后停止。" xml:space="preserve"><value>The two plugins remain in separate load contexts; the required dependency guarantees that the provider starts first and stops last.</value></data>
+  <data name="REQUIRED DEPENDENCY" xml:space="preserve"><value>REQUIRED DEPENDENCY</value></data>
+  <data name="1 · REQUIRED" xml:space="preserve"><value>1 · REQUIRED</value></data>
+  <data name="2 · DEPENDENT" xml:space="preserve"><value>2 · DEPENDENT</value></data>
+  <data name="NAME → QUANTUM RPC" xml:space="preserve"><value>NAME → QUANTUM RPC</value></data>
+</root>

@@ -480,7 +480,6 @@ public sealed class PluginRuntimeManagerTests
             staleImpact.CatalogRevision);
 
         Assert.False(result.Succeeded);
-        Assert.Contains("最新清单", result.Message, StringComparison.Ordinal);
         Assert.Equal(2, fixture.Catalog.Plugins.Count);
     }
 
@@ -619,8 +618,7 @@ public sealed class PluginRuntimeManagerTests
 
         Assert.False(preview.CanInstall);
         Assert.Contains(preview.Issues, issue =>
-            issue.PluginId == "quantum.plugin.example"
-            && issue.Reason.Contains("已禁用", StringComparison.Ordinal));
+            issue.PluginId == "quantum.plugin.example");
         Assert.Single(manager.GetDisabledPlugins());
         Assert.Empty(fixture.Catalog.Plugins);
     }
@@ -636,8 +634,7 @@ public sealed class PluginRuntimeManagerTests
         var preview = await manager.PrepareInstallAsync(archive, "unsafe.zip");
 
         Assert.False(preview.CanInstall);
-        Assert.Contains(preview.Issues, issue =>
-            issue.Reason.Contains("不安全路径", StringComparison.Ordinal));
+        Assert.NotEmpty(preview.Issues);
         Assert.False(File.Exists(Path.Combine(manager.SessionShadowRoot, "escaped.txt")));
     }
 

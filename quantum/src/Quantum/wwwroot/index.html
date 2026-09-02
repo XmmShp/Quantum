@@ -11,16 +11,31 @@
   <div id="app">
     <div class="boot-screen">
       <span class="boot-mark">Q</span>
-      <p>正在准备本地工作台…</p>
+      <p data-i18n-loading>正在准备本地工作台…</p>
     </div>
   </div>
 
   <div id="blazor-error-ui">
-    Quantum 遇到了未处理的错误。
-    <a href="." class="reload">重新加载</a>
+    <span data-i18n-error>Quantum 遇到了未处理的错误。</span>
+    <a href="." class="reload" data-i18n-reload>重新加载</a>
     <a class="dismiss">×</a>
   </div>
 
+  <script>
+    (() => {
+      const isChinese = navigator.language?.toLowerCase().startsWith("zh");
+      document.documentElement.lang = isChinese ? "zh-CN" : "en-US";
+      document.querySelector("[data-i18n-loading]").textContent = isChinese
+        ? "正在准备本地工作台…"
+        : "Preparing your local workspace…";
+      document.querySelector("[data-i18n-error]").textContent = isChinese
+        ? "Quantum 遇到了未处理的错误。"
+        : "Quantum encountered an unhandled error.";
+      document.querySelector("[data-i18n-reload]").textContent = isChinese
+        ? "重新加载"
+        : "Reload";
+    })();
+  </script>
   <script src="pluginHost.js"></script>
   <script src="_framework/blazor.webview.js" autostart="false"></script>
 </body>
