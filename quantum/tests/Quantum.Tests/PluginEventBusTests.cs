@@ -230,8 +230,9 @@ public sealed class PluginEventBusTests
             new QuantumPluginInfo("quantum.plugin.example", "1.0.0"),
             host.GetRequiredService<PluginEventHub>());
 
-        Assert.Throws<ArgumentNullException>(() =>
-            bus.CreatePublisher<PublisherMessage>(default));
+#pragma warning disable NOF018 // Intentionally forge the invalid value to verify the runtime guard.
+        Assert.Throws<InvalidOperationException>(() => bus.CreatePublisher<PublisherMessage>(default));
+#pragma warning restore NOF018
     }
 
     [Fact]

@@ -12,7 +12,7 @@ public sealed class MarketCallerResolver(
         MarketUserRole requiredRoles,
         CancellationToken cancellationToken)
     {
-        if (!TryParseId(callerContext.UserId, out var userId))
+        if (TryParseId(callerContext.UserId) is not { } userId)
         {
             return MarketCallerResolution.Fail("authentication_required", "A valid bearer token is required.");
         }
@@ -35,7 +35,7 @@ public sealed class MarketCallerResolver(
 
     public async Task<MarketUser?> ResolveOptionalAsync(CancellationToken cancellationToken)
     {
-        if (!TryParseId(callerContext.UserId, out var userId))
+        if (TryParseId(callerContext.UserId) is not { } userId)
         {
             return null;
         }
@@ -45,16 +45,14 @@ public sealed class MarketCallerResolver(
             .SingleOrDefaultAsync(cancellationToken);
     }
 
-    public static bool TryParseId(string? value, out MarketUserId id)
+    public static MarketUserId? TryParseId(string? value)
     {
         if (long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) && parsed > 0)
         {
-            id = MarketUserId.Of(parsed);
-            return true;
+            return MarketUserId.Of(parsed);
         }
 
-        id = default;
-        return false;
+        return null;
     }
 }
 
