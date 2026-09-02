@@ -65,9 +65,9 @@ public static class MauiProgram
             .GetRequiredService<ILoggerFactory>()
             .CreateLogger("Quantum.Startup")
             .LogInformation(
-                "Logging initialized. Daily log file pattern: {LogFilePath}; "
+                "Logging initialized. Process log file starts at {LogFilePath}; "
                 + "console requested: {ConsoleOutputRequested}; console enabled: {ConsoleOutputEnabled}.",
-                loggingOptions.FilePath,
+                loggingOptions.GetFilePath(segmentIndex: 0),
                 consoleOutputRequested,
                 loggingOptions.WriteToConsole);
         return nofApp.MauiApp;

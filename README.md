@@ -96,8 +96,10 @@ Mac Catalyst 受应用沙箱限制，不能直接读取任意工作区路径；m
 Catalyst Release 默认的 AOT-only 模式不能加载外部 IL，因此桌面宿主在该目标上显式启用 Mono interpreter 并关闭托管程序集裁剪。若发行渠道是 Mac App Store，还需要单独评估性能、包体与动态插件审核政策；Windows 的 CoreCLR 插件模式不受此约束。
 
 宿主默认将 Debug 及以上级别的结构化日志写入应用数据目录的
-`Logs/quantum-YYYYMMDD.log`，每天滚动并保留最近 31 个日志文件。插件加载、生命周期、
-Web RPC 与 iframe Host 的诊断信息均使用同一日志管线。
+`Logs/quantum-YYYYMMDD-HHmmss-PID-SEGMENT.log`。文件名中的时间为应用启动时间，PID 用于
+避免同一秒启动的不同进程发生冲突；每段最大 20 MiB，并从 `-0.log` 开始依次递增分段编号。
+同一应用生命周期的所有分段共享同一个启动时间与 PID，不同进程使用不同的文件前缀。插件加载、
+生命周期、Web RPC 与 iframe Host 的诊断信息均使用同一日志管线。
 
 需要在终端同步查看日志时，传入 `--console`。使用 `dotnet run` 时，参数需要放在第二个
 `--` 之后。Windows GUI 宿主会在启动时附着到当前终端；如果没有父终端，则创建一个
