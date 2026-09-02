@@ -5,35 +5,31 @@
 <GlobalPluginInstaller>
     <div class="app-shell">
         <aside class="sidebar">
-            <a class="brand" href="/">
-                <span class="brand-mark">Q</span>
-                <span>
-                    <strong>Quantum</strong>
-                    <small>Local plugin workspace</small>
-                </span>
+            <a class="brand" href="/" aria-label="Quantum 首页" title="Quantum">
+                <span class="brand-mark" aria-hidden="true">Q</span>
             </a>
 
             <nav aria-label="插件导航">
-                @if (PluginCatalog.Routes.Count > 0)
+                @if (PluginCatalog.NavigationRoutes.Count > 0)
                 {
-                    <p class="nav-label plugin-label">PLUGINS</p>
-                    @foreach (var route in PluginCatalog.Routes)
+                    @foreach (var route in PluginCatalog.NavigationRoutes)
                     {
-                        <NavLink href="@route.Definition.Path" class="nav-item">
-                            <span class="nav-icon">@(route.Definition.Icon ?? "◇")</span>
-                            @(route.Definition.Title ?? route.PluginId.Value)
+                        var title = route.Definition.Title ?? route.PluginId.Value;
+                        <NavLink href="@route.Definition.Path"
+                                 class="nav-item"
+                                 aria-label="@title"
+                                 title="@title">
+                            <span class="nav-icon" aria-hidden="true">@(route.Definition.Icon ?? "◇")</span>
                         </NavLink>
                     }
                 }
             </nav>
 
-            <div class="sidebar-footer">
-                <span class="status-dot"></span>
-                @PluginCatalog.Plugins.Count 个插件已加载
-            </div>
-            <NavLink href="/settings" class="nav-item settings-nav-item">
+            <NavLink href="/settings"
+                     class="nav-item settings-nav-item"
+                     aria-label="设置"
+                     title="设置">
                 <span class="nav-icon settings-gear" aria-hidden="true">⚙</span>
-                设置
             </NavLink>
         </aside>
 

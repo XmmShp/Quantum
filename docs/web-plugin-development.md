@@ -52,18 +52,27 @@ npm install --save-dev typescript esbuild
   },
   "integrations": [],
   "ui": {
-    "routes": [{
-      "path": "/plugins/notes",
-      "view": "main",
-      "title": "Notes",
-      "icon": "N"
-    }]
+    "routes": [
+      {
+        "path": "/plugins/notes",
+        "view": "main",
+        "title": "Notes",
+        "icon": "N"
+      },
+      {
+        "path": "/plugins/notes/detail",
+        "view": "detail",
+        "showInNavigation": false
+      }
+    ]
   }
 }
 ```
 
 `runtime.entry` 相对于 `wwwroot`，必须以 `.js` 或 `.mjs` 结尾，不能包含反斜杠、冒号、绝对路径或 `..`。
 Web 插件不能使用 `web.head`/`web.postBlazor` 向宿主页面注入 HTML；样式和页面只能写入自己的 iframe。
+路由的 `showInNavigation` 默认为 `true`；设为 `false` 后仍可通过路径或 `context.navigation.navigate()`
+打开，但不会显示在宿主主导航中。
 
 `database.migrations` 是 Host 能力，不是 JavaScript API。它与 .NET 插件使用完全相同的发布 artifact：把 Prisma、
 Drizzle 或其他开发期 ORM 的最终升级路径导出为 SQLite SQL，按 `001_init.sql`、`002_add_index.sql` 的形式放入声明目录。

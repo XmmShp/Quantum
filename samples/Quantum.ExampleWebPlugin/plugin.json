@@ -19,7 +19,8 @@
         "view": "main",
         "title": "TypeScript 示例",
         "icon": "TS",
-        "order": 110
+        "order": 110,
+        "showInNavigation": true
       }
     ]
   }

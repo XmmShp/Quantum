@@ -50,6 +50,47 @@ public sealed class PluginCatalogTests
         Assert.True(catalog.IsPluginLoaded("target"));
     }
 
+    [Fact]
+    public void NavigationRoutes_ExcludeHiddenRoutesWithoutDisablingRouting()
+    {
+        var pluginId = new PluginId("navigation-test");
+        var visibleDefinition = new PluginRouteDefinition(
+            "/plugins/navigation-test",
+            "Test.Pages.Index",
+            order: 20);
+        var hiddenDefinition = new PluginRouteDefinition(
+            "/plugins/navigation-test/detail",
+            "Test.Pages.Detail",
+            title: null,
+            icon: null,
+            order: 10,
+            showInNavigation: false);
+        var visibleRoute = new PluginRouteRegistration(
+            pluginId,
+            visibleDefinition,
+            typeof(PluginCatalogTests));
+        var hiddenRoute = new PluginRouteRegistration(
+            pluginId,
+            hiddenDefinition,
+            typeof(PluginCatalogTests));
+        var manifest = new PluginManifest(
+            pluginId,
+            SemanticVersion.Parse("1.0.0"),
+            "navigation-test.dll",
+            routes: [visibleDefinition, hiddenDefinition]);
+        var plugin = new LoadedPlugin(
+            manifest,
+            Path.Combine("plugins", pluginId.Value),
+            typeof(PluginCatalogTests).Assembly,
+            [visibleRoute, hiddenRoute]);
+
+        var catalog = new PluginCatalog([plugin]);
+
+        Assert.Equal([hiddenRoute, visibleRoute], catalog.Routes);
+        Assert.Equal([visibleRoute], catalog.NavigationRoutes);
+        Assert.Same(hiddenRoute, catalog.FindRoute("/plugins/navigation-test/detail"));
+    }
+
     private static LoadedPlugin Loaded(
         string id,
         string version,

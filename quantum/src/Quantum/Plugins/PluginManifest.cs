@@ -188,8 +188,24 @@ public sealed record PluginIntegration(PluginId Id, SemanticVersion MinimumVersi
 
 public sealed record PluginRouteDefinition
 {
-    public PluginRouteDefinition(string path, string component, string? title = null, string? icon = null, int order = 0)
-        : this(path, component, view: null, title, icon, order)
+    public PluginRouteDefinition(
+        string path,
+        string component,
+        string? title = null,
+        string? icon = null,
+        int order = 0)
+        : this(path, component, view: null, title, icon, order, showInNavigation: true)
+    {
+    }
+
+    public PluginRouteDefinition(
+        string path,
+        string component,
+        string? title,
+        string? icon,
+        int order,
+        bool showInNavigation)
+        : this(path, component, view: null, title, icon, order, showInNavigation)
     {
     }
 
@@ -199,7 +215,8 @@ public sealed record PluginRouteDefinition
         string? view,
         string? title,
         string? icon,
-        int order)
+        int order,
+        bool showInNavigation)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(path);
         if (!path.StartsWith('/'))
@@ -213,6 +230,7 @@ public sealed record PluginRouteDefinition
         Title = string.IsNullOrWhiteSpace(title) ? null : title.Trim();
         Icon = string.IsNullOrWhiteSpace(icon) ? null : icon.Trim();
         Order = order;
+        ShowInNavigation = showInNavigation;
     }
 
     public string Path { get; }
@@ -227,15 +245,33 @@ public sealed record PluginRouteDefinition
 
     public int Order { get; }
 
+    public bool ShowInNavigation { get; }
+
     public static PluginRouteDefinition Web(
         string path,
         string view,
         string? title = null,
         string? icon = null,
         int order = 0)
+        => Web(path, view, title, icon, order, showInNavigation: true);
+
+    public static PluginRouteDefinition Web(
+        string path,
+        string view,
+        string? title,
+        string? icon,
+        int order,
+        bool showInNavigation)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(view);
-        return new PluginRouteDefinition(path, component: null, view, title, icon, order);
+        return new PluginRouteDefinition(
+            path,
+            component: null,
+            view,
+            title,
+            icon,
+            order,
+            showInNavigation);
     }
 }
 

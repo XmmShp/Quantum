@@ -5,7 +5,7 @@
 @code {
     protected override void OnInitialized()
     {
-        var destination = PluginCatalog.Routes.FirstOrDefault()?.Definition.Path ?? "/settings";
+        var destination = PluginCatalog.NavigationRoutes.FirstOrDefault()?.Definition.Path ?? "/settings";
         NavigationManager.NavigateTo(destination, replace: true);
     }
 }

@@ -9,11 +9,11 @@
   </Folder>
   <Project Path="quantum/src/Quantum/Quantum.csproj" />
   <Project Path="quantum/tests/Quantum.Tests/Quantum.Tests.csproj" />
-  <Project Path="quantum-extension-market/src/Quantum.ExtensionMarket.Domain/Quantum.ExtensionMarket.Domain.csproj" />
-  <Project Path="quantum-extension-market/src/Quantum.ExtensionMarket.Contract/Quantum.ExtensionMarket.Contract.csproj" />
-  <Project Path="quantum-extension-market/src/Quantum.ExtensionMarket.Application/Quantum.ExtensionMarket.Application.csproj" />
-  <Project Path="quantum-extension-market/src/Quantum.ExtensionMarket/Quantum.ExtensionMarket.csproj" />
-  <Project Path="quantum-extension-market/tests/Quantum.ExtensionMarket.Tests/Quantum.ExtensionMarket.Tests.csproj" />
+  <Project Path="quantum-platform/src/Quantum.Platform.Domain/Quantum.Platform.Domain.csproj" />
+  <Project Path="quantum-platform/src/Quantum.Platform.Contract/Quantum.Platform.Contract.csproj" />
+  <Project Path="quantum-platform/src/Quantum.Platform.Application/Quantum.Platform.Application.csproj" />
+  <Project Path="quantum-platform/src/Quantum.Platform/Quantum.Platform.csproj" />
+  <Project Path="quantum-platform/tests/Quantum.Platform.Tests/Quantum.Platform.Tests.csproj" />
   <Project Path="sdk/dotnet/src/Quantum.Plugin.Abstraction/Quantum.Plugin.Abstraction.csproj" />
   <Project Path="sdk/dotnet/test/Quantum.Plugin.Abstraction.Tests/Quantum.Plugin.Abstraction.Tests.csproj" />
   <Project Path="samples/Quantum.ExampleCalendarPlugin/Quantum.ExampleCalendarPlugin.csproj" />

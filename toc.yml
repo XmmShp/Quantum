@@ -4,7 +4,7 @@
   href: api/
 - name: Documents
   href: docs/
-- name: Extension Market
-  href: quantum-extension-market/README.md
+- name: Quantum Platform
+  href: quantum-platform/README.md
 - name: Contributing
   href: CONTRIBUTING.md

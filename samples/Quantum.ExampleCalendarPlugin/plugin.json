@@ -14,7 +14,8 @@
         "component": "Quantum.ExampleCalendarPlugin.Pages.Calendar",
         "title": "日历",
         "icon": "日",
-        "order": 105
+        "order": 105,
+        "showInNavigation": true
       }
     ]
   },

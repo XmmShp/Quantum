@@ -45,13 +45,15 @@ public sealed class JsonPluginManifestReader
                     route.View,
                     route.Title,
                     route.Icon,
-                    route.Order)
+                    route.Order,
+                    route.ShowInNavigation)
                 : new PluginRouteDefinition(
                     route.Path,
                     route.Component,
                     route.Title,
                     route.Icon,
-                    route.Order)),
+                    route.Order,
+                    route.ShowInNavigation)),
             new PluginWebContributions(document.Web.Head, document.Web.PostBlazor),
             document.Database is null
                 ? null
@@ -166,6 +168,8 @@ public sealed class JsonPluginManifestReader
         public string? Icon { get; init; }
 
         public int Order { get; init; }
+
+        public bool ShowInNavigation { get; init; } = true;
     }
 
     private sealed class PluginWebDocument

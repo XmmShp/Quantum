@@ -32,7 +32,7 @@ _pkginfo.txt
 /_site/
 
 # Local application data
-quantum-extension-market/**/Files/
+quantum-platform/**/Files/
 /data/
 *.zip
 

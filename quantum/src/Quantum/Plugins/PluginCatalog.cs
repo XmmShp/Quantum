@@ -26,6 +26,8 @@ public sealed class PluginCatalog : IQuantumPluginEnvironment
 
     public IReadOnlyList<PluginRouteRegistration> Routes => Snapshot.Routes;
 
+    public IReadOnlyList<PluginRouteRegistration> NavigationRoutes => Snapshot.NavigationRoutes;
+
     public IReadOnlyList<PluginLoadFailure> Failures => Snapshot.Failures;
 
     public IReadOnlyList<QuantumPluginInfo> LoadedPlugins => Snapshot.LoadedPlugins;
@@ -42,10 +44,12 @@ public sealed class PluginCatalog : IQuantumPluginEnvironment
         Volatile.Write(ref _snapshot, next);
         _logger.LogInformation(
             "Published plugin catalog revision {CatalogRevision} with {PluginCount} plugin(s), "
-            + "{RouteCount} route(s), and {FailureCount} failure(s).",
+            + "{RouteCount} route(s), {NavigationRouteCount} navigation route(s), "
+            + "and {FailureCount} failure(s).",
             next.Revision,
             next.Plugins.Count,
             next.Routes.Count,
+            next.NavigationRoutes.Count,
             next.Failures.Count);
         RaiseChanged();
     }
@@ -122,6 +126,9 @@ public sealed class PluginCatalog : IQuantumPluginEnvironment
             .OrderBy(static route => route.Definition.Order)
             .ThenBy(static route => route.Definition.Path, StringComparer.Ordinal)
             .ToArray();
+        var navigationRoutes = routes
+            .Where(static route => route.Definition.ShowInNavigation)
+            .ToArray();
         var loadedPlugins = pluginArray
             .Select(static plugin => new QuantumPluginInfo(
                 plugin.Manifest.Id.Value,
@@ -130,6 +137,7 @@ public sealed class PluginCatalog : IQuantumPluginEnvironment
         return new PluginCatalogSnapshot(
             pluginArray,
             routes,
+            navigationRoutes,
             failures.ToArray(),
             loadedPlugins,
             revision);
@@ -139,6 +147,7 @@ public sealed class PluginCatalog : IQuantumPluginEnvironment
 internal sealed record PluginCatalogSnapshot(
     IReadOnlyList<LoadedPlugin> Plugins,
     IReadOnlyList<PluginRouteRegistration> Routes,
+    IReadOnlyList<PluginRouteRegistration> NavigationRoutes,
     IReadOnlyList<PluginLoadFailure> Failures,
     IReadOnlyList<QuantumPluginInfo> LoadedPlugins,
     long Revision);

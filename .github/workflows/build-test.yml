@@ -54,8 +54,8 @@ jobs:
       - name: Test
         run: dotnet test quantum/tests/Quantum.Tests/Quantum.Tests.csproj -c ${{ env.CONFIGURATION }} --no-build
 
-      - name: Test extension market
-        run: dotnet test quantum-extension-market/tests/Quantum.ExtensionMarket.Tests/Quantum.ExtensionMarket.Tests.csproj -c ${{ env.CONFIGURATION }} --no-build
+      - name: Test Quantum Platform
+        run: dotnet test quantum-platform/tests/Quantum.Platform.Tests/Quantum.Platform.Tests.csproj -c ${{ env.CONFIGURATION }} --no-build
 
       - name: Test .NET plugin SDK
         run: dotnet test sdk/dotnet/test/Quantum.Plugin.Abstraction.Tests/Quantum.Plugin.Abstraction.Tests.csproj -c ${{ env.CONFIGURATION }} --no-build

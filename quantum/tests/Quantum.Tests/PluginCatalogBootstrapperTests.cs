@@ -38,6 +38,7 @@ public sealed class PluginCatalogBootstrapperTests
 
             var plugin = Assert.Single(catalog.Plugins);
             var route = Assert.Single(catalog.Routes);
+            Assert.Same(route, Assert.Single(catalog.NavigationRoutes));
             Assert.Empty(catalog.Failures);
             Assert.Equal("/plugins/example", route.Definition.Path);
             Assert.NotSame(AssemblyLoadContext.Default, AssemblyLoadContext.GetLoadContext(plugin.EntryAssembly!));
@@ -78,6 +79,7 @@ public sealed class PluginCatalogBootstrapperTests
 
             var plugin = Assert.Single(catalog.Plugins);
             var route = Assert.Single(catalog.Routes);
+            Assert.Same(route, Assert.Single(catalog.NavigationRoutes));
             Assert.Empty(catalog.Failures);
             Assert.Equal(PluginRuntimeKind.Web, plugin.Manifest.Runtime.Kind);
             Assert.Null(plugin.EntryAssembly);

@@ -16,7 +16,8 @@
         "component": "Quantum.ExamplePlugin.Pages.Index",
         "title": "示例插件",
         "icon": "✦",
-        "order": 100
+        "order": 100,
+        "showInNavigation": true
       }
     ]
   },

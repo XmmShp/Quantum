@@ -28,9 +28,9 @@ quantum/
 │       └── Platforms/           macOS 与 Windows 启动入口
 └── tests/
     └── Quantum.Tests/           插件模型与运行时测试
-quantum-extension-market/
-├── src/                         NOF 分层的插件市场与 JSON-RPC Host
-└── tests/                       市场领域与安全存储测试
+quantum-platform/
+├── src/                         NOF 分层的平台身份、插件市场与 JSON-RPC Host
+└── tests/                       平台领域与安全存储测试
 sdk/
 ├── dotnet/
 │   ├── src/                     插件与宿主共享的 .NET ABI/SDK
@@ -55,7 +55,7 @@ docs/                            架构与插件开发文档
 dotnet restore Quantum.slnx
 dotnet build Quantum.slnx
 dotnet test quantum/tests/Quantum.Tests/Quantum.Tests.csproj
-dotnet test quantum-extension-market/tests/Quantum.ExtensionMarket.Tests/Quantum.ExtensionMarket.Tests.csproj
+dotnet test quantum-platform/tests/Quantum.Platform.Tests/Quantum.Platform.Tests.csproj
 dotnet test sdk/dotnet/test/Quantum.Plugin.Abstraction.Tests/Quantum.Plugin.Abstraction.Tests.csproj
 npm ci --prefix sdk/typescript && npm test --prefix sdk/typescript
 npm ci --prefix samples/Quantum.ExampleWebPlugin && npm test --prefix samples/Quantum.ExampleWebPlugin
@@ -114,9 +114,13 @@ dotnet run --project quantum/src/Quantum/Quantum.csproj `
 
 完整流程见 [插件开发指南](docs/plugin-development.md)，架构边界见 [架构说明](docs/architecture.md)。可直接从 [Quantum.ExamplePlugin](samples/Quantum.ExamplePlugin) 复制起步。
 
-## 插件市场
+## 平台服务
 
-[Quantum Extension Market](quantum-extension-market/README.md) 使用 .NET 10 + NOF 的 Domain/Contract/Application/Host 分层，基础设施实现在 Host 组合根内。用户、插件、版本、审核、下载、兼容性和审计 Contract 统一通过 `/rpc` 的 JSON-RPC 2.0 暴露；PostgreSQL、JWT、ZIP 安全校验和 Docker 部署说明均在子项目文档中。
+[Quantum Platform](quantum-platform/README.md) 是独立部署的统一后端平台，使用 .NET 10 + NOF 的 Domain/Contract/Application/Host 分层。平台当前提供用户身份与权限，以及插件发布、审核、下载、兼容性和审计能力；后续平台业务继续在这一边界内扩展。Contract 统一通过 `/rpc` 的 JSON-RPC 2.0 暴露，PostgreSQL、JWT、ZIP 安全校验和 Docker 部署说明见子项目文档。
+
+## 路线图
+
+下一阶段将先完成可信的[远程插件下发](ROADMAP.md#第一阶段远程插件下发)，再基于 Web 插件运行时建设 [Android 与 iOS 移动端](ROADMAP.md#第二阶段移动端)。详细里程碑和验收标准见 [ROADMAP](ROADMAP.md)。
 
 ## 许可证
 

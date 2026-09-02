@@ -53,6 +53,11 @@ Quantum 插件可以使用 .NET DLL 或 Web runtime。本篇介绍 .NET 插件�
         "title": "示例插件",
         "icon": "✦",
         "order": 100
+      },
+      {
+        "path": "/plugins/example/detail",
+        "component": "Quantum.ExamplePlugin.Pages.Detail",
+        "showInNavigation": false
       }
     ]
   },
@@ -80,6 +85,7 @@ Quantum 插件可以使用 .NET DLL 或 Web runtime。本篇介绍 .NET 插件�
 - `version` 与 `minVersion` 使用 SemVer；预发布版本参与正确的先后比较。
 - 旧版 `entryAssembly` 继续受支持，等价于 `{ "runtime": { "kind": "dotnet", "entry": "..." } }`；DLL 入口只能是插件根目录下的文件名。
 - .NET 路由的 `component` 必须是入口程序集内实现 `IComponent` 的完整类型名；Web 路由改用 `view`。
+- `showInNavigation` 默认为 `true`；设为 `false` 的页面不会出现在主导航中，但仍可通过其路径或导航 API 打开。
 - `database.migrations` 对 .NET 和 Web 插件含义相同，指向插件根目录内的 SQL migration artifact。
 - 同一目标不能同时出现在 `dependencies` 和 `integrations`，各类关系和路由不能重复；未知 manifest 字段会被拒绝，避免拼写错误静默失效。
 

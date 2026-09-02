@@ -30,7 +30,8 @@ public sealed class JsonPluginManifestReaderTests
                 "routes": [{
                   "path": "/plugins/test",
                   "component": "Test.Pages.Index",
-                  "title": "Test"
+                  "title": "Test",
+                  "showInNavigation": false
                 }]
               },
               "web": {
@@ -53,7 +54,8 @@ public sealed class JsonPluginManifestReaderTests
         var integration = Assert.Single(candidate.Manifest.Integrations);
         Assert.Equal("optional-addon", integration.Id.Value);
         Assert.Equal("2.0.0", integration.MinimumVersion.ToString());
-        Assert.Single(candidate.Manifest.Routes);
+        var route = Assert.Single(candidate.Manifest.Routes);
+        Assert.False(route.ShowInNavigation);
         Assert.Single(candidate.Manifest.Web.Head);
         Assert.Equal("migrations", candidate.Manifest.Database?.Migrations);
     }
@@ -97,7 +99,8 @@ public sealed class JsonPluginManifestReaderTests
                 "routes": [{
                   "path": "/plugins/web",
                   "view": "main",
-                  "title": "Web plugin"
+                  "title": "Web plugin",
+                  "showInNavigation": false
                 }]
               }
             }
@@ -111,6 +114,7 @@ public sealed class JsonPluginManifestReaderTests
         var route = Assert.Single(candidate.Manifest.Routes);
         Assert.Equal("main", route.View);
         Assert.Null(route.Component);
+        Assert.False(route.ShowInNavigation);
     }
 
     [Fact]

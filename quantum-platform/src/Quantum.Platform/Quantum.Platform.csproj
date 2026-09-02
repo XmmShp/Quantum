@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <UserSecretsId>quantum-platform</UserSecretsId>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Quantum.Platform.Application\Quantum.Platform.Application.csproj" />
+    <ProjectReference Include="..\Quantum.Platform.Contract\Quantum.Platform.Contract.csproj" />
+    <ProjectReference Include="..\Quantum.Platform.Domain\Quantum.Platform.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Design">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+    <PackageReference Include="NOF.Hosting.AspNetCore" />
+    <PackageReference Include="NOF.Hosting.AspNetCore.Extension.OidcServer" />
+    <PackageReference Include="NOF.Infrastructure" />
+    <PackageReference Include="NOF.Infrastructure.EntityFrameworkCore" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+  </ItemGroup>
+</Project>
