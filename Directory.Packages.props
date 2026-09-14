@@ -1,0 +1,17 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <NofVersion>11.0.0-nightly.1421455.89816c67</NofVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="Microsoft.Extensions.Localization" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7" />
+    <PackageVersion Include="NOF.Abstraction" Version="$(NofVersion)" />
+    <PackageVersion Include="NOF.Application" Version="$(NofVersion)" />
+    <PackageVersion Include="NOF.Contract" Version="$(NofVersion)" />
+    <PackageVersion Include="NOF.Domain" Version="$(NofVersion)" />
+    <PackageVersion Include="NOF.Infrastructure" Version="$(NofVersion)" />
+    <PackageVersion Include="Quantum.Plugin.Abstraction" Version="0.1.0" />
+  </ItemGroup>
+</Project>

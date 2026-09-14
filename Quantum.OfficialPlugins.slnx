@@ -1,0 +1,4 @@
+<Solution>
+  <Project Path="Calendar/Quantum.CalendarPlugin.csproj" />
+  <Project Path="Codex/Quantum.CodexPlugin.csproj" />
+</Solution>

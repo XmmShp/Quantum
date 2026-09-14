@@ -1,0 +1,7 @@
+{
+  "id": "quantum.plugin.codex",
+  "version": "0.1.0",
+  "entryAssembly": "Quantum.CodexPlugin.dll",
+  "dependencies": [],
+  "integrations": []
+}
