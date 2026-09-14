@@ -17,15 +17,6 @@
         "icon": "日",
         "order": 100,
         "showInNavigation": true
-      },
-      {
-        "path": "/plugins/calendar/tasks",
-        "component": "Quantum.OfficialPlugins.Calendar.Pages.Tasks",
-        "title": "待办",
-        "titles": { "en-US": "Tasks" },
-        "icon": "✓",
-        "order": 101,
-        "showInNavigation": true
       }
     ]
   },
