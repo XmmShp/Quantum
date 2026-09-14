@@ -71,6 +71,37 @@ public sealed class PluginCatalogTests
         Assert.Same(hiddenRoute, catalog.FindRoute("/plugins/navigation-test/detail"));
     }
 
+    [Fact]
+    public void GlobalComponents_ArePublishedInStableOrder()
+    {
+        var pluginId = PluginId.Of("global-test");
+        var laterDefinition = new PluginGlobalComponentDefinition("Test.Components.Later", order: 20);
+        var earlierDefinition = new PluginGlobalComponentDefinition("Test.Components.Earlier", order: 10);
+        var later = new PluginGlobalComponentRegistration(
+            pluginId,
+            laterDefinition,
+            typeof(PluginCatalogTests));
+        var earlier = new PluginGlobalComponentRegistration(
+            pluginId,
+            earlierDefinition,
+            typeof(PluginCatalogTests));
+        var manifest = new PluginManifest(
+            pluginId,
+            SemanticVersion.Of("1.0.0"),
+            "global-test.dll",
+            globalComponents: [laterDefinition, earlierDefinition]);
+        var plugin = new LoadedPlugin(
+            manifest,
+            Path.Combine("plugins", (string)pluginId),
+            typeof(PluginCatalogTests).Assembly,
+            [],
+            globalComponents: [later, earlier]);
+
+        var catalog = new PluginCatalog([plugin]);
+
+        Assert.Equal([earlier, later], catalog.GlobalComponents);
+    }
+
     private static LoadedPlugin Loaded(
         string id,
         string version)

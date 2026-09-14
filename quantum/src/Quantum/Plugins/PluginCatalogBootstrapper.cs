@@ -88,8 +88,19 @@ public sealed class PluginCatalogBootstrapper
                 var routes = candidate.Manifest.Routes
                     .Select(route => PluginRouteRegistration.Create(candidate.Manifest.Id, route, assembly))
                     .ToArray();
+                var globalComponents = candidate.Manifest.GlobalComponents
+                    .Select(component => PluginGlobalComponentRegistration.Create(
+                        candidate.Manifest.Id,
+                        component,
+                        assembly))
+                    .ToArray();
 
-                loaded.Add(new LoadedPlugin(candidate.Manifest, candidate.RootPath, assembly, routes));
+                loaded.Add(new LoadedPlugin(
+                    candidate.Manifest,
+                    candidate.RootPath,
+                    assembly,
+                    routes,
+                    globalComponents: globalComponents));
                 loadedIds.Add(candidate.Manifest.Id);
                 _logger.LogInformation(
                     "Loaded plugin {PluginId} {PluginVersion} into {LoadContext}.",

@@ -51,10 +51,21 @@
             @Body
         </main>
         </div>
+
+        @foreach (var contribution in PluginCatalog.GlobalComponents)
+        {
+            <DynamicComponent @key="GlobalComponentKey(contribution)" Type="contribution.ComponentType" />
+        }
     </GlobalPluginInstaller>
 </CascadingValue>
 
 @code {
+    private string GlobalComponentKey(PluginGlobalComponentRegistration contribution)
+    {
+        var plugin = PluginCatalog.FindPlugin((string)contribution.PluginId);
+        return $"{plugin?.RuntimeId:N}:{contribution.Definition.Component}";
+    }
+
     protected override void OnInitialized()
     {
         PluginCatalog.Changed += OnCatalogChanged;

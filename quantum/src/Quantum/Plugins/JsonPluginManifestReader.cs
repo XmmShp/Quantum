@@ -58,7 +58,9 @@ public sealed class JsonPluginManifestReader
             new PluginWebContributions(document.Web.Head, document.Web.PostBlazor),
             document.Database is null
                 ? null
-                : new PluginDatabaseDefinition(document.Database.Migrations));
+                : new PluginDatabaseDefinition(document.Database.Migrations),
+            document.Ui.GlobalComponents.Select(component =>
+                new PluginGlobalComponentDefinition(component.Component, component.Order)));
 
         var entryPath = ResolveEntryPath(fullRootPath, runtime);
         if (!File.Exists(entryPath))
@@ -154,6 +156,15 @@ public sealed class JsonPluginManifestReader
     private sealed class PluginUiDocument
     {
         public IReadOnlyList<PluginRouteDocument> Routes { get; init; } = [];
+
+        public IReadOnlyList<PluginGlobalComponentDocument> GlobalComponents { get; init; } = [];
+    }
+
+    private sealed class PluginGlobalComponentDocument
+    {
+        public string Component { get; init; } = string.Empty;
+
+        public int Order { get; init; }
     }
 
     private sealed class PluginRouteDocument

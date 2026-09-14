@@ -38,6 +38,10 @@ public sealed class JsonPluginManifestReaderTests
                     "en-US": "Test"
                   },
                   "showInNavigation": false
+                }],
+                "globalComponents": [{
+                  "component": "Test.Components.FloatingPanel",
+                  "order": 25
                 }]
               },
               "web": {
@@ -64,6 +68,9 @@ public sealed class JsonPluginManifestReaderTests
         Assert.False(route.ShowInNavigation);
         Assert.Equal("测试", route.GetTitle(System.Globalization.CultureInfo.GetCultureInfo("zh-Hans")));
         Assert.Equal("Test", route.GetTitle(System.Globalization.CultureInfo.GetCultureInfo("en-GB")));
+        var globalComponent = Assert.Single(candidate.Manifest.GlobalComponents);
+        Assert.Equal("Test.Components.FloatingPanel", globalComponent.Component);
+        Assert.Equal(25, globalComponent.Order);
         Assert.Single(candidate.Manifest.Web.Head);
         Assert.Equal("migrations", candidate.Manifest.Database?.Migrations);
     }

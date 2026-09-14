@@ -13,7 +13,8 @@ public sealed class PluginManifest
         IEnumerable<PluginIntegration>? integrations = null,
         IEnumerable<PluginRouteDefinition>? routes = null,
         PluginWebContributions? web = null,
-        PluginDatabaseDefinition? database = null)
+        PluginDatabaseDefinition? database = null,
+        IEnumerable<PluginGlobalComponentDefinition>? globalComponents = null)
         : this(
             id,
             version,
@@ -22,7 +23,8 @@ public sealed class PluginManifest
             integrations,
             routes,
             web,
-            database)
+            database,
+            globalComponents)
     {
     }
 
@@ -34,7 +36,8 @@ public sealed class PluginManifest
         IEnumerable<PluginIntegration>? integrations = null,
         IEnumerable<PluginRouteDefinition>? routes = null,
         PluginWebContributions? web = null,
-        PluginDatabaseDefinition? database = null)
+        PluginDatabaseDefinition? database = null,
+        IEnumerable<PluginGlobalComponentDefinition>? globalComponents = null)
     {
         _ = (string)id;
         _ = (string)version;
@@ -44,6 +47,7 @@ public sealed class PluginManifest
         Dependencies = (dependencies ?? []).ToArray();
         Integrations = (integrations ?? []).ToArray();
         Routes = (routes ?? []).ToArray();
+        GlobalComponents = (globalComponents ?? []).ToArray();
         Web = web ?? PluginWebContributions.Empty;
         Database = database;
 
@@ -58,6 +62,13 @@ public sealed class PluginManifest
             {
                 throw new ArgumentException($"Web route '{route.Path}' must declare a view.", nameof(routes));
             }
+        }
+
+        if (Runtime.Kind == PluginRuntimeKind.Web && GlobalComponents.Count > 0)
+        {
+            throw new ArgumentException(
+                "Web plugins cannot contribute host-level .NET components.",
+                nameof(globalComponents));
         }
 
         if (Runtime.Kind == PluginRuntimeKind.Web
@@ -79,6 +90,7 @@ public sealed class PluginManifest
                 .Concat(Integrations.Select(static integration => integration.Id)),
             "plugin relationship");
         EnsureUnique(Routes.Select(static route => route.Path), "route");
+        EnsureUnique(GlobalComponents.Select(static component => component.Component), "global component");
     }
 
     public PluginId Id { get; }
@@ -95,6 +107,8 @@ public sealed class PluginManifest
 
     public IReadOnlyList<PluginRouteDefinition> Routes { get; }
 
+    public IReadOnlyList<PluginGlobalComponentDefinition> GlobalComponents { get; }
+
     public PluginWebContributions Web { get; }
 
     public PluginDatabaseDefinition? Database { get; }
@@ -108,6 +122,20 @@ public sealed class PluginManifest
             throw new ArgumentException($"Plugin manifest contains a duplicate {name}.");
         }
     }
+}
+
+public sealed record PluginGlobalComponentDefinition
+{
+    public PluginGlobalComponentDefinition(string component, int order = 0)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(component);
+        Component = component.Trim();
+        Order = order;
+    }
+
+    public string Component { get; }
+
+    public int Order { get; }
 }
 
 public sealed record PluginDatabaseDefinition

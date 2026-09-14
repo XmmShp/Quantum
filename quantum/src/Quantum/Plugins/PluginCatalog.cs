@@ -27,6 +27,8 @@ public sealed class PluginCatalog : IQuantumPluginEnvironment
 
     public IReadOnlyList<PluginRouteRegistration> NavigationRoutes => Snapshot.NavigationRoutes;
 
+    public IReadOnlyList<PluginGlobalComponentRegistration> GlobalComponents => Snapshot.GlobalComponents;
+
     public IReadOnlyList<PluginLoadFailure> Failures => Snapshot.Failures;
 
     public IReadOnlyList<QuantumPluginInfo> LoadedPlugins => Snapshot.LoadedPlugins;
@@ -44,11 +46,12 @@ public sealed class PluginCatalog : IQuantumPluginEnvironment
         _logger.LogInformation(
             "Published plugin catalog revision {CatalogRevision} with {PluginCount} plugin(s), "
             + "{RouteCount} route(s), {NavigationRouteCount} navigation route(s), "
-            + "and {FailureCount} failure(s).",
+            + "{GlobalComponentCount} global component(s), and {FailureCount} failure(s).",
             next.Revision,
             next.Plugins.Count,
             next.Routes.Count,
             next.NavigationRoutes.Count,
+            next.GlobalComponents.Count,
             next.Failures.Count);
         RaiseChanged();
     }
@@ -115,6 +118,11 @@ public sealed class PluginCatalog : IQuantumPluginEnvironment
         var navigationRoutes = routes
             .Where(static route => route.Definition.ShowInNavigation)
             .ToArray();
+        var globalComponents = pluginArray
+            .SelectMany(static plugin => plugin.GlobalComponents)
+            .OrderBy(static component => component.Definition.Order)
+            .ThenBy(static component => component.Definition.Component, StringComparer.Ordinal)
+            .ToArray();
         var loadedPlugins = pluginArray
             .Select(static plugin => new QuantumPluginInfo(
                 plugin.Manifest.Id,
@@ -124,6 +132,7 @@ public sealed class PluginCatalog : IQuantumPluginEnvironment
             pluginArray,
             routes,
             navigationRoutes,
+            globalComponents,
             failures.ToArray(),
             loadedPlugins,
             revision);
@@ -134,6 +143,7 @@ internal sealed record PluginCatalogSnapshot(
     IReadOnlyList<LoadedPlugin> Plugins,
     IReadOnlyList<PluginRouteRegistration> Routes,
     IReadOnlyList<PluginRouteRegistration> NavigationRoutes,
+    IReadOnlyList<PluginGlobalComponentRegistration> GlobalComponents,
     IReadOnlyList<PluginLoadFailure> Failures,
     IReadOnlyList<QuantumPluginInfo> LoadedPlugins,
     long Revision);
@@ -146,7 +156,8 @@ public sealed class LoadedPlugin
         Assembly? entryAssembly,
         IReadOnlyList<PluginRouteRegistration> routes,
         Guid runtimeId = default,
-        IServiceProvider? services = null)
+        IServiceProvider? services = null,
+        IReadOnlyList<PluginGlobalComponentRegistration>? globalComponents = null)
     {
         Manifest = manifest ?? throw new ArgumentNullException(nameof(manifest));
         ArgumentException.ThrowIfNullOrWhiteSpace(rootPath);
@@ -163,6 +174,7 @@ public sealed class LoadedPlugin
         RootPath = rootPath;
         EntryAssembly = entryAssembly;
         Routes = routes ?? throw new ArgumentNullException(nameof(routes));
+        GlobalComponents = globalComponents ?? [];
         RuntimeId = runtimeId;
         Services = services;
     }
@@ -175,11 +187,37 @@ public sealed class LoadedPlugin
 
     public IReadOnlyList<PluginRouteRegistration> Routes { get; }
 
+    public IReadOnlyList<PluginGlobalComponentRegistration> GlobalComponents { get; }
+
     public Guid RuntimeId { get; }
 
     public IServiceProvider? Services { get; }
 
     internal PluginRpcRuntime? RpcRuntime { get; init; }
+}
+
+public sealed record PluginGlobalComponentRegistration(
+    PluginId PluginId,
+    PluginGlobalComponentDefinition Definition,
+    Type ComponentType)
+{
+    public static PluginGlobalComponentRegistration Create(
+        PluginId pluginId,
+        PluginGlobalComponentDefinition definition,
+        Assembly assembly)
+    {
+        var componentType = assembly.GetType(definition.Component, throwOnError: false, ignoreCase: false)
+            ?? throw new InvalidOperationException(
+                $"Plugin '{pluginId}' references missing global component '{definition.Component}'.");
+
+        if (!typeof(IComponent).IsAssignableFrom(componentType))
+        {
+            throw new InvalidOperationException(
+                $"Plugin '{pluginId}' global type '{definition.Component}' is not a Blazor component.");
+        }
+
+        return new PluginGlobalComponentRegistration(pluginId, definition, componentType);
+    }
 }
 
 public sealed record PluginRouteRegistration(

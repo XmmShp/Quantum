@@ -395,6 +395,12 @@ internal sealed class PluginRuntime
             var routes = candidate.Manifest.Routes
                 .Select(route => PluginRouteRegistration.Create(candidate.Manifest.Id, route, assembly))
                 .ToArray();
+            var globalComponents = candidate.Manifest.GlobalComponents
+                .Select(component => PluginGlobalComponentRegistration.Create(
+                    candidate.Manifest.Id,
+                    component,
+                    assembly))
+                .ToArray();
 
             var serviceCollection = new ServiceCollection();
             var environment = new PluginEnvironmentProxy(catalog);
@@ -444,7 +450,8 @@ internal sealed class PluginRuntime
                 assembly,
                 routes,
                 runtimeId,
-                ownedScope.ServiceProvider)
+                ownedScope.ServiceProvider,
+                globalComponents)
             {
                 RpcRuntime = rpcRuntime
             };

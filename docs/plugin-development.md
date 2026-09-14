@@ -63,6 +63,12 @@ Infrastructure 项目。插件不得携带自己的 ABI 副本版本并尝试覆
         "component": "Quantum.ExamplePlugin.Pages.Detail",
         "showInNavigation": false
       }
+    ],
+    "globalComponents": [
+      {
+        "component": "Quantum.ExamplePlugin.Components.FloatingPanel",
+        "order": 100
+      }
     ]
   },
   "web": {
@@ -93,6 +99,8 @@ Infrastructure 项目。插件不得携带自己的 ABI 副本版本并尝试覆
 - 旧版 `entryAssembly` 继续受支持，等价于 `{ "runtime": { "kind": "dotnet", "entry": "..." } }`；DLL 入口只能是插件根目录下的文件名。
 - .NET 路由的 `component` 必须是入口程序集内实现 `IComponent` 的完整类型名；Web 路由改用 `view`。
 - `showInNavigation` 默认为 `true`；设为 `false` 的页面不会出现在主导航中，但仍可通过其路径或导航 API 打开。
+- `globalComponents` 仅适用于 .NET 插件。宿主会在主布局中持续渲染这些组件，适合悬浮按钮、Drawer 和全局状态提示；
+  `component` 必须是入口程序集内的 Blazor 组件完整类型名，`order` 控制多个全局组件的稳定渲染顺序。
 - `title` 是路由标题的默认回退；`titles` 可用 BCP-47 culture name 提供本地化标题。宿主先匹配完整 culture，
   再匹配语言，最后回退到 `title`。
 - `database.migrations` 对 .NET 和 Web 插件含义相同，指向插件根目录内的 SQL migration artifact。
