@@ -1,0 +1,215 @@
+@namespace Quantum.OfficialPlugins.Codex.Pages
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.Localization
+@using Quantum.OfficialPlugins.Codex.Application
+@using Quantum.OfficialPlugins.Codex.Localization
+@implements IDisposable
+@inject ICodexIntegrationService CodexService
+@inject IStringLocalizer<PluginStrings> L
+
+<PageTitle>Codex · Quantum</PageTitle>
+
+<section class="codex-shell">
+    <header class="hero">
+        <div class="hero-copy">
+            <p class="eyebrow">CODEX × QUANTUM</p>
+            <h1>@L["你的本地智能中枢"]</h1>
+            <p>@L["让本机 Codex 理解并调用 Quantum 中的插件能力。"]</p>
+        </div>
+        <div class="connection-pill @StateClass">
+            <span></span>
+            @StateLabel
+        </div>
+    </header>
+
+    @if (_snapshot.ErrorMessage is not null || _localError is not null)
+    {
+        <div class="error-banner" role="alert">
+            <span>@(_localError ?? _snapshot.ErrorMessage)</span>
+            <button type="button" @onclick="() => _localError = null">×</button>
+        </div>
+    }
+
+    @if (_snapshot.ConnectionState != CodexConnectionState.Connected)
+    {
+        <section class="connect-card">
+            <div class="codex-mark" aria-hidden="true">⌘</div>
+            <div>
+                <h2>@L["连接本机 Codex"]</h2>
+                <p>@L["插件会启动 codex app-server，并复用本机已有登录状态。"]</p>
+            </div>
+            <label>
+                <span>@L["工作目录"]</span>
+                <input @bind="_workingDirectory" disabled="@IsConnecting" />
+            </label>
+            <button type="button" class="primary-button" disabled="@IsConnecting" @onclick="ConnectAsync">
+                @(IsConnecting ? L["连接中"] : L["连接"])
+            </button>
+        </section>
+    }
+    else
+    {
+        <section class="workspace">
+            <header class="workspace-toolbar">
+                <div>
+                    <strong>@_snapshot.ToolCount</strong>
+                    <span>@L["项 Quantum 工具"]</span>
+                </div>
+                <code title="@_snapshot.ThreadId">@ShortThreadId</code>
+                <div class="toolbar-actions">
+                    <button type="button" disabled="@_snapshot.IsBusy" @onclick="NewThreadAsync">＋ @L["新对话"]</button>
+                    <button type="button" @onclick="DisconnectAsync">@L["断开"]</button>
+                </div>
+            </header>
+
+            <div class="conversation" aria-live="polite" aria-busy="@_snapshot.IsBusy">
+                @if (_snapshot.Messages.Count == 0)
+                {
+                    <div class="empty-state">
+                        <span aria-hidden="true">✦</span>
+                        <h2>@L["开始对话"]</h2>
+                        <p>@L["你可以让 Codex 查询日历、创建待办，或调用其他插件公开的 RPC。"]</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var message in _snapshot.Messages)
+                    {
+                        <article @key="message.Id" class="message @message.Role.ToString().ToLowerInvariant()">
+                            <div class="message-role">@message.Role</div>
+                            <div class="message-text">
+                                @message.Text
+                                @if (message.IsStreaming)
+                                {
+                                    <span class="cursor">▍</span>
+                                }
+                            </div>
+                        </article>
+                    }
+                }
+            </div>
+
+            @if (_snapshot.PendingCalls.Count > 0)
+            {
+                <aside class="approval-stack" aria-live="assertive">
+                    @foreach (var call in _snapshot.PendingCalls)
+                    {
+                        <section @key="call.CallId" class="approval-card">
+                            <div class="approval-icon">↗</div>
+                            <div class="approval-content">
+                                <p class="eyebrow">@L["Codex 请求调用 Quantum"]</p>
+                                <h3>@call.RpcName</h3>
+                                <p>@call.Description</p>
+                                <details>
+                                    <summary>@L["参数"]</summary>
+                                    <pre>@FormatJson(call.Arguments)</pre>
+                                </details>
+                            </div>
+                            <div class="approval-actions">
+                                <button type="button" @onclick="() => ResolveAsync(call.CallId, false)">@L["拒绝"]</button>
+                                <button type="button" class="approve" @onclick="() => ResolveAsync(call.CallId, true)">@L["允许调用"]</button>
+                            </div>
+                        </section>
+                    }
+                </aside>
+            }
+
+            <footer class="composer">
+                <textarea rows="3"
+                          placeholder="@L["输入消息…"]"
+                          disabled="@_snapshot.IsBusy"
+                          @bind="_prompt"
+                          @onkeydown="HandleKeyDownAsync"></textarea>
+                <button type="button" class="send-button" disabled="@(!CanSend)" @onclick="SendAsync">@L["发送"] <span>↗</span></button>
+                <p>@L["每次 Quantum RPC 调用都会先等待你的确认。"]</p>
+            </footer>
+        </section>
+    }
+</section>
+
+@code {
+    private CodexIntegrationSnapshot _snapshot = default!;
+    private string _workingDirectory = Environment.CurrentDirectory;
+    private string _prompt = string.Empty;
+    private string? _localError;
+
+    protected override void OnInitialized()
+    {
+        _snapshot = CodexService.Snapshot;
+        _workingDirectory = _snapshot.WorkingDirectory;
+        CodexService.Changed += HandleChanged;
+    }
+
+    private bool IsConnecting => _snapshot.ConnectionState == CodexConnectionState.Connecting;
+
+    private bool CanSend => !_snapshot.IsBusy && !string.IsNullOrWhiteSpace(_prompt);
+
+    private string StateClass => _snapshot.ConnectionState.ToString().ToLowerInvariant();
+
+    private string StateLabel => _snapshot.ConnectionState switch
+    {
+        CodexConnectionState.Connected => L["已连接"],
+        CodexConnectionState.Connecting => L["连接中"],
+        CodexConnectionState.Failed => L["连接失败"],
+        _ => L["未连接"]
+    };
+
+    private string ShortThreadId => _snapshot.ThreadId is { Length: > 12 } threadId
+        ? threadId[..12]
+        : _snapshot.ThreadId ?? string.Empty;
+
+    private async Task ConnectAsync() => await RunAsync(() => CodexService.ConnectAsync(_workingDirectory));
+
+    private async Task DisconnectAsync() => await RunAsync(() => CodexService.DisconnectAsync());
+
+    private async Task NewThreadAsync() => await RunAsync(() => CodexService.StartNewThreadAsync());
+
+    private async Task SendAsync()
+    {
+        if (!CanSend)
+        {
+            return;
+        }
+
+        var prompt = _prompt;
+        _prompt = string.Empty;
+        await RunAsync(() => CodexService.SendAsync(prompt));
+    }
+
+    private async Task HandleKeyDownAsync(KeyboardEventArgs args)
+    {
+        if (args.Key == "Enter" && (args.CtrlKey || args.MetaKey))
+        {
+            await SendAsync();
+        }
+    }
+
+    private async Task ResolveAsync(string callId, bool approved)
+        => await RunAsync(() => CodexService.ResolveToolCallAsync(callId, approved));
+
+    private async Task RunAsync(Func<Task> action)
+    {
+        _localError = null;
+        try
+        {
+            await action();
+        }
+        catch (Exception exception)
+        {
+            _localError = exception.Message;
+        }
+    }
+
+    private void HandleChanged()
+    {
+        _snapshot = CodexService.Snapshot;
+        _ = InvokeAsync(StateHasChanged);
+    }
+
+    private static string FormatJson(System.Text.Json.JsonElement value)
+        => System.Text.Json.JsonSerializer.Serialize(
+            value,
+            new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
+
+    public void Dispose() => CodexService.Changed -= HandleChanged;
+}

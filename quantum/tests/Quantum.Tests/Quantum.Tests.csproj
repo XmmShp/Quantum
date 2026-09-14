@@ -19,6 +19,7 @@
   <ItemGroup>
     <ProjectReference Include="..\..\src\Quantum\Quantum.csproj" />
     <ProjectReference Include="..\..\..\official-plugins\Calendar\Quantum.CalendarPlugin.csproj" />
+    <ProjectReference Include="..\..\..\official-plugins\Codex\Quantum.CodexPlugin.csproj" />
     <ProjectReference Include="..\..\..\samples\Quantum.ExampleDependentPlugin\Quantum.ExampleDependentPlugin.csproj" />
     <ProjectReference Include="..\..\..\samples\Quantum.ExamplePlugin\Quantum.ExamplePlugin.csproj" />
   </ItemGroup>

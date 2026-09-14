@@ -30,7 +30,8 @@ quantum/
 └── tests/
     └── Quantum.Tests/           插件模型与运行时测试
 official-plugins/
-└── Calendar/                       日程、待办、共享 SQLite 与跨插件 RPC 的官方插件
+├── Calendar/                       日程、待办、共享 SQLite 与跨插件 RPC 的官方插件
+└── Codex/                          本机 Codex 对话与 Quantum RPC 工具桥接官方插件
 samples/
 ├── Quantum.ExamplePlugin/          .NET、Blazor、DI 与静态资源示例
 ├── Quantum.ExampleDependentPlugin/ 声明并验证强前置依赖的 .NET 示例

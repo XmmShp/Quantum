@@ -1,0 +1,26 @@
+{
+  "id": "quantum.plugin.codex",
+  "version": "0.1.0",
+  "entryAssembly": "Quantum.CodexPlugin.dll",
+  "dependencies": [],
+  "integrations": [],
+  "ui": {
+    "routes": [
+      {
+        "path": "/plugins/codex",
+        "component": "Quantum.OfficialPlugins.Codex.Pages.Codex",
+        "title": "Codex",
+        "titles": { "en-US": "Codex" },
+        "icon": "✦",
+        "order": 110,
+        "showInNavigation": true
+      }
+    ]
+  },
+  "web": {
+    "head": [
+      "<link rel=\"stylesheet\" href=\"_content/quantum.plugin.codex/Quantum.CodexPlugin.bundle.scp.css\">"
+    ],
+    "postBlazor": []
+  }
+}

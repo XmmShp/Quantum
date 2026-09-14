@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="你的本地智能中枢" xml:space="preserve"><value>Your local intelligence hub</value></data>
+  <data name="让本机 Codex 理解并调用 Quantum 中的插件能力。" xml:space="preserve"><value>Let local Codex understand and invoke capabilities from every Quantum plugin.</value></data>
+  <data name="已连接" xml:space="preserve"><value>Connected</value></data>
+  <data name="连接中" xml:space="preserve"><value>Connecting</value></data>
+  <data name="未连接" xml:space="preserve"><value>Disconnected</value></data>
+  <data name="连接失败" xml:space="preserve"><value>Connection failed</value></data>
+  <data name="连接本机 Codex" xml:space="preserve"><value>Connect local Codex</value></data>
+  <data name="插件会启动 codex app-server，并复用本机已有登录状态。" xml:space="preserve"><value>The plugin starts codex app-server and reuses your existing local sign-in.</value></data>
+  <data name="工作目录" xml:space="preserve"><value>Working directory</value></data>
+  <data name="连接" xml:space="preserve"><value>Connect</value></data>
+  <data name="断开" xml:space="preserve"><value>Disconnect</value></data>
+  <data name="新对话" xml:space="preserve"><value>New conversation</value></data>
+  <data name="项 Quantum 工具" xml:space="preserve"><value>Quantum tools</value></data>
+  <data name="开始对话" xml:space="preserve"><value>Start a conversation</value></data>
+  <data name="你可以让 Codex 查询日历、创建待办，或调用其他插件公开的 RPC。" xml:space="preserve"><value>Ask Codex to inspect your calendar, create a task, or use RPCs published by other plugins.</value></data>
+  <data name="Codex 请求调用 Quantum" xml:space="preserve"><value>Codex wants to call Quantum</value></data>
+  <data name="参数" xml:space="preserve"><value>Arguments</value></data>
+  <data name="拒绝" xml:space="preserve"><value>Decline</value></data>
+  <data name="允许调用" xml:space="preserve"><value>Allow call</value></data>
+  <data name="输入消息…" xml:space="preserve"><value>Message Codex…</value></data>
+  <data name="发送" xml:space="preserve"><value>Send</value></data>
+  <data name="每次 Quantum RPC 调用都会先等待你的确认。" xml:space="preserve"><value>Every Quantum RPC call waits for your approval.</value></data>
+</root>

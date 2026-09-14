@@ -10,6 +10,7 @@
   <Project Path="quantum/src/Quantum/Quantum.csproj" />
   <Project Path="quantum/tests/Quantum.Tests/Quantum.Tests.csproj" />
   <Project Path="official-plugins/Calendar/Quantum.CalendarPlugin.csproj" />
+  <Project Path="official-plugins/Codex/Quantum.CodexPlugin.csproj" />
   <Project Path="samples/Quantum.ExampleDependentPlugin/Quantum.ExampleDependentPlugin.csproj" />
   <Project Path="samples/Quantum.ExamplePlugin/Quantum.ExamplePlugin.csproj" />
 </Solution>
