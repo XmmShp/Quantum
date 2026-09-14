@@ -1,5 +1,26 @@
 namespace Quantum.Marketplace;
 
+[Flags]
+public enum MarketplaceUserRoles
+{
+    None = 0,
+    User = 1,
+    Developer = 2,
+    Reviewer = 4,
+    Admin = 8
+}
+
+public sealed record MarketplaceUser(
+    string UserId,
+    string Username,
+    string Email,
+    MarketplaceUserRoles Roles);
+
+public sealed record MarketplaceLogin(
+    string AccessToken,
+    DateTime ExpiresAtUtc,
+    MarketplaceUser User);
+
 public sealed record MarketplacePlugin(
     string PluginId,
     string Name,
@@ -20,7 +41,9 @@ public sealed record MarketplaceRelease(
     long PackageSizeBytes,
     string PackageSha256,
     DateTime UploadedAtUtc,
-    long DownloadCount);
+    long DownloadCount,
+    string? ReleaseId = null,
+    string? PluginId = null);
 
 public sealed record MarketplaceCompatibility(
     bool IsCompatible,
@@ -33,6 +56,13 @@ public sealed record MarketplaceDownload(
     byte[] Archive,
     long PackageSizeBytes,
     string PackageSha256);
+
+public enum MarketplaceReleaseState
+{
+    Pending = 1,
+    Published = 2,
+    Rejected = 3
+}
 
 public sealed class MarketplaceException : Exception
 {

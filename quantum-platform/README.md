@@ -1,6 +1,6 @@
 # Quantum Platform
 
-Quantum Platform 是 Quantum 的统一后端平台。它负责平台级用户身份与权限，并承载插件发布、审核、检索和下载等业务；后续平台能力继续在同一套 Domain/Contract/Application/Host 边界内扩展。所有业务 Contract 通过 `POST /rpc` 暴露为 JSON-RPC 2.0。
+Quantum Platform 是 Quantum 的统一后端平台。它负责平台级用户身份与权限，并承载插件发布、审核、检索和下载等业务；后续平台能力继续在同一套 Domain/Contract/Application/Host 边界内扩展。所有业务 Contract 通过 `POST /rpc` 暴露为 JSON-RPC 2.0，网页发布与审核台位于 `/portal/`。
 
 ## 目录
 
@@ -16,9 +16,12 @@ tests/
 
 ## 能力
 
-- 用户注册、登录、个人资料、角色与管理员删除流程。
+- 用户注册、邮箱密码登录、个人资料、角色与管理员删除流程。
+- SMTP 启用后通过 MailKit 发送注册欢迎和版本审核结果邮件。
 - 插件目录创建、更新、检索与按作者/标签过滤。
 - 插件 ZIP 上传、SHA-256 校验、审核、下载计数，并为当前 Quantum 选择最高兼容版本。
+- 开发者可在客户端认证下载自己的待审核版本进行测试；该测试下载不计入公开下载量。
+- 同源网页工作台提供账号注册、插件资料、版本上传和 Reviewer/Admin 审核流程。
 - 管理员审计查询与可配置的安全管理员引导。
 - PostgreSQL 持久化，使用 NOF `NOFDbContext`、Repository、Application Parts、Initialization Steps 与自动迁移。
 - ZIP 路径穿越、重复路径、体积/条目数、manifest、.NET/Web runtime 入口与 `database.migrations` SQL artifact 校验；文件通过同目录临时文件原子写入。
@@ -52,8 +55,17 @@ export QuantumPlatform__BootstrapAdmin__Password='replace-with-a-strong-bootstra
 | `QuantumPlatform:Storage:BasePath` | `QuantumPlatform__Storage__BasePath` | ZIP 存储根目录，默认 `Files` |
 | `QuantumPlatform:Storage:MaxArchiveBytes` | `QuantumPlatform__Storage__MaxArchiveBytes` | 压缩包大小上限 |
 | `QuantumPlatform:Storage:MaxExpandedBytes` | `QuantumPlatform__Storage__MaxExpandedBytes` | 解压后声明大小上限 |
+| `QuantumPlatform:Email:Enabled` | `QuantumPlatform__Email__Enabled` | 是否启用平台邮件 |
+| `QuantumPlatform:Email:SmtpHost` | `QuantumPlatform__Email__SmtpHost` | SMTP 主机 |
+| `QuantumPlatform:Email:SmtpPort` | `QuantumPlatform__Email__SmtpPort` | SMTP 端口，默认 587 |
+| `QuantumPlatform:Email:EnableSsl` | `QuantumPlatform__Email__EnableSsl` | 是否在连接时启用 SSL |
+| `QuantumPlatform:Email:Username` | `QuantumPlatform__Email__Username` | SMTP 用户名，可选 |
+| `QuantumPlatform:Email:Password` | `QuantumPlatform__Email__Password` | SMTP 密码，不应写入配置文件 |
+| `QuantumPlatform:Email:FromAddress` | `QuantumPlatform__Email__FromAddress` | 发件邮箱，启用邮件时必填 |
 
-健康检查位于 `GET /health/live`。数据库迁移由 NOF 初始化步骤在服务启动时执行。
+邮件默认关闭，未配置 SMTP 不影响开发环境启动。启用后，注册和审核业务已经提交成功时，邮件发送失败只记录警告，不回滚业务事务。
+
+浏览器打开服务根地址会进入网页工作台；服务状态位于 `GET /api/status`，健康检查位于 `GET /health/live`。数据库迁移由 NOF 初始化步骤在服务启动时执行。
 
 ## JSON-RPC
 

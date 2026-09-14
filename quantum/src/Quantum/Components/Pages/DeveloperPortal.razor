@@ -1,0 +1,329 @@
+@page "/marketplace/developer"
+@implements IAsyncDisposable
+@inject IQuantumMarketplaceClient MarketplaceClient
+@inject QuantumMarketplaceSession MarketplaceSession
+@inject IPluginRuntimeManager PluginRuntimeManager
+@inject IStringLocalizer<AppStrings> L
+
+<PageTitle>@L["开发者测试"] · Quantum</PageTitle>
+
+<section class="developer-page">
+    <header class="developer-header">
+        <div>
+            <p class="eyebrow">@L["TEST CHANNEL"]</p>
+            <h1>@L["开发者测试"]</h1>
+            <p>@L["登录后下载并安装你自己的待审核版本；发布与审核统一在网页端完成。"]</p>
+        </div>
+        <a class="portal-link" href="@PortalUri" target="_blank" rel="noreferrer">@L["打开网页发布台"] ↗</a>
+    </header>
+
+    @if (_message is not null)
+    {
+        <div class="portal-message @(_messageIsError ? "error" : "success")" role="status">
+            <span>@_message</span>
+            <button type="button" aria-label="@L["关闭消息"]" @onclick="() => _message = null">×</button>
+        </div>
+    }
+
+    @if (_isInitializing)
+    {
+        <div class="portal-state"><span class="spinner"></span><strong>@L["正在恢复开发者会话…"]</strong></div>
+    }
+    else if (!MarketplaceSession.IsAuthenticated)
+    {
+        <div class="auth-layout">
+            <section class="auth-copy">
+                <p class="eyebrow">@L["CLIENT SCOPE"]</p>
+                <h2>@L["客户端只负责下载安装"]</h2>
+                <p>@L["创建插件、上传版本和审核都在 Quantum Platform 网页端进行。客户端登录仅用于识别你拥有的测试版本。"]</p>
+                <div class="scope-grid">
+                    <span><strong>01</strong>@L["邮箱登录"]</span>
+                    <span><strong>02</strong>@L["查看自有版本"]</span>
+                    <span><strong>03</strong>@L["下载并本机预检"]</span>
+                </div>
+            </section>
+            <section class="auth-card">
+                <div><p class="eyebrow">@L["DEVELOPER SIGN IN"]</p><h2>@L["登录开发者账号"]</h2></div>
+                <label><span>@L["邮箱"]</span><input type="email" maxlength="320" autocomplete="email" @bind="_email" /></label>
+                <label><span>@L["密码"]</span><input type="password" maxlength="1024" autocomplete="current-password" @bind="_password" /></label>
+                <button type="button" class="primary-button" disabled="@(_isBusy || !CanLogin)" @onclick="LoginAsync">@(_isBusy ? L["登录中…"] : L["登录"])</button>
+                <p class="web-note">@L["还没有账号？请在网页发布台注册。"]</p>
+            </section>
+        </div>
+    }
+    else
+    {
+        <div class="session-bar">
+            <div class="account-avatar">@MarketplaceSession.User!.Username[0].ToString().ToUpperInvariant()</div>
+            <div><strong>@MarketplaceSession.User.Username</strong><span>@MarketplaceSession.User.Email</span></div>
+            <button type="button" class="secondary-button" disabled="@_isBusy" @onclick="LogoutAsync">@L["退出"]</button>
+        </div>
+
+        <div class="release-workspace">
+            <aside class="plugin-list">
+                <div class="panel-heading"><div><p class="eyebrow">@L["MY PLUGINS"]</p><h2>@L["我的插件"]</h2></div><button type="button" disabled="@_isBusy" @onclick="LoadManagedPluginsAsync">↻</button></div>
+                @if (_managedPlugins.Count == 0)
+                {
+                    <div class="compact-empty"><strong>@L["还没有插件"]</strong><p>@L["请先前往网页发布台创建并上传版本。"]</p></div>
+                }
+                else
+                {
+                    @foreach (var plugin in _managedPlugins)
+                    {
+                        <button type="button" class="@(_selectedPlugin?.PluginId == plugin.PluginId ? "selected" : null)" disabled="@_isBusy" @onclick="() => SelectPluginAsync(plugin)">
+                            <span class="plugin-avatar">@plugin.Name[0].ToString().ToUpperInvariant()</span>
+                            <span><strong>@plugin.Name</strong><small>@plugin.PluginId</small></span>
+                        </button>
+                    }
+                }
+            </aside>
+
+            <section class="release-panel">
+                @if (_selectedPlugin is null)
+                {
+                    <div class="release-empty"><span>◇</span><strong>@L["选择一个插件查看测试版本"]</strong><p>@L["只有你拥有的待审核版本会获得测试下载权限。"]</p></div>
+                }
+                else
+                {
+                    <div class="panel-heading"><div><p class="eyebrow">@L["TEST RELEASES"]</p><h2>@_selectedPlugin.Name</h2></div><span>@_releases.Count @L["个版本"]</span></div>
+                    <div class="release-list">
+                        @foreach (var release in _releases)
+                        {
+                            var state = (MarketplaceReleaseState)release.Status;
+                            <article>
+                                <div class="release-main">
+                                    <div><strong>v@release.Version</strong><span>@L["支持 Quantum {0}", release.QuantumVersionSupport] · @FormatSize(release.PackageSizeBytes)</span></div>
+                                    <span class="status @state.ToString().ToLowerInvariant()">@GetStatusText(state)</span>
+                                </div>
+                                @if (!string.IsNullOrWhiteSpace(release.ReleaseNotes))
+                                {
+                                    <p>@release.ReleaseNotes</p>
+                                }
+                                <div class="release-actions">
+                                    @if (state is MarketplaceReleaseState.Pending or MarketplaceReleaseState.Published)
+                                    {
+                                        <span>@(state == MarketplaceReleaseState.Pending ? L["仅你与审核人员可下载"] : L["市场公开版本"])</span>
+                                        <button type="button" class="primary-button" disabled="@_isBusy" @onclick="() => PrepareInstallAsync(release)">@L["下载并安装"]</button>
+                                    }
+                                    else
+                                    {
+                                        <span>@L["被拒绝的版本不可下载，请在网页端上传新版本。"]</span>
+                                    }
+                                </div>
+                            </article>
+                        }
+                    </div>
+                }
+            </section>
+        </div>
+    }
+</section>
+
+@if (_pendingInstall is { } pending)
+{
+    <div class="dialog-backdrop">
+        <section class="install-dialog" role="alertdialog" aria-modal="true" aria-labelledby="developer-install-title">
+            <p class="eyebrow">@L["LOCAL INSTALL CHECK"]</p>
+            <h2 id="developer-install-title">@(pending.Preview.CanInstall ? L["准备安装 {0}", pending.PluginName] : L["无法安装 {0}", pending.PluginName])</h2>
+            <p class="dialog-note">@pending.Preview.ArchiveFileName</p>
+            @if (pending.Preview.Plugins.Count > 0)
+            {
+                <ul class="preview-list">
+                    @foreach (var item in pending.Preview.Plugins)
+                    {
+                        <li><div><strong>@item.PluginId</strong><span>@GetPreviewVersion(item)</span></div><span>@GetPreviewAction(item.Action)</span></li>
+                    }
+                </ul>
+            }
+            @if (pending.Preview.Issues.Count > 0)
+            {
+                <div class="preview-issues"><strong>@L["本机预检未通过"]</strong><ul>@foreach (var issue in pending.Preview.Issues){<li>@issue.Reason</li>}</ul></div>
+            }
+            else
+            {
+                <p class="dialog-note">@L["包的大小与 SHA-256 已核对；确认后将以事务方式更新本机插件。"]</p>
+            }
+            <div class="dialog-actions">
+                <button type="button" class="secondary-button" disabled="@_isBusy" @onclick="CancelInstallAsync">@L["取消"]</button>
+                @if (pending.Preview.CanInstall)
+                {
+                    <button type="button" class="primary-button" disabled="@_isBusy" @onclick="ConfirmInstallAsync">@L["确认安装"]</button>
+                }
+            </div>
+        </section>
+    </div>
+}
+
+@code {
+    private readonly CancellationTokenSource _lifetime = new();
+    private IReadOnlyList<MarketplacePlugin> _managedPlugins = [];
+    private IReadOnlyList<MarketplaceRelease> _releases = [];
+    private MarketplacePlugin? _selectedPlugin;
+    private PendingInstall? _pendingInstall;
+    private string _email = string.Empty;
+    private string _password = string.Empty;
+    private string? _message;
+    private bool _messageIsError;
+    private bool _isInitializing = true;
+    private bool _isBusy;
+
+    private bool CanLogin => !string.IsNullOrWhiteSpace(_email) && !string.IsNullOrWhiteSpace(_password);
+    private Uri PortalUri => new(MarketplaceClient.BaseAddress, "portal/");
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            await MarketplaceSession.InitializeAsync(MarketplaceClient, _lifetime.Token);
+            if (MarketplaceSession.IsAuthenticated)
+            {
+                await LoadManagedPluginsCoreAsync();
+            }
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            ShowError(exception.Message);
+        }
+        finally
+        {
+            _isInitializing = false;
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        _lifetime.Cancel();
+        if (_pendingInstall?.Preview.PreviewId is { } previewId)
+        {
+            await PluginRuntimeManager.CancelInstallAsync(previewId);
+        }
+        _lifetime.Dispose();
+    }
+
+    private Task LoginAsync() => RunBusyAsync(async () =>
+    {
+        await MarketplaceSession.LoginAsync(MarketplaceClient, _email, _password, _lifetime.Token);
+        _password = string.Empty;
+        await LoadManagedPluginsCoreAsync();
+    });
+
+    private async Task LogoutAsync()
+    {
+        await MarketplaceSession.LogoutAsync();
+        _managedPlugins = [];
+        _releases = [];
+        _selectedPlugin = null;
+    }
+
+    private Task LoadManagedPluginsAsync() => RunBusyAsync(LoadManagedPluginsCoreAsync);
+
+    private async Task LoadManagedPluginsCoreAsync()
+    {
+        _managedPlugins = await MarketplaceClient.ListManagedPluginsAsync(_lifetime.Token);
+        if (_selectedPlugin is not null)
+        {
+            _selectedPlugin = _managedPlugins.FirstOrDefault(plugin => plugin.PluginId == _selectedPlugin.PluginId);
+        }
+    }
+
+    private Task SelectPluginAsync(MarketplacePlugin plugin) => RunBusyAsync(async () =>
+    {
+        _selectedPlugin = plugin;
+        _releases = await MarketplaceClient.ListPluginReleasesAsync(plugin.PluginId, _lifetime.Token);
+    });
+
+    private Task PrepareInstallAsync(MarketplaceRelease release) => RunBusyAsync(async () =>
+    {
+        var plugin = _selectedPlugin ?? throw new InvalidOperationException(L["请先选择插件。"]);
+        var download = await MarketplaceClient.DownloadAsync(plugin.PluginId, release.Version, _lifetime.Token);
+        if (download.Archive.LongLength > PluginPackageLimits.MaximumArchiveBytes)
+        {
+            throw new InvalidDataException(L["下载的插件包超过本机安装大小限制。"]) ;
+        }
+
+        await using var stream = new MemoryStream(download.Archive, writable: false);
+        var preview = await PluginRuntimeManager.PrepareInstallAsync(stream, download.FileName, _lifetime.Token);
+        _pendingInstall = new(plugin.Name, preview);
+    });
+
+    private Task ConfirmInstallAsync() => RunBusyAsync(async () =>
+    {
+        if (_pendingInstall?.Preview.PreviewId is not { } previewId || !_pendingInstall.Preview.CanInstall)
+        {
+            return;
+        }
+
+        var result = await PluginRuntimeManager.InstallAsync(previewId, _lifetime.Token);
+        _pendingInstall = null;
+        _messageIsError = !result.Succeeded;
+        _message = result.Message;
+    });
+
+    private async Task CancelInstallAsync()
+    {
+        var previewId = _pendingInstall?.Preview.PreviewId;
+        _pendingInstall = null;
+        if (previewId is not null)
+        {
+            await PluginRuntimeManager.CancelInstallAsync(previewId, _lifetime.Token);
+        }
+    }
+
+    private async Task RunBusyAsync(Func<Task> action)
+    {
+        if (_isBusy)
+        {
+            return;
+        }
+
+        _isBusy = true;
+        _message = null;
+        try
+        {
+            await action();
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            ShowError(exception.Message);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private void ShowError(string message)
+    {
+        _messageIsError = true;
+        _message = message;
+    }
+
+    private string GetStatusText(MarketplaceReleaseState state) => state switch
+    {
+        MarketplaceReleaseState.Pending => L["待审核"],
+        MarketplaceReleaseState.Published => L["已发布"],
+        _ => L["已拒绝"]
+    };
+
+    private string GetPreviewVersion(PluginInstallPreviewItem item)
+        => item.Action == PluginInstallAction.Upgrade
+            ? $"v{item.InstalledVersion} → v{item.PackageVersion}"
+            : $"v{item.PackageVersion}";
+
+    private string GetPreviewAction(PluginInstallAction action) => action switch
+    {
+        PluginInstallAction.Install => L["新安装"],
+        PluginInstallAction.Upgrade => L["升级"],
+        _ => L["跳过"]
+    };
+
+    private static string FormatSize(long bytes)
+        => bytes >= 1024 * 1024
+            ? $"{bytes / 1024d / 1024d:0.#} MB"
+            : $"{Math.Max(1, bytes / 1024d):0.#} KB";
+
+    private sealed record PendingInstall(string PluginName, PluginInstallPreview Preview);
+}

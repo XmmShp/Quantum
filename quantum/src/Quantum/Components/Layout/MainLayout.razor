@@ -1,9 +1,11 @@
 @inherits LayoutComponentBase
 @implements IDisposable
+@using Microsoft.Extensions.Logging
 @inject PluginCatalog PluginCatalog
 @inject CultureService CultureService
 @inject IStringLocalizer<AppStrings> L
 @inject IJSRuntime JavaScript
+@inject ILogger<MainLayout> Logger
 
 <CascadingValue Name="CultureName" Value="CultureService.CurrentCulture.Name">
     <GlobalPluginInstaller>
@@ -35,6 +37,13 @@
                      aria-label="@L["插件市场"]"
                      title="@L["插件市场"]">
                 <span class="nav-icon" aria-hidden="true">▦</span>
+            </NavLink>
+
+            <NavLink href="/marketplace/developer"
+                     class="nav-item developer-nav-item"
+                     aria-label="@L["开发者测试"]"
+                     title="@L["开发者测试"]">
+                <span class="nav-icon" aria-hidden="true">⌘</span>
             </NavLink>
 
             <NavLink href="/settings"
@@ -82,8 +91,15 @@
     {
         _ = InvokeAsync(async () =>
         {
-            await UpdateDocumentCultureAsync();
             StateHasChanged();
+            try
+            {
+                await UpdateDocumentCultureAsync();
+            }
+            catch (Exception exception) when (exception is JSException or TaskCanceledException or InvalidOperationException)
+            {
+                Logger.LogDebug(exception, "The document culture update was interrupted by a WebView reload.");
+            }
         });
     }
 

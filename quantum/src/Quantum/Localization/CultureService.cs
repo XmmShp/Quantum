@@ -28,18 +28,21 @@ public sealed class CultureService
 
     public string TextDirection => CurrentCulture.TextInfo.IsRightToLeft ? "rtl" : "ltr";
 
-    public void SetCulture(string? cultureName)
+    public bool SetCulture(string? cultureName)
     {
         var culture = ResolveCulture(cultureName);
         if (string.Equals(CurrentCulture.Name, culture.Name, StringComparison.OrdinalIgnoreCase))
         {
-            return;
+            return false;
         }
 
+        // Persist first so a failed preference write cannot leave the running UI and the
+        // next startup disagreeing about the selected culture.
+        _savePreference?.Invoke(culture.Name);
         CurrentCulture = culture;
         ApplyCulture(culture);
-        _savePreference?.Invoke(culture.Name);
         Changed?.Invoke(this, EventArgs.Empty);
+        return true;
     }
 
     public static CultureInfo ResolveCulture(string? cultureName)

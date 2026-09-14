@@ -46,6 +46,10 @@ public interface IQuantumPlatformService : IRpcService
     [Category("Plugins")]
     Result<PluginSummary[]> ListPlugins(ListPluginsRequest request);
 
+    [Summary("List plugin listings managed by the authenticated developer")]
+    [Category("Plugins")]
+    Result<PluginSummary[]> ListManagedPlugins(EmptyRequest request);
+
     [Summary("Get a published plugin and its releases")]
     [Category("Plugins")]
     Result<PluginDetails> GetPlugin(GetPluginRequest request);
@@ -70,7 +74,7 @@ public interface IQuantumPlatformService : IRpcService
     [Category("Releases")]
     Result<PluginReleaseSummary> UploadPluginRelease(UploadPluginReleaseRequest request);
 
-    [Summary("Download a published plugin ZIP")]
+    [Summary("Download a published plugin ZIP, or an owned pending release for testing")]
     [Category("Releases")]
     Result<DownloadPluginReleaseResponse> DownloadPluginRelease(DownloadPluginReleaseRequest request);
 

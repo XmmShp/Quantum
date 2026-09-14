@@ -6,6 +6,58 @@ using Quantum.Platform.Domain;
 
 namespace Quantum.Platform.Application.Handlers;
 
+public sealed class ListManagedPlugins(
+    IRepository<PluginListing> listings,
+    IRepository<PluginRelease> releases,
+    IRepository<PlatformUser> users,
+    PlatformCallerResolver callerResolver) : QuantumPlatformService.ListManagedPlugins
+{
+    public override async Task<Result<PluginSummary[]>> HandleAsync(
+        EmptyRequest request,
+        Context context,
+        CancellationToken cancellationToken)
+    {
+        var caller = await callerResolver.RequireAsync(
+            PlatformUserRole.Developer | PlatformUserRole.Admin,
+            cancellationToken);
+        if (caller.User is not { } user)
+        {
+            return Result.Fail(caller.ErrorCode!, caller.ErrorMessage!);
+        }
+
+        IQueryable<PluginListing> query = listings.AsNoTracking();
+        if (!user.HasAnyRole(PlatformUserRole.Admin))
+        {
+            query = query.Where(listing => listing.AuthorUserId == user.Id);
+        }
+
+        var managedListings = await query
+            .OrderBy(listing => listing.Name)
+            .ToArrayAsync(cancellationToken);
+        var listingIds = managedListings.Select(listing => listing.Id).ToArray();
+        var pluginReleases = listingIds.Length == 0
+            ? []
+            : await releases.AsNoTracking()
+                .Where(release => listingIds.Contains(release.ListingId))
+                .ToArrayAsync(cancellationToken);
+        var authorIds = managedListings.Select(listing => listing.AuthorUserId).Distinct().ToArray();
+        var authors = authorIds.Length == 0
+            ? []
+            : await users.AsNoTracking()
+                .Where(candidate => authorIds.Contains(candidate.Id))
+                .ToArrayAsync(cancellationToken);
+
+        return managedListings.Select(listing => listing.ToSummary(
+                authors.SingleOrDefault(author => author.Id == listing.AuthorUserId),
+                pluginReleases
+                    .Where(release => release.ListingId == listing.Id)
+                    .OrderByDescending(release => release.Version,
+                        Comparer<string>.Create(QuantumVersionConstraint.CompareSemanticVersions))
+                    .FirstOrDefault()))
+            .ToArray();
+    }
+}
+
 public sealed class ListPlugins(
     IRepository<PluginListing> listings,
     IRepository<PluginRelease> releases,

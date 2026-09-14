@@ -12,12 +12,17 @@
     <ProjectReference Include="..\..\src\Quantum.Platform.Domain\Quantum.Platform.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\..\src\Quantum.Platform\Email\MailKitPlatformEmailSender.cs"
+             Link="Host\Email\MailKitPlatformEmailSender.cs" />
+    <Compile Include="..\..\src\Quantum.Platform\Email\PlatformEmailOptions.cs"
+             Link="Host\Email\PlatformEmailOptions.cs" />
     <Compile Include="..\..\src\Quantum.Platform\Services\Pbkdf2PlatformPasswordHasher.cs"
              Link="Host\Services\Pbkdf2PlatformPasswordHasher.cs" />
     <Compile Include="..\..\src\Quantum.Platform\Services\PhysicalPluginPackageStore.cs"
              Link="Host\Services\PhysicalPluginPackageStore.cs" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="MailKit" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio">

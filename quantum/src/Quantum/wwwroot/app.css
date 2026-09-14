@@ -138,6 +138,11 @@ a {
   margin-top: auto;
 }
 
+.developer-nav-item {
+  flex: 0 0 auto;
+  margin-top: 4px;
+}
+
 .settings-nav-item {
   flex: 0 0 auto;
   margin-top: 4px;

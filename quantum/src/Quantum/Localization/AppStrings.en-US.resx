@@ -186,4 +186,96 @@
   <data name="{0} 与当前 Quantum {1} 不兼容（要求 {2}）。" xml:space="preserve"><value>{0} is incompatible with Quantum {1} (requires {2}).</value></data>
   <data name="未知版本" xml:space="preserve"><value>unknown version</value></data>
   <data name="下载的插件包超过本机安装大小限制。" xml:space="preserve"><value>The downloaded package exceeds the local installation size limit.</value></data>
+  <data name="DEVELOPER CONSOLE" xml:space="preserve"><value>DEVELOPER CONSOLE</value></data>
+  <data name="PUBLISH ON QUANTUM" xml:space="preserve"><value>PUBLISH ON QUANTUM</value></data>
+  <data name="MY PLUGINS" xml:space="preserve"><value>MY PLUGINS</value></data>
+  <data name="PLUGIN SETTINGS" xml:space="preserve"><value>PLUGIN SETTINGS</value></data>
+  <data name="NEW PLUGIN" xml:space="preserve"><value>NEW PLUGIN</value></data>
+  <data name="RELEASES" xml:space="preserve"><value>RELEASES</value></data>
+  <data name="REVIEW QUEUE" xml:space="preserve"><value>REVIEW QUEUE</value></data>
+  <data name="DELETE PLUGIN" xml:space="preserve"><value>DELETE PLUGIN</value></data>
+  <data name="开发者中心" xml:space="preserve"><value>Developer center</value></data>
+  <data name="发布插件、管理版本，并完成平台审核。" xml:space="preserve"><value>Publish plugins, manage releases, and review submissions.</value></data>
+  <data name="退出" xml:space="preserve"><value>Sign out</value></data>
+  <data name="正在恢复开发者会话…" xml:space="preserve"><value>Restoring your developer session…</value></data>
+  <data name="让插件抵达每一台 Quantum" xml:space="preserve"><value>Bring your plugin to every Quantum</value></data>
+  <data name="开发者账号使用邮箱和密码登录。插件包上传后进入审核，审核结果会通过邮件通知。" xml:space="preserve"><value>Developer accounts use email and password. Uploaded packages enter review, with results delivered by email.</value></data>
+  <data name="创建插件条目" xml:space="preserve"><value>Create a plugin listing</value></data>
+  <data name="上传带版本号的 ZIP" xml:space="preserve"><value>Upload a versioned ZIP</value></data>
+  <data name="通过审核后进入市场" xml:space="preserve"><value>Enter the marketplace after review</value></data>
+  <data name="登录" xml:space="preserve"><value>Sign in</value></data>
+  <data name="注册" xml:space="preserve"><value>Register</value></data>
+  <data name="开发者名称" xml:space="preserve"><value>Developer name</value></data>
+  <data name="邮箱" xml:space="preserve"><value>Email</value></data>
+  <data name="密码" xml:space="preserve"><value>Password</value></data>
+  <data name="密码至少包含 12 个字符。" xml:space="preserve"><value>Passwords must contain at least 12 characters.</value></data>
+  <data name="使用邮箱登录" xml:space="preserve"><value>Sign in with email</value></data>
+  <data name="创建开发者账号" xml:space="preserve"><value>Create developer account</value></data>
+  <data name="发布管理" xml:space="preserve"><value>Publishing</value></data>
+  <data name="审核工作台" xml:space="preserve"><value>Review console</value></data>
+  <data name="我的插件" xml:space="preserve"><value>My plugins</value></data>
+  <data name="新建插件" xml:space="preserve"><value>New plugin</value></data>
+  <data name="还没有插件，先创建一个条目。" xml:space="preserve"><value>No plugins yet. Create a listing to begin.</value></data>
+  <data name="无版本" xml:space="preserve"><value>No releases</value></data>
+  <data name="插件信息" xml:space="preserve"><value>Plugin details</value></data>
+  <data name="删除插件" xml:space="preserve"><value>Delete plugin</value></data>
+  <data name="创建插件" xml:space="preserve"><value>Create plugin</value></data>
+  <data name="插件 ID" xml:space="preserve"><value>Plugin ID</value></data>
+  <data name="名称" xml:space="preserve"><value>Name</value></data>
+  <data name="简介" xml:space="preserve"><value>Description</value></data>
+  <data name="标签" xml:space="preserve"><value>Tags</value></data>
+  <data name="使用逗号分隔，最多 20 个标签。" xml:space="preserve"><value>Comma-separated, up to 20 tags.</value></data>
+  <data name="取消选择" xml:space="preserve"><value>Clear selection</value></data>
+  <data name="保存插件信息" xml:space="preserve"><value>Save plugin details</value></data>
+  <data name="版本管理" xml:space="preserve"><value>Release management</value></data>
+  <data name="{0} 个版本" xml:space="preserve"><value>{0} releases</value></data>
+  <data name="版本" xml:space="preserve"><value>Version</value></data>
+  <data name="Quantum 版本范围" xml:space="preserve"><value>Quantum version range</value></data>
+  <data name="发布说明" xml:space="preserve"><value>Release notes</value></data>
+  <data name="插件 ZIP" xml:space="preserve"><value>Plugin ZIP</value></data>
+  <data name="选择文件" xml:space="preserve"><value>Choose a file</value></data>
+  <data name="上传并提交审核" xml:space="preserve"><value>Upload for review</value></data>
+  <data name="待审核" xml:space="preserve"><value>Pending</value></data>
+  <data name="已发布" xml:space="preserve"><value>Published</value></data>
+  <data name="已拒绝" xml:space="preserve"><value>Rejected</value></data>
+  <data name="待审核版本" xml:space="preserve"><value>Pending releases</value></data>
+  <data name="审核队列已清空" xml:space="preserve"><value>The review queue is clear</value></data>
+  <data name="审核意见（可选）" xml:space="preserve"><value>Review notes (optional)</value></data>
+  <data name="拒绝" xml:space="preserve"><value>Reject</value></data>
+  <data name="通过并发布" xml:space="preserve"><value>Approve and publish</value></data>
+  <data name="永久删除 {0}？" xml:space="preserve"><value>Permanently delete {0}?</value></data>
+  <data name="该插件的所有版本和服务器包文件都会被永久删除。" xml:space="preserve"><value>Every release and server-side package for this plugin will be permanently deleted.</value></data>
+  <data name="永久删除" xml:space="preserve"><value>Delete permanently</value></data>
+  <data name="登录成功。" xml:space="preserve"><value>Signed in.</value></data>
+  <data name="插件信息已保存。" xml:space="preserve"><value>Plugin details saved.</value></data>
+  <data name="插件已删除。" xml:space="preserve"><value>Plugin deleted.</value></data>
+  <data name="版本已提交审核。" xml:space="preserve"><value>The release was submitted for review.</value></data>
+  <data name="版本已发布。" xml:space="preserve"><value>The release was published.</value></data>
+  <data name="版本已拒绝。" xml:space="preserve"><value>The release was rejected.</value></data>
+  <data name="TEST CHANNEL" xml:space="preserve"><value>TEST CHANNEL</value></data>
+  <data name="CLIENT SCOPE" xml:space="preserve"><value>CLIENT SCOPE</value></data>
+  <data name="DEVELOPER SIGN IN" xml:space="preserve"><value>DEVELOPER SIGN IN</value></data>
+  <data name="TEST RELEASES" xml:space="preserve"><value>TEST RELEASES</value></data>
+  <data name="LOCAL INSTALL CHECK" xml:space="preserve"><value>LOCAL INSTALL CHECK</value></data>
+  <data name="开发者测试" xml:space="preserve"><value>Developer testing</value></data>
+  <data name="登录后下载并安装你自己的待审核版本；发布与审核统一在网页端完成。" xml:space="preserve"><value>Sign in to download and install your own pending releases. Publishing and review stay on the web.</value></data>
+  <data name="打开网页发布台" xml:space="preserve"><value>Open publishing portal</value></data>
+  <data name="客户端只负责下载安装" xml:space="preserve"><value>The client only downloads and installs</value></data>
+  <data name="创建插件、上传版本和审核都在 Quantum Platform 网页端进行。客户端登录仅用于识别你拥有的测试版本。" xml:space="preserve"><value>Create plugins, upload releases, and review them in Quantum Platform on the web. Client sign-in only identifies test releases you own.</value></data>
+  <data name="邮箱登录" xml:space="preserve"><value>Email sign-in</value></data>
+  <data name="查看自有版本" xml:space="preserve"><value>View owned releases</value></data>
+  <data name="下载并本机预检" xml:space="preserve"><value>Download and preflight locally</value></data>
+  <data name="登录开发者账号" xml:space="preserve"><value>Sign in to your developer account</value></data>
+  <data name="登录中…" xml:space="preserve"><value>Signing in…</value></data>
+  <data name="还没有账号？请在网页发布台注册。" xml:space="preserve"><value>Need an account? Register in the web publishing portal.</value></data>
+  <data name="还没有插件" xml:space="preserve"><value>No plugins yet</value></data>
+  <data name="请先前往网页发布台创建并上传版本。" xml:space="preserve"><value>Create a plugin and upload a release in the web publishing portal first.</value></data>
+  <data name="选择一个插件查看测试版本" xml:space="preserve"><value>Select a plugin to view test releases</value></data>
+  <data name="只有你拥有的待审核版本会获得测试下载权限。" xml:space="preserve"><value>Only pending releases you own receive test download access.</value></data>
+  <data name="个版本" xml:space="preserve"><value>releases</value></data>
+  <data name="仅你与审核人员可下载" xml:space="preserve"><value>Downloadable only by you and reviewers</value></data>
+  <data name="市场公开版本" xml:space="preserve"><value>Public marketplace release</value></data>
+  <data name="下载并安装" xml:space="preserve"><value>Download and install</value></data>
+  <data name="被拒绝的版本不可下载，请在网页端上传新版本。" xml:space="preserve"><value>Rejected releases cannot be downloaded. Upload a new version on the web.</value></data>
+  <data name="请先选择插件。" xml:space="preserve"><value>Select a plugin first.</value></data>
 </root>

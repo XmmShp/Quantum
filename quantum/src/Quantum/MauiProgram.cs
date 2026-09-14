@@ -1,5 +1,6 @@
 using Microsoft.Extensions.Logging;
 using Microsoft.AspNetCore.Components;
+using Microsoft.Extensions.Localization;
 using NOF.Hosting;
 using NOF.Hosting.Maui;
 using Quantum.Logging;
@@ -43,6 +44,9 @@ public static class MauiProgram
         builder.Services.AddSingleton(new CultureService(
             requestedCulture,
             cultureName => Preferences.Default.Set(CultureService.PreferenceKey, cultureName)));
+        builder.Services.AddSingleton(
+            typeof(IStringLocalizer<>),
+            typeof(CultureAwareStringLocalizer<>));
 #if DEBUG
         builder.Services.AddBlazorWebViewDeveloperTools();
 #endif
@@ -69,6 +73,14 @@ public static class MauiProgram
         {
             Timeout = TimeSpan.FromMinutes(5)
         });
+        builder.Services.AddSingleton(new QuantumMarketplaceSession(
+            () => SecureStorage.Default.GetAsync("quantum.marketplace.access-token"),
+            token => SecureStorage.Default.SetAsync("quantum.marketplace.access-token", token),
+            () =>
+            {
+                SecureStorage.Default.Remove("quantum.marketplace.access-token");
+                return Task.CompletedTask;
+            }));
         builder.Services.AddSingleton<IQuantumMarketplaceClient, QuantumMarketplaceClient>();
         builder.Services.AddSingleton<PluginStaticAssetFileProvider>();
         builder.Services.AddScoped<WebPluginInteropBridge>();

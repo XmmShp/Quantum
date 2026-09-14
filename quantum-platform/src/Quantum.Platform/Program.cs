@@ -24,13 +24,17 @@ builder.Services.AddHealthChecks();
 var app = await builder.BuildAsync();
 
 app.MapHealthChecks("/health/live", new HealthCheckOptions { Predicate = static _ => false });
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseAuthentication();
 app.UseAuthorization();
-app.MapGet("/", () => Results.Ok(new
+app.MapGet("/", () => Results.Redirect("/portal/"));
+app.MapGet("/api/status", () => Results.Ok(new
 {
     service = "Quantum Platform",
     protocol = "JSON-RPC 2.0",
-    endpoint = "/rpc"
+    endpoint = "/rpc",
+    portal = "/portal/"
 }));
 
 await app.RunAsync();

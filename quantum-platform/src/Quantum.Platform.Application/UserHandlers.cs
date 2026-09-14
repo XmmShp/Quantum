@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using NOF.Application;
 using NOF.Contract;
 using NOF.Domain;
@@ -12,7 +13,9 @@ public sealed class RegisterUser(
     AuditWriter auditWriter,
     IIdGenerator idGenerator,
     TimeProvider timeProvider,
-    IDbContext dbContext) : QuantumPlatformService.RegisterUser
+    IDbContext dbContext,
+    IPlatformEmailSender emailSender,
+    ILogger<RegisterUser> logger) : QuantumPlatformService.RegisterUser
 {
     public override async Task<Result<UserSummary>> HandleAsync(
         RegisterUserRequest request,
@@ -51,6 +54,20 @@ public sealed class RegisterUser(
                 null,
                 cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
+            try
+            {
+                await emailSender.SendAsync(
+                    user.Email,
+                    "Welcome to Quantum Platform",
+                    $"Hello {user.Username}, your Quantum developer account is ready.",
+                    $"<p>Hello <strong>{System.Net.WebUtility.HtmlEncode(user.Username)}</strong>,</p><p>Your Quantum developer account is ready.</p>",
+                    cancellationToken);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                logger.LogWarning(exception, "Could not send the developer welcome email to user {UserId}.", user.Id);
+            }
+
             return user.ToSummary();
         }
         catch (ArgumentException exception)

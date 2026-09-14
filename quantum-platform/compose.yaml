@@ -7,6 +7,17 @@ services:
       ConnectionStrings__postgres: Host=postgres;Port=5432;Database=quantum_platform;Username=postgres;Password=${POSTGRES_PASSWORD:?set POSTGRES_PASSWORD}
       QuantumPlatform__Jwt__SigningKey: ${QUANTUM_PLATFORM_JWT_SIGNING_KEY:?set QUANTUM_PLATFORM_JWT_SIGNING_KEY}
       QuantumPlatform__Storage__BasePath: /app/Files
+      QuantumPlatform__BootstrapAdmin__Username: ${QUANTUM_PLATFORM_BOOTSTRAP_ADMIN_USERNAME:-}
+      QuantumPlatform__BootstrapAdmin__Email: ${QUANTUM_PLATFORM_BOOTSTRAP_ADMIN_EMAIL:-}
+      QuantumPlatform__BootstrapAdmin__Password: ${QUANTUM_PLATFORM_BOOTSTRAP_ADMIN_PASSWORD:-}
+      QuantumPlatform__Email__Enabled: ${QUANTUM_PLATFORM_EMAIL_ENABLED:-false}
+      QuantumPlatform__Email__SmtpHost: ${QUANTUM_PLATFORM_SMTP_HOST:-}
+      QuantumPlatform__Email__SmtpPort: ${QUANTUM_PLATFORM_SMTP_PORT:-587}
+      QuantumPlatform__Email__EnableSsl: ${QUANTUM_PLATFORM_SMTP_SSL:-true}
+      QuantumPlatform__Email__Username: ${QUANTUM_PLATFORM_SMTP_USERNAME:-}
+      QuantumPlatform__Email__Password: ${QUANTUM_PLATFORM_SMTP_PASSWORD:-}
+      QuantumPlatform__Email__FromAddress: ${QUANTUM_PLATFORM_EMAIL_FROM:-}
+      QuantumPlatform__Email__FromName: ${QUANTUM_PLATFORM_EMAIL_FROM_NAME:-Quantum Platform}
     ports:
       - "5080:8080"
     volumes:

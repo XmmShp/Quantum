@@ -18,6 +18,16 @@ public interface IPlatformTokenIssuer
     IssuedAccessToken Issue(PlatformUser user);
 }
 
+public interface IPlatformEmailSender
+{
+    Task SendAsync(
+        string recipient,
+        string subject,
+        string textBody,
+        string htmlBody,
+        CancellationToken cancellationToken);
+}
+
 public sealed record IssuedAccessToken(string AccessToken, DateTime ExpiresAtUtc);
 
 public interface IPluginPackageStore

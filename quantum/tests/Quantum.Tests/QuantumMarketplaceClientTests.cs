@@ -135,6 +135,93 @@ public sealed class QuantumMarketplaceClientTests
         Assert.Contains("checksum", exception.Message, StringComparison.OrdinalIgnoreCase);
     }
 
+    [Fact]
+    public async Task AuthenticatedRequest_UsesTokenSavedByEmailPasswordLogin()
+    {
+        var responses = new Queue<HttpResponseMessage>(
+        [
+            JsonResponse("""
+                {"jsonrpc":"2.0","id":"1","result":{"isSuccess":true,"value":{"accessToken":"secret-token","expiresAtUtc":"2026-09-15T00:00:00Z","user":{"userId":"1","username":"developer","email":"developer@example.com","roles":3}}}}
+                """),
+            JsonResponse("""
+                {"jsonrpc":"2.0","id":"2","result":{"isSuccess":true,"value":[]}}
+                """)
+        ]);
+        string? authorization = null;
+        string? storedToken = null;
+        var session = new QuantumMarketplaceSession(
+            () => Task.FromResult<string?>(storedToken),
+            token => { storedToken = token; return Task.CompletedTask; },
+            () => { storedToken = null; return Task.CompletedTask; });
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            authorization = request.Headers.Authorization?.ToString() ?? authorization;
+            return Task.FromResult(responses.Dequeue());
+        });
+        var client = new QuantumMarketplaceClient(
+            new HttpClient(handler),
+            new QuantumMarketplaceOptions(new Uri("https://market.example/"), "0.1.0"),
+            session);
+
+        await session.LoginAsync(client, "developer@example.com", "password");
+        await client.ListManagedPluginsAsync();
+
+        Assert.Equal("secret-token", storedToken);
+        Assert.Equal("Bearer secret-token", authorization);
+        Assert.Equal("developer@example.com", session.User!.Email);
+    }
+
+    [Fact]
+    public async Task DownloadAsync_SendsSavedTokenForOwnedPendingRelease()
+    {
+        var archive = Encoding.UTF8.GetBytes("pending plugin archive");
+        var sha256 = Convert.ToHexStringLower(SHA256.HashData(archive));
+        var responses = new Queue<HttpResponseMessage>(
+        [
+            JsonResponse("""
+                {"jsonrpc":"2.0","id":"1","result":{"isSuccess":true,"value":{"accessToken":"pending-token","expiresAtUtc":"2026-09-15T00:00:00Z","user":{"userId":"1","username":"developer","email":"developer@example.com","roles":3}}}}
+                """),
+            JsonResponse($$"""
+                {
+                  "jsonrpc": "2.0",
+                  "id": "2",
+                  "result": {
+                    "isSuccess": true,
+                    "value": {
+                      "fileName": "pending.zip",
+                      "contentType": "application/zip",
+                      "packageArchiveBase64": "{{Convert.ToBase64String(archive)}}",
+                      "packageSizeBytes": {{archive.Length}},
+                      "packageSha256": "{{sha256}}"
+                    }
+                  }
+                }
+                """)
+        ]);
+        string? authorization = null;
+        var session = new QuantumMarketplaceSession(
+            () => Task.FromResult<string?>(null),
+            _ => Task.CompletedTask,
+            () => Task.CompletedTask);
+        var handler = new StubHttpMessageHandler(request =>
+        {
+            if (request.Headers.Authorization is not null)
+            {
+                authorization = request.Headers.Authorization.ToString();
+            }
+            return Task.FromResult(responses.Dequeue());
+        });
+        var client = new QuantumMarketplaceClient(
+            new HttpClient(handler),
+            new QuantumMarketplaceOptions(new Uri("https://market.example/"), "0.1.0"),
+            session);
+
+        await session.LoginAsync(client, "developer@example.com", "password");
+        await client.DownloadAsync("quantum.plugin.calendar", "1.1.0-beta.1");
+
+        Assert.Equal("Bearer pending-token", authorization);
+    }
+
     private static QuantumMarketplaceClient CreateClient(HttpMessageHandler handler)
         => new(
             new HttpClient(handler),

@@ -1,3 +1,4 @@
+using Microsoft.Extensions.Logging;
 using NOF.Application;
 using NOF.Contract;
 using NOF.Domain;
@@ -157,6 +158,7 @@ public sealed class DownloadPluginRelease(
     IRepository<PluginListing> listings,
     IRepository<PluginRelease> releases,
     IPluginPackageStore packageStore,
+    PlatformCallerResolver callerResolver,
     IDbContext dbContext) : QuantumPlatformService.DownloadPluginRelease
 {
     public override async Task<Result<DownloadPluginReleaseResponse>> HandleAsync(
@@ -186,17 +188,20 @@ public sealed class DownloadPluginRelease(
 
         var release = await releases
             .Where(candidate => candidate.ListingId == listing.Id &&
-                candidate.Version == version &&
-                candidate.Status == PluginReleaseStatus.Published)
+                candidate.Version == version)
             .SingleOrDefaultAsync(cancellationToken);
-        if (release is null)
+        var caller = await callerResolver.ResolveOptionalAsync(cancellationToken);
+        if (release is null || !PluginReleaseDownloadPolicy.CanDownload(listing, release, caller))
         {
             return Result.Fail("plugin_release_not_found", "The published plugin release was not found.");
         }
 
         var archive = await packageStore.ReadAsync(release.PackagePath, cancellationToken);
-        release.RecordDownload();
-        await dbContext.SaveChangesAsync(cancellationToken);
+        if (release.Status == PluginReleaseStatus.Published)
+        {
+            release.RecordDownload();
+            await dbContext.SaveChangesAsync(cancellationToken);
+        }
         return new DownloadPluginReleaseResponse
         {
             FileName = $"{listing.PluginId}-{release.Version}.zip",
@@ -265,9 +270,12 @@ public sealed class CheckCompatibility(
 public sealed class ReviewPluginRelease(
     IRepository<PluginListing> listings,
     IRepository<PluginRelease> releases,
+    IRepository<PlatformUser> users,
     PlatformCallerResolver callerResolver,
     AuditWriter auditWriter,
-    IDbContext dbContext) : QuantumPlatformService.ReviewPluginRelease
+    IDbContext dbContext,
+    IPlatformEmailSender emailSender,
+    ILogger<ReviewPluginRelease> logger) : QuantumPlatformService.ReviewPluginRelease
 {
     public override async Task<Result<PluginReleaseSummary>> HandleAsync(
         ReviewPluginReleaseRequest request,
@@ -316,6 +324,30 @@ public sealed class ReviewPluginRelease(
                 release.Id,
                 cancellationToken);
             await dbContext.SaveChangesAsync(cancellationToken);
+            var owner = await users.AsNoTracking()
+                .Where(candidate => candidate.Id == listing.AuthorUserId)
+                .SingleOrDefaultAsync(cancellationToken);
+            if (owner is not null)
+            {
+                try
+                {
+                    var status = release.Status == PluginReleaseStatus.Published ? "published" : "rejected";
+                    var encodedPlugin = System.Net.WebUtility.HtmlEncode(listing.PluginId);
+                    var encodedVersion = System.Net.WebUtility.HtmlEncode(release.Version);
+                    var encodedNotes = System.Net.WebUtility.HtmlEncode(release.ReviewNotes ?? string.Empty);
+                    await emailSender.SendAsync(
+                        owner.Email,
+                        $"Quantum review: {listing.PluginId}@{release.Version} {status}",
+                        $"Your release {listing.PluginId}@{release.Version} was {status}.\n{release.ReviewNotes}",
+                        $"<p>Your release <strong>{encodedPlugin}@{encodedVersion}</strong> was {status}.</p><p>{encodedNotes}</p>",
+                        cancellationToken);
+                }
+                catch (Exception exception) when (exception is not OperationCanceledException)
+                {
+                    logger.LogWarning(exception, "Could not send review notification for release {ReleaseId}.", release.Id);
+                }
+            }
+
             return release.ToSummary(listing.PluginId);
         }
         catch (ArgumentException exception)

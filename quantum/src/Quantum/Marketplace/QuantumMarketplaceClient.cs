@@ -8,16 +8,34 @@ public sealed class QuantumMarketplaceClient : IQuantumMarketplaceClient
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     private readonly HttpClient _httpClient;
+    private readonly QuantumMarketplaceSession? _session;
 
-    public QuantumMarketplaceClient(HttpClient httpClient, QuantumMarketplaceOptions options)
+    public QuantumMarketplaceClient(
+        HttpClient httpClient,
+        QuantumMarketplaceOptions options,
+        QuantumMarketplaceSession? session = null)
     {
         ArgumentNullException.ThrowIfNull(httpClient);
         ArgumentNullException.ThrowIfNull(options);
         _httpClient = httpClient;
+        _session = session;
         BaseAddress = options.BaseAddress;
     }
 
     public Uri BaseAddress { get; }
+
+    public Task<MarketplaceLogin> LoginAsync(
+        string email,
+        string password,
+        CancellationToken cancellationToken = default)
+        => InvokeAsync<MarketplaceLogin>(
+            "Login",
+            new { email = email.Trim(), password },
+            AuthenticationMode.None,
+            cancellationToken);
+
+    public Task<MarketplaceUser> GetCurrentUserAsync(CancellationToken cancellationToken = default)
+        => InvokeAsync<MarketplaceUser>("GetCurrentUser", new { }, AuthenticationMode.Required, cancellationToken);
 
     public async Task<IReadOnlyList<MarketplacePlugin>> ListPluginsAsync(
         string? search = null,
@@ -30,6 +48,7 @@ public sealed class QuantumMarketplaceClient : IQuantumMarketplaceClient
                 search = string.IsNullOrWhiteSpace(search) ? null : search.Trim(),
                 tags = tags?.Where(static tag => !string.IsNullOrWhiteSpace(tag)).ToArray() ?? []
             },
+            AuthenticationMode.None,
             cancellationToken);
 
     public Task<MarketplacePluginDetails> GetPluginAsync(
@@ -38,6 +57,7 @@ public sealed class QuantumMarketplaceClient : IQuantumMarketplaceClient
         => InvokeAsync<MarketplacePluginDetails>(
             "GetPlugin",
             new { pluginId = RequirePluginId(pluginId) },
+            AuthenticationMode.None,
             cancellationToken);
 
     public Task<MarketplaceCompatibility> CheckCompatibilityAsync(
@@ -49,6 +69,7 @@ public sealed class QuantumMarketplaceClient : IQuantumMarketplaceClient
         return InvokeAsync<MarketplaceCompatibility>(
             "CheckCompatibility",
             new { pluginId = RequirePluginId(pluginId), quantumVersion = quantumVersion.Trim() },
+            AuthenticationMode.None,
             cancellationToken);
     }
 
@@ -61,6 +82,7 @@ public sealed class QuantumMarketplaceClient : IQuantumMarketplaceClient
         var response = await InvokeAsync<DownloadResponse>(
             "DownloadPluginRelease",
             new { pluginId = RequirePluginId(pluginId), version = version.Trim() },
+            AuthenticationMode.Optional,
             cancellationToken);
 
         byte[] archive;
@@ -94,9 +116,27 @@ public sealed class QuantumMarketplaceClient : IQuantumMarketplaceClient
             response.PackageSha256);
     }
 
+    public async Task<IReadOnlyList<MarketplacePlugin>> ListManagedPluginsAsync(
+        CancellationToken cancellationToken = default)
+        => await InvokeAsync<MarketplacePlugin[]>(
+            "ListManagedPlugins",
+            new { },
+            AuthenticationMode.Required,
+            cancellationToken);
+
+    public async Task<IReadOnlyList<MarketplaceRelease>> ListPluginReleasesAsync(
+        string pluginId,
+        CancellationToken cancellationToken = default)
+        => await InvokeAsync<MarketplaceRelease[]>(
+            "ListPluginReleases",
+            new { pluginId = RequirePluginId(pluginId) },
+            AuthenticationMode.Required,
+            cancellationToken);
+
     private async Task<T> InvokeAsync<T>(
         string method,
         object parameters,
+        AuthenticationMode authenticationMode,
         CancellationToken cancellationToken)
     {
         var request = new
@@ -106,11 +146,22 @@ public sealed class QuantumMarketplaceClient : IQuantumMarketplaceClient
             method,
             @params = parameters
         };
-        using var response = await _httpClient.PostAsJsonAsync(
-            new Uri(BaseAddress, "rpc"),
-            request,
-            JsonOptions,
-            cancellationToken);
+        using var requestMessage = new HttpRequestMessage(HttpMethod.Post, new Uri(BaseAddress, "rpc"))
+        {
+            Content = JsonContent.Create(request, options: JsonOptions)
+        };
+        var accessToken = _session?.AccessToken;
+        if (authenticationMode == AuthenticationMode.Required && string.IsNullOrWhiteSpace(accessToken))
+        {
+            throw new MarketplaceException("Marketplace authentication is required.");
+        }
+
+        if (!string.IsNullOrWhiteSpace(accessToken) && authenticationMode != AuthenticationMode.None)
+        {
+            requestMessage.Headers.Authorization = new("Bearer", accessToken);
+        }
+
+        using var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
         if (!response.IsSuccessStatusCode)
         {
             throw new MarketplaceException(
@@ -198,4 +249,11 @@ public sealed class QuantumMarketplaceClient : IQuantumMarketplaceClient
         string PackageArchiveBase64,
         long PackageSizeBytes,
         string PackageSha256);
+
+    private enum AuthenticationMode
+    {
+        None,
+        Optional,
+        Required
+    }
 }
