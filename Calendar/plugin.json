@@ -1,0 +1,38 @@
+{
+  "id": "quantum.plugin.calendar",
+  "version": "1.0.0",
+  "entryAssembly": "Quantum.CalendarPlugin.dll",
+  "database": {
+    "migrations": "./migrations"
+  },
+  "dependencies": [],
+  "integrations": [],
+  "ui": {
+    "routes": [
+      {
+        "path": "/plugins/calendar",
+        "component": "Quantum.OfficialPlugins.Calendar.Pages.Calendar",
+        "title": "日历",
+        "titles": { "en-US": "Calendar" },
+        "icon": "日",
+        "order": 100,
+        "showInNavigation": true
+      },
+      {
+        "path": "/plugins/calendar/tasks",
+        "component": "Quantum.OfficialPlugins.Calendar.Pages.Tasks",
+        "title": "待办",
+        "titles": { "en-US": "Tasks" },
+        "icon": "✓",
+        "order": 101,
+        "showInNavigation": true
+      }
+    ]
+  },
+  "web": {
+    "head": [
+      "<link rel=\"stylesheet\" href=\"_content/quantum.plugin.calendar/Quantum.CalendarPlugin.bundle.scp.css\">"
+    ],
+    "postBlazor": []
+  }
+}

@@ -1,0 +1,408 @@
+@namespace Quantum.OfficialPlugins.Calendar.Pages
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.Localization
+@using Quantum.OfficialPlugins.Calendar.Application
+@using Quantum.OfficialPlugins.Calendar.Domain
+@using Quantum.OfficialPlugins.Calendar.Localization
+@inject ICalendarApplicationService CalendarService
+@inject IStringLocalizer<PluginStrings> L
+
+<PageTitle>@L["日历"] · Quantum</PageTitle>
+
+<section class="calendar-shell">
+    <header class="page-header">
+        <div>
+            <p class="eyebrow">@L["CALENDAR"]</p>
+            <h1>@MonthTitle</h1>
+            <p>@L["把日程和待办放在同一条时间线上。"]</p>
+        </div>
+        <div class="toolbar" aria-label="@L["月份导航"]">
+            <button type="button" class="icon-button" aria-label="@L["上个月"]" disabled="@_isBusy" @onclick="() => ChangeMonthAsync(-1)">←</button>
+            <button type="button" disabled="@_isBusy" @onclick="ShowTodayAsync">@L["今天"]</button>
+            <button type="button" class="icon-button" aria-label="@L["下个月"]" disabled="@_isBusy" @onclick="() => ChangeMonthAsync(1)">→</button>
+            <button type="button" class="primary-button" disabled="@_isBusy" @onclick="BeginCreate">＋ @L["新建"]</button>
+        </div>
+    </header>
+
+    @if (_errorMessage is not null)
+    {
+        <div class="error-banner" role="alert">
+            <span>@_errorMessage</span>
+            <button type="button" @onclick="() => _errorMessage = null">@L["关闭"]</button>
+        </div>
+    }
+
+    <div class="calendar-layout" aria-busy="@_isBusy">
+        <div class="calendar-board">
+            <div class="weekday-row" aria-hidden="true">
+                @foreach (var weekday in Weekdays)
+                {
+                    <span>@weekday</span>
+                }
+            </div>
+            <div class="day-grid" role="grid" aria-label="@MonthTitle">
+                @foreach (var day in CalendarDays)
+                {
+                    <button @key="day.Date"
+                            type="button"
+                            class="@GetDayClass(day)"
+                            aria-label="@GetDayAriaLabel(day)"
+                            aria-pressed="@(day.Date == _selectedDate)"
+                            @onclick="() => SelectDateAsync(day.Date)">
+                        <time datetime="@day.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">@day.Date.Day</time>
+                        <div class="day-entries">
+                            @foreach (var item in day.Items.Take(2))
+                            {
+                                <span class="entry-chip @item.Style @(item.IsCompleted ? "completed" : null)">
+                                    <span aria-hidden="true">@(item.Kind == CalendarEntryKind.Task ? "✓" : "●")</span>
+                                    @item.Title
+                                </span>
+                            }
+                            @if (day.Items.Count > 2)
+                            {
+                                <span class="more-entries">+@(day.Items.Count - 2)</span>
+                            }
+                        </div>
+                    </button>
+                }
+            </div>
+        </div>
+
+        <aside class="agenda-card" aria-live="polite">
+            <div class="agenda-heading">
+                <div>
+                    <p class="eyebrow">@L["SELECTED DAY"]</p>
+                    <div class="selected-date">
+                        <strong>@_selectedDate.Day</strong>
+                        <span>@SelectedDateTitle</span>
+                    </div>
+                </div>
+                <button type="button" class="round-add" aria-label="@L["新建"]" disabled="@_isBusy" @onclick="BeginCreate">＋</button>
+            </div>
+
+            @if (_isEditorOpen)
+            {
+                <section class="entry-editor" aria-label="@EditorTitle">
+                    <div class="editor-title">
+                        <h2>@EditorTitle</h2>
+                        <button type="button" aria-label="@L["关闭编辑器"]" @onclick="CancelEdit">×</button>
+                    </div>
+                    <div class="kind-switch" role="group" aria-label="@L["事项类型"]">
+                        <button type="button" class="@(_draft.Kind == CalendarEntryKind.Event ? "active" : null)" @onclick="() => SetDraftKind(CalendarEntryKind.Event)">@L["日程"]</button>
+                        <button type="button" class="@(_draft.Kind == CalendarEntryKind.Task ? "active" : null)" @onclick="() => SetDraftKind(CalendarEntryKind.Task)">@L["待办"]</button>
+                    </div>
+                    <label>
+                        <span>@L["标题"]</span>
+                        <input maxlength="120" placeholder="@L["要做什么？"]" @bind="_draft.Title" />
+                    </label>
+                    <div class="form-row">
+                        <label>
+                            <span>@L["日期"]</span>
+                            <input type="date" @bind="_draft.Date" />
+                        </label>
+                        <label>
+                            <span>@(_draft.Kind == CalendarEntryKind.Task ? L["截止时间"] : L["开始时间"])</span>
+                            <input type="time" @bind="_draft.StartTime" />
+                        </label>
+                    </div>
+                    @if (_draft.Kind == CalendarEntryKind.Event)
+                    {
+                        <label>
+                            <span>@L["结束时间（可选）"]</span>
+                            <input type="time" @bind="_draft.EndTime" />
+                        </label>
+                    }
+                    <label>
+                        <span>@L["备注"]</span>
+                        <textarea maxlength="1000" rows="3" placeholder="@L["补充一些细节…"]" @bind="_draft.Notes"></textarea>
+                    </label>
+                    <fieldset class="color-picker">
+                        <legend>@L["颜色"]</legend>
+                        @foreach (var style in Styles)
+                        {
+                            <button type="button"
+                                    class="swatch @style @(_draft.Style == style ? "selected" : null)"
+                                    aria-label="@style"
+                                    aria-pressed="@(_draft.Style == style)"
+                                    @onclick="() => _draft.Style = style"></button>
+                        }
+                    </fieldset>
+                    <div class="editor-actions">
+                        <button type="button" disabled="@_isBusy" @onclick="CancelEdit">@L["取消"]</button>
+                        <button type="button" class="primary-button" disabled="@(_isBusy || string.IsNullOrWhiteSpace(_draft.Title))" @onclick="SaveAsync">
+                            @(_editingId is null ? L["添加"] : L["保存"])
+                        </button>
+                    </div>
+                </section>
+            }
+            else if (SelectedItems.Count > 0)
+            {
+                <div class="agenda-list">
+                    @foreach (var item in SelectedItems)
+                    {
+                        <article @key="item.Id" class="agenda-entry @item.Style @(item.IsCompleted ? "completed" : null)">
+                            <div class="entry-meta">
+                                <span>@(item.Kind == CalendarEntryKind.Task ? L["待办"] : L["日程"])</span>
+                                <time>@FormatTime(item)</time>
+                            </div>
+                            <h2>@item.Title</h2>
+                            @if (!string.IsNullOrWhiteSpace(item.Notes))
+                            {
+                                <p>@item.Notes</p>
+                            }
+                            <div class="entry-actions">
+                                @if (item.Kind == CalendarEntryKind.Task)
+                                {
+                                    <button type="button" disabled="@_isBusy" @onclick="() => ToggleCompletedAsync(item)">
+                                        @(item.IsCompleted ? L["恢复"] : L["完成"])
+                                    </button>
+                                }
+                                <button type="button" disabled="@_isBusy" @onclick="() => BeginEdit(item)">@L["编辑"]</button>
+                                <button type="button" class="danger" disabled="@_isBusy" @onclick="() => DeleteAsync(item.Id)">@L["删除"]</button>
+                            </div>
+                        </article>
+                    }
+                </div>
+            }
+            else
+            {
+                <div class="empty-state">
+                    <span aria-hidden="true">○</span>
+                    <h2>@L["这一天还很自由"]</h2>
+                    <p>@L["添加日程或待办，让计划落到具体的一天。"]</p>
+                </div>
+            }
+
+            <footer class="month-stats">
+                <div><strong>@EventCount</strong><span>@L["本月日程"]</span></div>
+                <div><strong>@OpenTaskCount</strong><span>@L["未完成待办"]</span></div>
+                <div><strong>@FreeDayCount</strong><span>@L["自由日"]</span></div>
+            </footer>
+        </aside>
+    </div>
+</section>
+
+@code {
+    private static readonly string[] Styles = ["violet", "blue", "coral", "green"];
+
+    private static IReadOnlyList<string> Weekdays
+    {
+        get
+        {
+            var names = CultureInfo.CurrentCulture.DateTimeFormat.AbbreviatedDayNames;
+            return [.. names.Skip(1), names[0]];
+        }
+    }
+
+    private readonly DateOnly _today = DateOnly.FromDateTime(DateTime.Today);
+    private IReadOnlyList<CalendarEntryDetails> _items = [];
+    private DateOnly _visibleMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private DateOnly _selectedDate = DateOnly.FromDateTime(DateTime.Today);
+    private EntryDraft _draft = EntryDraft.Create(DateOnly.FromDateTime(DateTime.Today));
+    private Guid? _editingId;
+    private bool _isEditorOpen;
+    private bool _isBusy;
+    private string? _errorMessage;
+
+    private string MonthTitle => _visibleMonth.ToDateTime(TimeOnly.MinValue).ToString("Y", CultureInfo.CurrentCulture);
+    private string SelectedDateTitle => _selectedDate.ToDateTime(TimeOnly.MinValue).ToString("MMMM dddd", CultureInfo.CurrentCulture);
+    private string EditorTitle => _editingId is null ? L["新建事项"] : L["编辑事项"];
+    private IReadOnlyList<CalendarEntryDetails> SelectedItems => [.. _items.Where(item => item.Date == _selectedDate)];
+    private int EventCount => _items.Count(item => item.Kind == CalendarEntryKind.Event);
+    private int OpenTaskCount => _items.Count(item => item.Kind == CalendarEntryKind.Task && !item.IsCompleted);
+    private int FreeDayCount => DateTime.DaysInMonth(_visibleMonth.Year, _visibleMonth.Month) - _items.Select(item => item.Date).Distinct().Count();
+
+    private IReadOnlyList<CalendarDay> CalendarDays
+    {
+        get
+        {
+            var firstDay = new DateOnly(_visibleMonth.Year, _visibleMonth.Month, 1);
+            var mondayOffset = ((int)firstDay.DayOfWeek + 6) % 7;
+            var gridStart = firstDay.AddDays(-mondayOffset);
+            return [.. Enumerable.Range(0, 42).Select(offset =>
+            {
+                var date = gridStart.AddDays(offset);
+                return new CalendarDay(
+                    date,
+                    date.Month == _visibleMonth.Month && date.Year == _visibleMonth.Year,
+                    date == _today,
+                    [.. _items.Where(item => item.Date == date)]);
+            })];
+        }
+    }
+
+    protected override Task OnInitializedAsync() => LoadMonthAsync();
+
+    private async Task ChangeMonthAsync(int offset)
+    {
+        _visibleMonth = _visibleMonth.AddMonths(offset);
+        _selectedDate = new DateOnly(_visibleMonth.Year, _visibleMonth.Month, Math.Min(_selectedDate.Day, DateTime.DaysInMonth(_visibleMonth.Year, _visibleMonth.Month)));
+        CancelEdit();
+        await LoadMonthAsync();
+    }
+
+    private async Task ShowTodayAsync()
+    {
+        _visibleMonth = new DateOnly(_today.Year, _today.Month, 1);
+        _selectedDate = _today;
+        CancelEdit();
+        await LoadMonthAsync();
+    }
+
+    private async Task SelectDateAsync(DateOnly date)
+    {
+        _selectedDate = date;
+        CancelEdit();
+        if (date.Month != _visibleMonth.Month || date.Year != _visibleMonth.Year)
+        {
+            _visibleMonth = new DateOnly(date.Year, date.Month, 1);
+            await LoadMonthAsync();
+        }
+    }
+
+    private void BeginCreate()
+    {
+        _editingId = null;
+        _draft = EntryDraft.Create(_selectedDate);
+        _isEditorOpen = true;
+        _errorMessage = null;
+    }
+
+    private void BeginEdit(CalendarEntryDetails item)
+    {
+        _editingId = item.Id;
+        _draft = EntryDraft.From(item);
+        _isEditorOpen = true;
+        _errorMessage = null;
+    }
+
+    private void SetDraftKind(CalendarEntryKind kind)
+    {
+        _draft.Kind = kind;
+        if (kind == CalendarEntryKind.Task)
+        {
+            _draft.EndTime = null;
+        }
+    }
+
+    private void CancelEdit()
+    {
+        _editingId = null;
+        _isEditorOpen = false;
+    }
+
+    private async Task SaveAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_draft.Title))
+        {
+            return;
+        }
+
+        await ExecuteAsync(async () =>
+        {
+            var request = _draft.ToRequest();
+            if (_editingId is { } id)
+            {
+                await CalendarService.UpdateAsync(id, request);
+            }
+            else
+            {
+                await CalendarService.CreateAsync(request);
+            }
+
+            _selectedDate = _draft.Date;
+            _visibleMonth = new DateOnly(_draft.Date.Year, _draft.Date.Month, 1);
+            CancelEdit();
+            await LoadMonthCoreAsync();
+        });
+    }
+
+    private Task ToggleCompletedAsync(CalendarEntryDetails item)
+        => ExecuteAsync(async () =>
+        {
+            await CalendarService.SetCompletedAsync(item.Id, !item.IsCompleted);
+            await LoadMonthCoreAsync();
+        });
+
+    private Task DeleteAsync(Guid id)
+        => ExecuteAsync(async () =>
+        {
+            await CalendarService.DeleteAsync(id);
+            await LoadMonthCoreAsync();
+        });
+
+    private Task LoadMonthAsync() => ExecuteAsync(LoadMonthCoreAsync);
+
+    private async Task LoadMonthCoreAsync()
+    {
+        var firstDay = new DateOnly(_visibleMonth.Year, _visibleMonth.Month, 1);
+        _items = await CalendarService.ListAsync(firstDay, firstDay.AddMonths(1).AddDays(-1));
+    }
+
+    private async Task ExecuteAsync(Func<Task> action)
+    {
+        _isBusy = true;
+        _errorMessage = null;
+        try
+        {
+            await action();
+        }
+        catch (Exception exception)
+        {
+            _errorMessage = exception.Message;
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private string GetDayClass(CalendarDay day)
+        => string.Join(" ", new[]
+        {
+            "day-cell",
+            day.IsVisibleMonth ? null : "outside-month",
+            day.IsToday ? "today" : null,
+            day.Date == _selectedDate ? "selected" : null
+        }.Where(value => value is not null));
+
+    private string GetDayAriaLabel(CalendarDay day)
+    {
+        var date = day.Date.ToDateTime(TimeOnly.MinValue).ToString("D", CultureInfo.CurrentCulture);
+        return L["{0}，{1} 个事项", date, day.Items.Count];
+    }
+
+    private static string FormatTime(CalendarEntryDetails item)
+        => item.EndTime is { } end
+            ? $"{item.StartTime:HH:mm}–{end:HH:mm}"
+            : item.StartTime.ToString("HH:mm", CultureInfo.InvariantCulture);
+
+    private sealed record CalendarDay(DateOnly Date, bool IsVisibleMonth, bool IsToday, IReadOnlyList<CalendarEntryDetails> Items);
+
+    private sealed class EntryDraft
+    {
+        public string Title { get; set; } = string.Empty;
+        public string Notes { get; set; } = string.Empty;
+        public CalendarEntryKind Kind { get; set; }
+        public DateOnly Date { get; set; }
+        public TimeOnly StartTime { get; set; }
+        public TimeOnly? EndTime { get; set; }
+        public string Style { get; set; } = "violet";
+
+        public SaveCalendarEntryRequest ToRequest() => new(Title, Notes, Kind, Date, StartTime, EndTime, Style);
+
+        public static EntryDraft Create(DateOnly date) => new() { Date = date, StartTime = new TimeOnly(9, 0) };
+
+        public static EntryDraft From(CalendarEntryDetails item) => new()
+        {
+            Title = item.Title,
+            Notes = item.Notes,
+            Kind = item.Kind,
+            Date = item.Date,
+            StartTime = item.StartTime,
+            EndTime = item.EndTime,
+            Style = item.Style
+        };
+    }
+}
