@@ -15,9 +15,19 @@ jobs:
   build-test:
     name: Windows MAUI build and tests
     runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: Quantum
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: Quantum
+
+      - uses: actions/checkout@v4
+        with:
+          repository: XmmShp/Quantum.Sdk
+          path: Quantum.Sdk
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
@@ -30,11 +40,11 @@ jobs:
           node-version: "24"
           cache: npm
           cache-dependency-path: |
-            sdk/typescript/package-lock.json
-            samples/Quantum.ExampleWebPlugin/package-lock.json
+            Quantum.Sdk/typescript/package-lock.json
+            Quantum/samples/Quantum.ExampleWebPlugin/package-lock.json
 
       - name: Build and test TypeScript SDK
-        run: npm ci --prefix sdk/typescript && npm test --prefix sdk/typescript
+        run: npm ci --prefix ../Quantum.Sdk/typescript && npm test --prefix ../Quantum.Sdk/typescript
 
       - name: Build and test example Web plugin
         run: npm ci --prefix samples/Quantum.ExampleWebPlugin && npm test --prefix samples/Quantum.ExampleWebPlugin
@@ -55,4 +65,4 @@ jobs:
         run: dotnet test quantum/tests/Quantum.Tests/Quantum.Tests.csproj -c ${{ env.CONFIGURATION }} --no-build
 
       - name: Test .NET plugin SDK
-        run: dotnet test sdk/dotnet/test/Quantum.Plugin.Abstraction.Tests/Quantum.Plugin.Abstraction.Tests.csproj -c ${{ env.CONFIGURATION }} --no-build
+        run: dotnet test ../Quantum.Sdk/dotnet/test/Quantum.Plugin.Abstraction.Tests/Quantum.Plugin.Abstraction.Tests.csproj -c ${{ env.CONFIGURATION }} --no-build

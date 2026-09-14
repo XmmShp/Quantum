@@ -15,7 +15,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../sdk/dotnet/src/Quantum.Plugin.Abstraction/Quantum.Plugin.Abstraction.csproj" />
+    <PackageReference Include="Quantum.Plugin.Abstraction" Version="0.1.0" />
     <PackageReference Include="NOF.Abstraction" />
     <PackageReference Include="NOF.Application" />
     <PackageReference Include="NOF.Contract" />

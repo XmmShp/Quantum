@@ -4,10 +4,15 @@
       "src": [
         {
           "files": [
-            "quantum/src/Quantum/**.csproj",
-            "sdk/dotnet/src/Quantum.Plugin.Abstraction/**.csproj"
+            "quantum/src/Quantum/**.csproj"
           ],
           "src": "."
+        },
+        {
+          "files": [
+            "dotnet/src/Quantum.Plugin.Abstraction/**.csproj"
+          ],
+          "src": "../Quantum.Sdk"
         }
       ],
       "dest": "api",

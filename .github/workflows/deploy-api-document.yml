@@ -20,9 +20,19 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     runs-on: windows-latest
+    defaults:
+      run:
+        working-directory: Quantum
 
     steps:
       - uses: actions/checkout@v4
+        with:
+          path: Quantum
+
+      - uses: actions/checkout@v4
+        with:
+          repository: XmmShp/Quantum.Sdk
+          path: Quantum.Sdk
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
@@ -38,7 +48,7 @@ jobs:
       - name: Upload to Pages
         uses: actions/upload-pages-artifact@v3
         with:
-          path: "_site"
+          path: "Quantum/_site"
 
       - name: Deploy to GitHub Pages
         id: deployment

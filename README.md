@@ -54,8 +54,8 @@ docs/                            架构与插件开发文档
 dotnet restore Quantum.slnx
 dotnet build Quantum.slnx
 dotnet test quantum/tests/Quantum.Tests/Quantum.Tests.csproj
-dotnet test sdk/dotnet/test/Quantum.Plugin.Abstraction.Tests/Quantum.Plugin.Abstraction.Tests.csproj
-npm ci --prefix sdk/typescript && npm test --prefix sdk/typescript
+dotnet test ../Quantum.Sdk/dotnet/test/Quantum.Plugin.Abstraction.Tests/Quantum.Plugin.Abstraction.Tests.csproj
+npm ci --prefix ../Quantum.Sdk/typescript && npm test --prefix ../Quantum.Sdk/typescript
 npm ci --prefix samples/Quantum.ExampleWebPlugin && npm test --prefix samples/Quantum.ExampleWebPlugin
 ```
 

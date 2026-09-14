@@ -12,7 +12,7 @@ Quantum (单一 NOF MAUI Host 项目)
 
 - `Quantum` 在一个项目内包含桌面组合根、Blazor UI，以及 `Quantum.Plugins` 下的插件模型、依赖规划、manifest、ALC、文件系统和 EventBus 实现；这些内部职责以目录组织，不再拆成独立程序集。
 - 同一个 `Quantum.csproj` 提供桌面 MAUI 目标和供测试、API 文档使用的普通 `net10.0` 核心目标；核心目标排除平台启动文件，但编译相同的插件实现源码。
-- `sdk/dotnet/src/Quantum.Plugin.Abstraction` 是宿主与插件共享的唯一 .NET SDK 和稳定 ABI，独立于宿主实现；程序集名、包名和命名空间均为单数形式 `Quantum.Plugin.Abstraction`，是插件兼容性边界。
+- `Quantum.Sdk/dotnet/src/Quantum.Plugin.Abstraction` 是独立仓库中的 .NET SDK 和稳定 ABI；程序集名、包名和命名空间均为单数形式 `Quantum.Plugin.Abstraction`，是插件兼容性边界。
 - manifest、运行时环境和 EventBus envelope 共用 SDK 中基于 NOF `IValueObject<string>` 生成的 `PluginId` 与
   `SemanticVersion` 值对象；Web adapter 保持
   字符串 JSON 形状，并在 TypeScript SDK 中映射为具有相同校验与比较语义的 branded string。
