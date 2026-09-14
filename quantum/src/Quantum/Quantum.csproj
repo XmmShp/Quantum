@@ -26,7 +26,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\..\..\Quantum.Sdk\dotnet\src\Quantum.Plugin.Abstraction\Quantum.Plugin.Abstraction.csproj" />
+    <PackageReference Include="Quantum.Plugin.Abstraction" />
   </ItemGroup>
 
   <ItemGroup>

@@ -29,11 +29,6 @@ quantum/
 │       └── Platforms/           macOS 与 Windows 启动入口
 └── tests/
     └── Quantum.Tests/           插件模型与运行时测试
-sdk/
-├── dotnet/
-│   ├── src/                     插件与宿主共享的 .NET ABI/SDK
-│   └── test/                    .NET SDK 独立测试
-└── typescript/                  Web 插件生命周期与互操作类型
 samples/
 ├── Quantum.ExamplePlugin/          .NET、Blazor、DI 与静态资源示例
 ├── Quantum.ExampleDependentPlugin/ 声明并验证强前置依赖的 .NET 示例
@@ -54,8 +49,6 @@ docs/                            架构与插件开发文档
 dotnet restore Quantum.slnx
 dotnet build Quantum.slnx
 dotnet test quantum/tests/Quantum.Tests/Quantum.Tests.csproj
-dotnet test ../Quantum.Sdk/dotnet/test/Quantum.Plugin.Abstraction.Tests/Quantum.Plugin.Abstraction.Tests.csproj
-npm ci --prefix ../Quantum.Sdk/typescript && npm test --prefix ../Quantum.Sdk/typescript
 npm ci --prefix samples/Quantum.ExampleWebPlugin && npm test --prefix samples/Quantum.ExampleWebPlugin
 ```
 

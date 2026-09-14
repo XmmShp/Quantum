@@ -7,12 +7,6 @@
             "quantum/src/Quantum/**.csproj"
           ],
           "src": "."
-        },
-        {
-          "files": [
-            "dotnet/src/Quantum.Plugin.Abstraction/**.csproj"
-          ],
-          "src": "../Quantum.Sdk"
         }
       ],
       "dest": "api",

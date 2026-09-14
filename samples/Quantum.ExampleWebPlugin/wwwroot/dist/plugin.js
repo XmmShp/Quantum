@@ -1,4 +1,4 @@
-// ../../../Quantum.Sdk/typescript/dist/index.js
+// node_modules/@io7/quantum-plugin-sdk/dist/index.js
 var PluginId = Object.freeze({
   maximumLength: 128,
   of(value) {

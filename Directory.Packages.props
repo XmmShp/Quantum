@@ -22,6 +22,7 @@
     <PackageVersion Include="NOF.Hosting.Maui" Version="$(NofVersion)" />
     <PackageVersion Include="NOF.Infrastructure" Version="$(NofVersion)" />
     <PackageVersion Include="NOF.Infrastructure.EntityFrameworkCore" Version="$(NofVersion)" />
+    <PackageVersion Include="Quantum.Plugin.Abstraction" Version="0.1.0" />
     <PackageVersion Include="Serilog" Version="4.4.0" />
     <PackageVersion Include="Serilog.Extensions.Logging" Version="10.0.0" />
     <PackageVersion Include="Serilog.Sinks.Console" Version="6.1.1" />

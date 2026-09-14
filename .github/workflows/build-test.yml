@@ -24,11 +24,6 @@ jobs:
         with:
           path: Quantum
 
-      - uses: actions/checkout@v4
-        with:
-          repository: XmmShp/Quantum.Sdk
-          path: Quantum.Sdk
-
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
@@ -39,12 +34,7 @@ jobs:
         with:
           node-version: "24"
           cache: npm
-          cache-dependency-path: |
-            Quantum.Sdk/typescript/package-lock.json
-            Quantum/samples/Quantum.ExampleWebPlugin/package-lock.json
-
-      - name: Build and test TypeScript SDK
-        run: npm ci --prefix ../Quantum.Sdk/typescript && npm test --prefix ../Quantum.Sdk/typescript
+          cache-dependency-path: Quantum/samples/Quantum.ExampleWebPlugin/package-lock.json
 
       - name: Build and test example Web plugin
         run: npm ci --prefix samples/Quantum.ExampleWebPlugin && npm test --prefix samples/Quantum.ExampleWebPlugin
@@ -63,6 +53,3 @@ jobs:
 
       - name: Test
         run: dotnet test quantum/tests/Quantum.Tests/Quantum.Tests.csproj -c ${{ env.CONFIGURATION }} --no-build
-
-      - name: Test .NET plugin SDK
-        run: dotnet test ../Quantum.Sdk/dotnet/test/Quantum.Plugin.Abstraction.Tests/Quantum.Plugin.Abstraction.Tests.csproj -c ${{ env.CONFIGURATION }} --no-build

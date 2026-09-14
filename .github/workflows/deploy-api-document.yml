@@ -29,11 +29,6 @@ jobs:
         with:
           path: Quantum
 
-      - uses: actions/checkout@v4
-        with:
-          repository: XmmShp/Quantum.Sdk
-          path: Quantum.Sdk
-
       - name: Setup .NET
         uses: actions/setup-dotnet@v5
         with:
