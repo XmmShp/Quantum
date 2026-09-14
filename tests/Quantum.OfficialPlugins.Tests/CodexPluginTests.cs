@@ -52,6 +52,34 @@ public sealed class CodexPluginTests
     }
 
     [Fact]
+    public void DrawerUsesConstructorInjectionForSharedPluginState()
+    {
+        var constructor = Assert.Single(typeof(CodexDrawer).GetConstructors());
+
+        Assert.Equal(
+            typeof(ICodexIntegrationService),
+            Assert.Single(constructor.GetParameters()).ParameterType);
+    }
+
+    [Fact]
+    public void ManifestRegistersNativeGlobalDrawer()
+    {
+        var manifestPath = Path.Combine(
+            AppContext.BaseDirectory,
+            "plugin-manifests",
+            "codex.json");
+        using var manifest = JsonDocument.Parse(File.ReadAllText(manifestPath));
+        var root = manifest.RootElement;
+
+        var drawer = Assert.Single(
+            root.GetProperty("ui").GetProperty("globalComponents").EnumerateArray());
+        Assert.Equal(
+            typeof(CodexDrawer).FullName,
+            drawer.GetProperty("component").GetString());
+        Assert.Empty(root.GetProperty("web").GetProperty("postBlazor").EnumerateArray());
+    }
+
+    [Fact]
     public void RpcCatalogBecomesNamespacedCodexTools()
     {
         var catalog = JsonSerializer.SerializeToElement(new
@@ -89,6 +117,23 @@ public sealed class CodexPluginTests
         Assert.Equal("namespace", toolNamespace!["type"]!.GetValue<string>());
         Assert.Equal("quantum", toolNamespace["name"]!.GetValue<string>());
         Assert.Equal(tool.ToolName, toolNamespace["tools"]![0]!["name"]!.GetValue<string>());
+    }
+
+    [Fact]
+    public void EmptyRpcCatalogDoesNotCreateAnEmptyNamespace()
+    {
+        var dynamicTools = QuantumRpcToolCatalog.ToDynamicTools([]);
+
+        Assert.Empty(dynamicTools);
+    }
+
+    [Fact]
+    public void IntegrationContractDoesNotExposeToolApprovalState()
+    {
+        Assert.DoesNotContain(
+            typeof(ICodexIntegrationService).GetMethods(),
+            method => method.Name.Contains("ResolveToolCall", StringComparison.Ordinal));
+        Assert.Null(typeof(CodexIntegrationSnapshot).GetProperty("PendingCalls"));
     }
 
     [Fact]

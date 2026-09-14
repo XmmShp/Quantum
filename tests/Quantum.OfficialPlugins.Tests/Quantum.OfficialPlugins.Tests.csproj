@@ -20,4 +20,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\Codex\Quantum.CodexPlugin.csproj" />
   </ItemGroup>
+
+  <ItemGroup>
+    <None Include="..\..\Codex\plugin.json"
+          Link="plugin-manifests\codex.json"
+          CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

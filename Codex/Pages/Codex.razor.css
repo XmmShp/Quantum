@@ -42,8 +42,8 @@
 .connect-card label { display: grid; gap: 6px; }
 .connect-card label span { color: var(--muted); font-size: .67rem; font-weight: 800; }
 .connect-card input, .connect-card select, .model-picker select { background: white; border: 1px solid #dbd8e2; border-radius: 10px; color: var(--ink); font: inherit; font-size: .75rem; padding: 10px 11px; }
-.primary-button, .workspace-toolbar button, .approval-actions button, .send-button { border: 0; border-radius: 999px; cursor: pointer; font: inherit; font-size: .72rem; font-weight: 850; padding: 10px 15px; }
-.primary-button, .send-button, .approval-actions .approve { background: var(--accent); color: white; }
+.primary-button, .workspace-toolbar button, .send-button { border: 0; border-radius: 999px; cursor: pointer; font: inherit; font-size: .72rem; font-weight: 850; padding: 10px 15px; }
+.primary-button, .send-button { background: var(--accent); color: white; }
 button:disabled { cursor: wait; opacity: .55; }
 
 .workspace { background: white; border: 1px solid var(--line); border-radius: 24px; box-shadow: 0 12px 36px rgba(39, 35, 65, .07); display: grid; min-height: 590px; overflow: hidden; }
@@ -72,24 +72,11 @@ button:disabled { cursor: wait; opacity: .55; }
 .message.system .message-text, .message.tool .message-text { background: #faf9fc; border: 1px solid var(--line); color: var(--muted); font-size: .7rem; padding: 9px 12px; }
 .cursor { animation: pulse .9s infinite; color: var(--accent); }
 
-.approval-stack { background: #fffaf0; border-block: 1px solid #f0dfb9; display: grid; gap: 10px; padding: 15px 18px; }
-.approval-card { align-items: start; background: white; border: 1px solid #ead8ae; border-radius: 17px; display: grid; gap: 13px; grid-template-columns: auto 1fr auto; padding: 15px; }
-.approval-icon { align-items: center; background: #fff2cf; border-radius: 11px; color: #906514; display: flex; font-weight: 900; height: 34px; justify-content: center; width: 34px; }
-.approval-content .eyebrow { color: #9c701e; margin-bottom: 5px; }
-.approval-content h3 { font-family: ui-monospace, monospace; font-size: .78rem; margin: 0; }
-.approval-content > p:last-of-type { color: var(--muted); font-size: .68rem; margin: 6px 0; }
-.approval-content summary { color: var(--muted); cursor: pointer; font-size: .66rem; }
-.approval-content pre { background: #f8f6f0; border-radius: 8px; font-size: .65rem; max-height: 150px; overflow: auto; padding: 9px; white-space: pre-wrap; }
-.approval-actions { align-items: flex-end; display: flex; gap: 6px; height: 100%; }
-.approval-actions button { background: #f1eff4; color: #5d5964; padding: 8px 11px; }
-.approval-actions .approve { color: white; }
-
 .composer { border-top: 1px solid var(--line); display: grid; gap: 8px; grid-template-columns: 1fr auto; padding: 16px 18px 12px; }
 .composer textarea { border: 1px solid #dcd9e3; border-radius: 14px; font: inherit; font-size: .79rem; min-height: 68px; padding: 12px 13px; resize: vertical; }
 .composer textarea:focus { border-color: var(--accent); box-shadow: 0 0 0 3px rgba(101, 86, 216, .12); outline: 0; }
 .send-button { align-self: end; margin-bottom: 2px; }
 .send-button span { margin-left: 5px; }
-.composer p { color: var(--muted); font-size: .62rem; grid-column: 1 / -1; margin: 0 3px; }
 
 @keyframes pulse { 50% { opacity: .35; } }
 
@@ -98,8 +85,6 @@ button:disabled { cursor: wait; opacity: .55; }
     .connect-card label, .connect-card .primary-button { grid-column: 1 / -1; }
     .workspace-toolbar { grid-template-columns: 1fr auto; }
     .workspace-toolbar code { display: none; }
-    .approval-card { grid-template-columns: auto 1fr; }
-    .approval-actions { grid-column: 2; }
 }
 
 @media (max-width: 560px) {

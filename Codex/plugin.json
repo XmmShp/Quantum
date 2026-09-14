@@ -15,6 +15,12 @@
         "order": 110,
         "showInNavigation": true
       }
+    ],
+    "globalComponents": [
+      {
+        "component": "Quantum.OfficialPlugins.Codex.Pages.CodexDrawer",
+        "order": 110
+      }
     ]
   },
   "web": {

@@ -9,10 +9,9 @@ Quantum RPC catalog as Codex dynamic tools.
    stdio JSONL transport. GPT-5.6 Luna is selected by default.
 2. The plugin initializes the App Server with `experimentalApi`, reads `quantum.rpc.catalog`, and creates one namespaced
    dynamic tool for every available RPC except the catalog itself.
-3. An `item/tool/call` request is shown in Quantum for explicit user approval.
-4. Approved calls execute through `IRpcInvoker`; the serialized result is returned to Codex as tool content.
-5. Disconnecting, disabling, upgrading, or unloading the plugin terminates the child App Server process and declines
-   outstanding calls.
+3. An `item/tool/call` request executes directly through `IRpcInvoker`; the serialized result is returned to Codex as
+   tool content.
+4. Disconnecting, disabling, upgrading, or unloading the plugin terminates the child App Server process.
 
 The plugin reuses the local Codex authentication state and does not store an OpenAI API key. Set
 `QUANTUM_CODEX_COMMAND` to the Codex executable path when `codex` is not available on `PATH`.

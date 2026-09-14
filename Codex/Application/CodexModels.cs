@@ -25,13 +25,6 @@ public sealed record CodexChatMessage(
     DateTimeOffset CreatedAt,
     bool IsStreaming = false);
 
-public sealed record PendingQuantumRpcCall(
-    string CallId,
-    string ToolName,
-    string RpcName,
-    string Description,
-    JsonElement Arguments);
-
 public sealed record CodexModelOption(string Id, string DisplayName);
 
 public sealed record CodexIntegrationSnapshot(
@@ -43,7 +36,6 @@ public sealed record CodexIntegrationSnapshot(
     IReadOnlyList<CodexModelOption> Models,
     string SelectedModel,
     IReadOnlyList<CodexChatMessage> Messages,
-    IReadOnlyList<PendingQuantumRpcCall> PendingCalls,
     string? ErrorMessage);
 
 public interface ICodexIntegrationService
@@ -62,11 +54,6 @@ public interface ICodexIntegrationService
         CancellationToken cancellationToken = default);
 
     Task SendAsync(string prompt, CancellationToken cancellationToken = default);
-
-    Task ResolveToolCallAsync(
-        string callId,
-        bool approved,
-        CancellationToken cancellationToken = default);
 
     Task DisconnectAsync(CancellationToken cancellationToken = default);
 }

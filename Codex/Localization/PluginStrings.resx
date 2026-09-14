@@ -18,13 +18,14 @@
   <data name="断开" xml:space="preserve"><value>断开</value></data>
   <data name="新对话" xml:space="preserve"><value>新对话</value></data>
   <data name="项 Quantum 工具" xml:space="preserve"><value>项 Quantum 工具</value></data>
+  <data name="{0} 项 Quantum 工具" xml:space="preserve"><value>{0} 项 Quantum 工具</value></data>
+  <data name="关闭" xml:space="preserve"><value>关闭</value></data>
+  <data name="打开 Codex" xml:space="preserve"><value>打开 Codex</value></data>
+  <data name="关闭 Codex" xml:space="preserve"><value>关闭 Codex</value></data>
+  <data name="在完整页面打开 Codex" xml:space="preserve"><value>在完整页面打开 Codex</value></data>
+  <data name="在完整页面打开" xml:space="preserve"><value>在完整页面打开</value></data>
   <data name="开始对话" xml:space="preserve"><value>开始对话</value></data>
   <data name="你可以让 Codex 查询日历、创建待办，或调用其他插件公开的 RPC。" xml:space="preserve"><value>你可以让 Codex 查询日历、创建待办，或调用其他插件公开的 RPC。</value></data>
-  <data name="Codex 请求调用 Quantum" xml:space="preserve"><value>Codex 请求调用 Quantum</value></data>
-  <data name="参数" xml:space="preserve"><value>参数</value></data>
-  <data name="拒绝" xml:space="preserve"><value>拒绝</value></data>
-  <data name="允许调用" xml:space="preserve"><value>允许调用</value></data>
   <data name="输入消息…" xml:space="preserve"><value>输入消息…</value></data>
   <data name="发送" xml:space="preserve"><value>发送</value></data>
-  <data name="每次 Quantum RPC 调用都会先等待你的确认。" xml:space="preserve"><value>每次 Quantum RPC 调用都会先等待你的确认。</value></data>
 </root>

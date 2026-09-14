@@ -41,21 +41,23 @@ internal static class QuantumRpcToolCatalog
     }
 
     public static JsonArray ToDynamicTools(IReadOnlyList<QuantumRpcTool> tools)
-        => new(
-            new JsonObject
-            {
-                ["type"] = "namespace",
-                ["name"] = Namespace,
-                ["description"] = "Invoke capabilities exposed by the local Quantum desktop host.",
-                ["tools"] = new JsonArray(tools.Select(static tool =>
-                    (JsonNode)new JsonObject
-                    {
-                        ["type"] = "function",
-                        ["name"] = tool.ToolName,
-                        ["description"] = tool.Description,
-                        ["inputSchema"] = JsonNode.Parse(tool.InputSchema.GetRawText())
-                    }).ToArray())
-            });
+        => tools.Count == 0
+            ? []
+            : new(
+                new JsonObject
+                {
+                    ["type"] = "namespace",
+                    ["name"] = Namespace,
+                    ["description"] = "Invoke capabilities exposed by the local Quantum desktop host.",
+                    ["tools"] = new JsonArray(tools.Select(static tool =>
+                        (JsonNode)new JsonObject
+                        {
+                            ["type"] = "function",
+                            ["name"] = tool.ToolName,
+                            ["description"] = tool.Description,
+                            ["inputSchema"] = JsonNode.Parse(tool.InputSchema.GetRawText())
+                        }).ToArray())
+                });
 
     private static JsonElement NormalizeInputSchema(JsonElement schema)
     {

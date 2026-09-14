@@ -25,8 +25,7 @@ internal sealed class CodexIntegrationService(
     private readonly object _sync = new();
     private readonly SemaphoreSlim _operationGate = new(1, 1);
     private readonly List<CodexChatMessage> _messages = [];
-    private readonly Dictionary<string, PendingQuantumRpcCall> _pendingCalls = new(StringComparer.Ordinal);
-    private readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> _approvals = new(StringComparer.Ordinal);
+    private readonly ConcurrentDictionary<string, byte> _activeToolCalls = new(StringComparer.Ordinal);
     private IReadOnlyList<QuantumRpcTool> _tools = [];
     private IReadOnlyList<CodexModelOption> _models = InitialModels;
     private string _selectedModel = DefaultModel;
@@ -55,7 +54,6 @@ internal sealed class CodexIntegrationService(
                     _models,
                     _selectedModel,
                     _messages.ToArray(),
-                    _pendingCalls.Values.ToArray(),
                     _errorMessage);
             }
         }
@@ -260,20 +258,6 @@ internal sealed class CodexIntegrationService(
         }
     }
 
-    public Task ResolveToolCallAsync(
-        string callId,
-        bool approved,
-        CancellationToken cancellationToken = default)
-    {
-        cancellationToken.ThrowIfCancellationRequested();
-        if (_approvals.TryGetValue(callId, out var completion))
-        {
-            completion.TrySetResult(approved);
-        }
-
-        return Task.CompletedTask;
-    }
-
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
         await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -288,12 +272,6 @@ internal sealed class CodexIntegrationService(
                 _isBusy = false;
                 _connectionState = CodexConnectionState.Disconnected;
                 _errorMessage = null;
-                _pendingCalls.Clear();
-            }
-
-            foreach (var approval in _approvals.Values)
-            {
-                approval.TrySetResult(false);
             }
 
             if (client is not null)
@@ -374,11 +352,6 @@ internal sealed class CodexIntegrationService(
             CompleteStreamingMessage();
         }
 
-        foreach (var approval in _approvals.Values)
-        {
-            approval.TrySetResult(false);
-        }
-
         NotifyChanged();
     }
 
@@ -404,31 +377,13 @@ internal sealed class CodexIntegrationService(
             return new CodexDynamicToolResult(false, $"Unknown Quantum tool '{call.Tool}'.");
         }
 
-        var approval = new TaskCompletionSource<bool>(TaskCreationOptions.RunContinuationsAsynchronously);
-        if (!_approvals.TryAdd(call.CallId, approval))
+        if (!_activeToolCalls.TryAdd(call.CallId, 0))
         {
             return new CodexDynamicToolResult(false, "A duplicate Quantum RPC call id was received.");
         }
 
-        lock (_sync)
-        {
-            _pendingCalls[call.CallId] = new PendingQuantumRpcCall(
-                call.CallId,
-                tool.ToolName,
-                tool.RpcName,
-                tool.Description,
-                call.Arguments.Clone());
-        }
-
-        NotifyChanged();
         try
         {
-            if (!await approval.Task.WaitAsync(cancellationToken).ConfigureAwait(false))
-            {
-                AddToolMessage($"Declined Quantum RPC {tool.RpcName}.");
-                return new CodexDynamicToolResult(false, "The user declined this Quantum RPC call.");
-            }
-
             var result = await InvokeQuantumRpcAsync(tool, call.Arguments, cancellationToken)
                 .ConfigureAwait(false);
             AddToolMessage($"Quantum RPC {tool.RpcName}: {(result.Success ? "completed" : "failed")}.");
@@ -436,13 +391,7 @@ internal sealed class CodexIntegrationService(
         }
         finally
         {
-            _approvals.TryRemove(call.CallId, out _);
-            lock (_sync)
-            {
-                _pendingCalls.Remove(call.CallId);
-            }
-
-            NotifyChanged();
+            _activeToolCalls.TryRemove(call.CallId, out _);
         }
     }
 

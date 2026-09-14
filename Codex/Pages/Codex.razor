@@ -106,31 +106,6 @@
                 }
             </div>
 
-            @if (_snapshot.PendingCalls.Count > 0)
-            {
-                <aside class="approval-stack" aria-live="assertive">
-                    @foreach (var call in _snapshot.PendingCalls)
-                    {
-                        <section @key="call.CallId" class="approval-card">
-                            <div class="approval-icon">↗</div>
-                            <div class="approval-content">
-                                <p class="eyebrow">@L["Codex 请求调用 Quantum"]</p>
-                                <h3>@call.RpcName</h3>
-                                <p>@call.Description</p>
-                                <details>
-                                    <summary>@L["参数"]</summary>
-                                    <pre>@FormatJson(call.Arguments)</pre>
-                                </details>
-                            </div>
-                            <div class="approval-actions">
-                                <button type="button" @onclick="() => ResolveAsync(call.CallId, false)">@L["拒绝"]</button>
-                                <button type="button" class="approve" @onclick="() => ResolveAsync(call.CallId, true)">@L["允许调用"]</button>
-                            </div>
-                        </section>
-                    }
-                </aside>
-            }
-
             <footer class="composer">
                 <textarea rows="3"
                           placeholder="@L["输入消息…"]"
@@ -138,7 +113,6 @@
                           @bind="_prompt"
                           @onkeydown="HandleKeyDownAsync"></textarea>
                 <button type="button" class="send-button" disabled="@(!CanSend)" @onclick="SendAsync">@L["发送"] <span>↗</span></button>
-                <p>@L["每次 Quantum RPC 调用都会先等待你的确认。"]</p>
             </footer>
         </section>
     }
@@ -223,9 +197,6 @@
         }
     }
 
-    private async Task ResolveAsync(string callId, bool approved)
-        => await RunAsync(() => CodexService.ResolveToolCallAsync(callId, approved));
-
     private async Task RunAsync(Func<Task> action)
     {
         _localError = null;
@@ -245,11 +216,6 @@
         _selectedModel = _snapshot.SelectedModel;
         _ = InvokeAsync(StateHasChanged);
     }
-
-    private static string FormatJson(System.Text.Json.JsonElement value)
-        => System.Text.Json.JsonSerializer.Serialize(
-            value,
-            new System.Text.Json.JsonSerializerOptions { WriteIndented = true });
 
     public void Dispose() => CodexService.Changed -= HandleChanged;
 }
