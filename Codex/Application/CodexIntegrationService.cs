@@ -312,9 +312,10 @@ internal sealed class CodexIntegrationService(
 
                     break;
                 case "error":
-                    _errorMessage = parameters.TryGetProperty("message", out var message)
-                        ? message.GetString()
-                        : parameters.GetRawText();
+                    _errorMessage = CodexErrorMessages.Normalize(
+                        parameters.TryGetProperty("message", out var message)
+                            ? message.GetString()
+                            : parameters.GetRawText());
                     _isBusy = false;
                     CompleteStreamingMessage();
                     break;
@@ -487,7 +488,7 @@ internal sealed class CodexIntegrationService(
         => turn.TryGetProperty("error", out var error)
             && error.ValueKind != JsonValueKind.Null
             && error.TryGetProperty("message", out var message)
-                ? message.GetString()
+                ? CodexErrorMessages.Normalize(message.GetString())
                 : null;
 
     private void SetConnectionState(CodexConnectionState state, string? errorMessage)

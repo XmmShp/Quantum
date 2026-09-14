@@ -8,6 +8,20 @@ namespace Quantum.Tests;
 public sealed class CodexPluginTests
 {
     [Fact]
+    public void NestedUpgradeErrorBecomesActionableMessage()
+    {
+        const string response =
+            "{\"type\":\"error\",\"status\":400,\"error\":{\"type\":\"invalid_request_error\","
+            + "\"message\":\"The 'gpt-5.6-sol' model requires a newer version of Codex.\"}}";
+
+        var message = CodexErrorMessages.Normalize(response);
+
+        Assert.Contains("npm install -g @openai/codex@latest", message, StringComparison.Ordinal);
+        Assert.Contains("断开并重新连接", message, StringComparison.Ordinal);
+        Assert.DoesNotContain("invalid_request_error", message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void PageUsesConstructorInjectionForPluginOwnedServices()
     {
         var constructor = Assert.Single(typeof(Codex).GetConstructors());

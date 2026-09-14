@@ -241,9 +241,10 @@ internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger)
         if (message.TryGetProperty("error", out var error))
         {
             completion.TrySetException(new InvalidOperationException(
-                error.TryGetProperty("message", out var errorMessage)
-                    ? errorMessage.GetString()
-                    : error.GetRawText()));
+                CodexErrorMessages.Normalize(
+                    error.TryGetProperty("message", out var errorMessage)
+                        ? errorMessage.GetString()
+                        : error.GetRawText())));
             return;
         }
 

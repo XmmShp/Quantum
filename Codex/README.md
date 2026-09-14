@@ -17,3 +17,5 @@ The plugin reuses the local Codex authentication state and does not store an Ope
 `QUANTUM_CODEX_COMMAND` to the Codex executable path when `codex` is not available on `PATH`.
 
 The App Server dynamic tool surface is experimental and therefore tied to the locally installed Codex version.
+If a selected model requires a newer App Server, update the CLI with
+`npm install -g @openai/codex@latest`, then disconnect and reconnect the plugin.
