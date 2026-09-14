@@ -20,6 +20,8 @@ internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger)
 
     public event Func<string, JsonElement, Task>? NotificationReceived;
 
+    public event Action<Exception?>? ConnectionClosed;
+
     public event Func<CodexDynamicToolCall, CancellationToken, Task<CodexDynamicToolResult>>?
         DynamicToolCallReceived;
 
@@ -208,7 +210,12 @@ internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger)
                 }
             }
 
-            FailPending(new InvalidOperationException("The Codex app-server connection closed."));
+            var exception = new InvalidOperationException("The Codex app-server connection closed.");
+            FailPending(exception);
+            if (!cancellationToken.IsCancellationRequested)
+            {
+                ConnectionClosed?.Invoke(exception);
+            }
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
@@ -217,6 +224,7 @@ internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger)
         {
             logger.LogError(exception, "The Codex app-server output stream failed.");
             FailPending(exception);
+            ConnectionClosed?.Invoke(exception);
         }
     }
 
@@ -314,18 +322,26 @@ internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger)
     private static ProcessStartInfo CreateStartInfo()
     {
         var configuredCommand = Environment.GetEnvironmentVariable("QUANTUM_CODEX_COMMAND");
-        var command = string.IsNullOrWhiteSpace(configuredCommand) ? "codex" : configuredCommand.Trim();
+        var command = "codex";
+        if (!string.IsNullOrWhiteSpace(configuredCommand))
+        {
+            command = Path.GetFullPath(configuredCommand.Trim());
+            if (!File.Exists(command))
+            {
+                throw new FileNotFoundException(
+                    "QUANTUM_CODEX_COMMAND must point to an existing Codex executable or launcher.",
+                    command);
+            }
+        }
+
         ProcessStartInfo info;
         if (OperatingSystem.IsWindows())
         {
             info = new ProcessStartInfo
             {
-                FileName = Environment.GetEnvironmentVariable("ComSpec") ?? "cmd.exe"
+                FileName = Environment.GetEnvironmentVariable("ComSpec") ?? "cmd.exe",
+                Arguments = $"/d /s /c \"\"{command}\" app-server\""
             };
-            info.ArgumentList.Add("/d");
-            info.ArgumentList.Add("/s");
-            info.ArgumentList.Add("/c");
-            info.ArgumentList.Add($"\"{command}\" app-server");
         }
         else
         {

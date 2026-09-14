@@ -70,6 +70,16 @@ internal static class QuantumRpcToolCatalog
     {
         if (node is JsonObject jsonObject)
         {
+            if (jsonObject.Remove("nullable", out var nullable)
+                && nullable is JsonValue nullableValue
+                && nullableValue.TryGetValue<bool>(out var isNullable)
+                && isNullable
+                && jsonObject["type"] is JsonValue typeValue
+                && typeValue.TryGetValue<string>(out var type))
+            {
+                jsonObject["type"] = new JsonArray(type, "null");
+            }
+
             jsonObject.Remove("dotnetType");
             jsonObject.Remove("x-dotnetAttributes");
             jsonObject.Remove("recursive");

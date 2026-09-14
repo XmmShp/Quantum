@@ -53,9 +53,28 @@ internal sealed class CodexIntegrationService(
         await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            if (_client is not null)
+            CodexAppServerClient? staleClient = null;
+            lock (_sync)
             {
-                return;
+                if (_client is not null && _connectionState is CodexConnectionState.Connected
+                    or CodexConnectionState.Connecting)
+                {
+                    return;
+                }
+
+                if (_client is not null)
+                {
+                    staleClient = _client;
+                    _client = null;
+                }
+            }
+
+            if (staleClient is not null)
+            {
+                staleClient.NotificationReceived -= HandleNotificationAsync;
+                staleClient.DynamicToolCallReceived -= HandleDynamicToolCallAsync;
+                staleClient.ConnectionClosed -= HandleConnectionClosed;
+                await staleClient.DisposeAsync().ConfigureAwait(false);
             }
 
             SetConnectionState(CodexConnectionState.Connecting, null);
@@ -83,6 +102,7 @@ internal sealed class CodexIntegrationService(
             var client = new CodexAppServerClient(loggerFactory.CreateLogger<CodexAppServerClient>());
             client.NotificationReceived += HandleNotificationAsync;
             client.DynamicToolCallReceived += HandleDynamicToolCallAsync;
+            client.ConnectionClosed += HandleConnectionClosed;
             try
             {
                 await client.StartAsync(cancellationToken).ConfigureAwait(false);
@@ -234,6 +254,7 @@ internal sealed class CodexIntegrationService(
                 _threadId = null;
                 _isBusy = false;
                 _connectionState = CodexConnectionState.Disconnected;
+                _errorMessage = null;
                 _pendingCalls.Clear();
             }
 
@@ -246,6 +267,7 @@ internal sealed class CodexIntegrationService(
             {
                 client.NotificationReceived -= HandleNotificationAsync;
                 client.DynamicToolCallReceived -= HandleDynamicToolCallAsync;
+                client.ConnectionClosed -= HandleConnectionClosed;
                 await client.DisposeAsync().ConfigureAwait(false);
             }
 
@@ -301,6 +323,29 @@ internal sealed class CodexIntegrationService(
 
         NotifyChanged();
         return Task.CompletedTask;
+    }
+
+    private void HandleConnectionClosed(Exception? exception)
+    {
+        lock (_sync)
+        {
+            if (_connectionState == CodexConnectionState.Disconnected)
+            {
+                return;
+            }
+
+            _connectionState = CodexConnectionState.Failed;
+            _isBusy = false;
+            _errorMessage = exception?.Message ?? "The Codex app-server connection closed.";
+            CompleteStreamingMessage();
+        }
+
+        foreach (var approval in _approvals.Values)
+        {
+            approval.TrySetResult(false);
+        }
+
+        NotifyChanged();
     }
 
     private async Task<CodexDynamicToolResult> HandleDynamicToolCallAsync(

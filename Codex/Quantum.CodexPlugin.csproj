@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Razor">
   <PropertyGroup>
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
@@ -18,4 +18,19 @@
   <ItemGroup>
     <Content Update="plugin.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <Target Name="CopyCodexScopedCssBundle"
+          AfterTargets="Build"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <CodexScopedCssBundleSource>$(IntermediateOutputPath)scopedcss\projectbundle\$(PackageId).bundle.scp.css</CodexScopedCssBundleSource>
+      <CodexScopedCssBundleTarget>$(TargetDir)wwwroot\$(PackageId).bundle.scp.css</CodexScopedCssBundleTarget>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(CodexScopedCssBundleSource)')"
+           Text="The Codex scoped CSS bundle was not generated: $(CodexScopedCssBundleSource)" />
+    <MakeDir Directories="$(TargetDir)wwwroot" />
+    <Copy SourceFiles="$(CodexScopedCssBundleSource)"
+          DestinationFiles="$(CodexScopedCssBundleTarget)"
+          SkipUnchangedFiles="true" />
+  </Target>
 </Project>
