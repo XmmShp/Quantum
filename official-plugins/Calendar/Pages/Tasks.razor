@@ -5,7 +5,6 @@
 @using Quantum.OfficialPlugins.Calendar.Application
 @using Quantum.OfficialPlugins.Calendar.Domain
 @using Quantum.OfficialPlugins.Calendar.Localization
-@inject ICalendarApplicationService CalendarService
 @inject IStringLocalizer<PluginStrings> L
 
 <PageTitle>@L["待办"] · Quantum</PageTitle>
@@ -134,7 +133,14 @@
 </section>
 
 @code {
+    private readonly ICalendarApplicationService CalendarService;
     private static readonly string[] Styles = ["violet", "blue", "coral", "green"];
+
+    public Tasks(ICalendarApplicationService calendarService)
+    {
+        CalendarService = calendarService;
+    }
+
     private readonly DateOnly _today = DateOnly.FromDateTime(DateTime.Today);
     private IReadOnlyList<CalendarEntryDetails> _tasks = [];
     private TaskFilter _filter = TaskFilter.Open;

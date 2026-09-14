@@ -5,7 +5,6 @@
 @using Quantum.OfficialPlugins.Calendar.Application
 @using Quantum.OfficialPlugins.Calendar.Domain
 @using Quantum.OfficialPlugins.Calendar.Localization
-@inject ICalendarApplicationService CalendarService
 @inject IStringLocalizer<PluginStrings> L
 
 <PageTitle>@L["日历"] · Quantum</PageTitle>
@@ -184,7 +183,13 @@
 </section>
 
 @code {
+    private readonly ICalendarApplicationService CalendarService;
     private static readonly string[] Styles = ["violet", "blue", "coral", "green"];
+
+    public Calendar(ICalendarApplicationService calendarService)
+    {
+        CalendarService = calendarService;
+    }
 
     private static IReadOnlyList<string> Weekdays
     {
