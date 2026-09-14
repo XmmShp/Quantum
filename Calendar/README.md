@@ -8,7 +8,7 @@ Quantum 官方日历插件，提供统一的日程与待办管理。
 - 日程、待办的创建、编辑和删除
 - 待办完成状态、全部/未完成/已完成筛选及逾期提示
 - 中英文界面与响应式布局
-- 通过 NOF Application Service 和宿主共享 SQLite 持久化
+- 通过 NOF Application Service 和宿主共享 SQLite 持久化；本地数据使用物理删除，不启用软删除
 - 通过 NOF `IRpcService` 向其它 .NET 与 Web 插件提供稳定的跨插件接口
 
 ## 插件 RPC
