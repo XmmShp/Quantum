@@ -45,9 +45,6 @@ internal static class PluginPersistenceServiceCollectionExtensions
         }
 
         services.AddLogging();
-        services.AddScoped<CurrentTenant>();
-        services.AddScoped<ICurrentTenant>(provider => provider.GetRequiredService<CurrentTenant>());
-        services.AddScoped<IMutableCurrentTenant>(provider => provider.GetRequiredService<CurrentTenant>());
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<PluginDatabaseInitializer>();
         return services;

@@ -1,4 +1,5 @@
 using System.Runtime.Loader;
+using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
@@ -82,6 +83,8 @@ public sealed class CalendarPluginPersistenceTests
                 await calendar.DeleteAsync(itemId);
                 Assert.Null(await calendar.GetAsync(itemId));
             }
+
+            await AssertHardDeleteSchemaAsync(fixture.DatabasePath, expectedPhysicalRows: 0);
         }
         finally
         {
@@ -188,9 +191,12 @@ public sealed class CalendarPluginPersistenceTests
             Path.Combine(pluginRoot, "Quantum.CalendarPlugin.dll"));
         var migrationsRoot = Path.Combine(pluginRoot, "migrations");
         Directory.CreateDirectory(migrationsRoot);
-        File.Copy(
-            Path.Combine(AppContext.BaseDirectory, "migrations", "001_init.sql"),
-            Path.Combine(migrationsRoot, "001_init.sql"));
+        foreach (var migrationPath in Directory.GetFiles(
+                     Path.Combine(AppContext.BaseDirectory, "migrations"),
+                     "*.sql"))
+        {
+            File.Copy(migrationPath, Path.Combine(migrationsRoot, Path.GetFileName(migrationPath)));
+        }
         File.WriteAllText(
             Path.Combine(pluginRoot, "plugin.json"),
             """
@@ -214,6 +220,7 @@ public sealed class CalendarPluginPersistenceTests
         Assert.True(
             catalog.Plugins.Count == 1,
             string.Join(Environment.NewLine, catalog.Failures.Select(static failure => failure.ToString())));
+        await AssertHardDeleteSchemaAsync(fixture.DatabasePath);
         var plugin = catalog.Plugins[0];
         var loadContext = AssemblyLoadContext.GetLoadContext(plugin.EntryAssembly!);
         Assert.NotNull(loadContext);
@@ -225,6 +232,33 @@ public sealed class CalendarPluginPersistenceTests
             impact.CatalogRevision);
         Assert.True(result.Succeeded, result.Message);
         return weakReference;
+    }
+
+    private static async Task AssertHardDeleteSchemaAsync(
+        string databasePath,
+        long? expectedPhysicalRows = null)
+    {
+        await using var connection = new SqliteConnection($"Data Source={databasePath};Pooling=False");
+        await connection.OpenAsync();
+        await using (var schema = connection.CreateCommand())
+        {
+            schema.CommandText = "PRAGMA table_info(\"OfficialCalendarEntries\");";
+            await using var reader = await schema.ExecuteReaderAsync();
+            var columns = new List<string>();
+            while (await reader.ReadAsync())
+            {
+                columns.Add(reader.GetString(1));
+            }
+
+            Assert.DoesNotContain("__DeletedAtUnixTime", columns);
+        }
+
+        if (expectedPhysicalRows is not null)
+        {
+            await using var count = connection.CreateCommand();
+            count.CommandText = "SELECT COUNT(*) FROM \"OfficialCalendarEntries\";";
+            Assert.Equal(expectedPhysicalRows, (long)(await count.ExecuteScalarAsync())!);
+        }
     }
 
     private static void ForceCollection()
@@ -285,7 +319,6 @@ public sealed class CalendarPluginPersistenceTests
             modelBuilder.Entity<SharedPluginRecord>(entity =>
             {
                 entity.ToTable("SharedPluginRecords");
-                entity.IsHostOnly();
                 entity.HasKey(record => record.Id);
                 entity.Property(record => record.Value).HasMaxLength(200).IsRequired();
             });

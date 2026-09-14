@@ -403,8 +403,9 @@ artifact 约束如下：
 migration 是 forward-only 的持久化提交。新 runtime 后续启动失败时 Host 可以恢复旧代码运行，但不会执行 `Down`
 或撤销已经成功提交的 schema；升级 SQL 应采用 expand/migrate/contract，先添加兼容结构，等不再需要旧版本后再删除旧结构。
 
-`Application/CalendarItemApplicationService` 只依赖 `NOF.Domain.IRepository<CalendarItem>` 与
+`official-plugins/Calendar/Application/CalendarApplicationService` 只依赖 `NOF.Domain.IRepository<CalendarEntry>` 与
 `NOF.Application.IDbContext`；插件自身最多引用 `NOF.Infrastructure`，不引用 EF Core、SQLite provider 或宿主持久化项目。
+Quantum 的本地优先数据库遵循 NOF 的默认硬删除行为。确有恢复或审计需求的插件才应显式启用软删除，并自行提供相应迁移。
 运行期仍可通过纯 NOF 抽象贡献 EF 模型：
 
 ```csharp
@@ -413,10 +414,9 @@ internal sealed class CalendarDbContextModelCreatingContributor
 {
     public void Configure(IDbModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<CalendarItem>(entity =>
+        modelBuilder.Entity<CalendarEntry>(entity =>
         {
-            entity.ToTable("CalendarPluginItems");
-            entity.IsHostOnly();
+            entity.ToTable("OfficialCalendarEntries");
             entity.HasKey(item => item.Id);
             entity.Property(item => item.Title).HasMaxLength(120).IsRequired();
         });
@@ -426,7 +426,7 @@ internal sealed class CalendarDbContextModelCreatingContributor
 
 插件初始化器将 contributor 注册为 `IDbContextModelCreatingContributor`。Quantum 宿主检测到该注册后，向该插件的
 私有 DI 容器加入 NOF EF adapter；contributor 定义运行期对象映射，发布 SQL artifact 定义版本间 schema 演进。
-页面通过构造注入的应用服务读写事项，`StartAsync` 只负责首次示例数据。所有插件连接同一个宿主数据库：
+页面通过构造注入的应用服务读写事项。所有插件连接同一个宿主数据库：
 
 ```text
 <ApplicationData>/quantum.db
