@@ -4,14 +4,14 @@ Quantum 桌面端通过独立部署的 Quantum Platform 浏览和安装已审核
 
 ## 连接平台
 
-默认平台地址为 `http://localhost:5080/`，与独立 [Quantum Platform](https://github.com/XmmShp/Quantum.Platform) 仓库的 `compose.yaml` 暴露端口一致。可以在启动 Quantum 前配置：
+默认平台地址为 `https://quantum.io-vii.com/`。如需连接本地开发环境或私有部署，可以在启动 Quantum 前配置：
 
 ```powershell
 $env:QUANTUM_PLATFORM_URL = "https://plugins.example.com"
 $env:QUANTUM_VERSION = "0.1.0"
 ```
 
-`QUANTUM_PLATFORM_URL` 仅接受绝对 HTTP 或 HTTPS 地址；无效值会回退到本地默认地址。生产环境应使用 HTTPS。
+`QUANTUM_PLATFORM_URL` 仅接受绝对 HTTP 或 HTTPS 地址；无效值会回退到默认平台地址。
 
 ## 安装链路
 
