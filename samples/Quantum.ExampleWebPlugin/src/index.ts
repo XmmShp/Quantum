@@ -1,4 +1,4 @@
-import { definePlugin, QuantumTopic } from "@quantum/plugin-sdk";
+import { definePlugin, QuantumTopic } from "@io7/quantum-plugin-sdk";
 
 interface ExamplePluginHandshake {
   message: string;

@@ -25,7 +25,7 @@ Web 插件与 .NET 插件使用相同的 id 规则；`disabled` 是宿主保留 
 安装 SDK 和 bundler：
 
 ```bash
-npm install @quantum/plugin-sdk
+npm install @io7/quantum-plugin-sdk
 npm install --save-dev typescript esbuild
 ```
 
@@ -95,7 +95,7 @@ Web iframe 不会获得数据库连接；需要读写业务数据时仍应通过
 ## 3. 生命周期与页面
 
 ```ts
-import { definePlugin } from "@quantum/plugin-sdk";
+import { definePlugin } from "@io7/quantum-plugin-sdk";
 
 export default definePlugin({
   async activate(context) {
@@ -143,7 +143,7 @@ Web 插件与 .NET 插件共享同一套 Host EventBus。Topic 必须通过 bran
 `^[A-Za-z][A-Za-z0-9_-]*(\.[A-Za-z0-9][A-Za-z0-9_-]*)*$`。
 
 ```ts
-import { QuantumTopic } from "@quantum/plugin-sdk";
+import { QuantumTopic } from "@io7/quantum-plugin-sdk";
 
 const topic = QuantumTopic.of("devices.status");
 const subscription = await context.eventBus.subscribe(topic, async event => {
