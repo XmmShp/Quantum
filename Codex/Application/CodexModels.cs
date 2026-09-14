@@ -32,12 +32,16 @@ public sealed record PendingQuantumRpcCall(
     string Description,
     JsonElement Arguments);
 
+public sealed record CodexModelOption(string Id, string DisplayName);
+
 public sealed record CodexIntegrationSnapshot(
     CodexConnectionState ConnectionState,
     string? ThreadId,
     bool IsBusy,
     int ToolCount,
     string WorkingDirectory,
+    IReadOnlyList<CodexModelOption> Models,
+    string SelectedModel,
     IReadOnlyList<CodexChatMessage> Messages,
     IReadOnlyList<PendingQuantumRpcCall> PendingCalls,
     string? ErrorMessage);
@@ -48,9 +52,14 @@ public interface ICodexIntegrationService
 
     CodexIntegrationSnapshot Snapshot { get; }
 
-    Task ConnectAsync(string workingDirectory, CancellationToken cancellationToken = default);
+    Task ConnectAsync(
+        string workingDirectory,
+        string model,
+        CancellationToken cancellationToken = default);
 
-    Task StartNewThreadAsync(CancellationToken cancellationToken = default);
+    Task StartNewThreadAsync(
+        string? model = null,
+        CancellationToken cancellationToken = default);
 
     Task SendAsync(string prompt, CancellationToken cancellationToken = default);
 

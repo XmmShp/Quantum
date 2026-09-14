@@ -38,6 +38,15 @@
                 <p>@L["插件会启动 codex app-server，并复用本机已有登录状态。"]</p>
             </div>
             <label>
+                <span>@L["模型"]</span>
+                <select @bind="_selectedModel" disabled="@IsConnecting">
+                    @foreach (var model in _snapshot.Models)
+                    {
+                        <option value="@model.Id">@model.DisplayName</option>
+                    }
+                </select>
+            </label>
+            <label>
                 <span>@L["工作目录"]</span>
                 <input @bind="_workingDirectory" disabled="@IsConnecting" />
             </label>
@@ -54,6 +63,15 @@
                     <strong>@_snapshot.ToolCount</strong>
                     <span>@L["项 Quantum 工具"]</span>
                 </div>
+                <label class="model-picker">
+                    <span>@L["模型"]</span>
+                    <select value="@_selectedModel" disabled="@_snapshot.IsBusy" @onchange="ChangeModelAsync">
+                        @foreach (var model in _snapshot.Models)
+                        {
+                            <option value="@model.Id">@model.DisplayName</option>
+                        }
+                    </select>
+                </label>
                 <code title="@_snapshot.ThreadId">@ShortThreadId</code>
                 <div class="toolbar-actions">
                     <button type="button" disabled="@_snapshot.IsBusy" @onclick="NewThreadAsync">＋ @L["新对话"]</button>
@@ -130,6 +148,7 @@
     private readonly ICodexIntegrationService CodexService;
     private CodexIntegrationSnapshot _snapshot = default!;
     private string _workingDirectory = Environment.CurrentDirectory;
+    private string _selectedModel = CodexIntegrationService.DefaultModel;
     private string _prompt = string.Empty;
     private string? _localError;
 
@@ -142,6 +161,7 @@
     {
         _snapshot = CodexService.Snapshot;
         _workingDirectory = _snapshot.WorkingDirectory;
+        _selectedModel = _snapshot.SelectedModel;
         CodexService.Changed += HandleChanged;
     }
 
@@ -163,11 +183,25 @@
         ? threadId[..12]
         : _snapshot.ThreadId ?? string.Empty;
 
-    private async Task ConnectAsync() => await RunAsync(() => CodexService.ConnectAsync(_workingDirectory));
+    private async Task ConnectAsync()
+        => await RunAsync(() => CodexService.ConnectAsync(_workingDirectory, _selectedModel));
 
     private async Task DisconnectAsync() => await RunAsync(() => CodexService.DisconnectAsync());
 
     private async Task NewThreadAsync() => await RunAsync(() => CodexService.StartNewThreadAsync());
+
+    private async Task ChangeModelAsync(ChangeEventArgs args)
+    {
+        var model = args.Value?.ToString();
+        if (string.IsNullOrWhiteSpace(model)
+            || string.Equals(model, _snapshot.SelectedModel, StringComparison.Ordinal))
+        {
+            return;
+        }
+
+        _selectedModel = model;
+        await RunAsync(() => CodexService.StartNewThreadAsync(model));
+    }
 
     private async Task SendAsync()
     {
@@ -208,6 +242,7 @@
     private void HandleChanged()
     {
         _snapshot = CodexService.Snapshot;
+        _selectedModel = _snapshot.SelectedModel;
         _ = InvokeAsync(StateHasChanged);
     }
 

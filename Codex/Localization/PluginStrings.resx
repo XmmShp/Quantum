@@ -13,6 +13,7 @@
   <data name="连接本机 Codex" xml:space="preserve"><value>连接本机 Codex</value></data>
   <data name="插件会启动 codex app-server，并复用本机已有登录状态。" xml:space="preserve"><value>插件会启动 codex app-server，并复用本机已有登录状态。</value></data>
   <data name="工作目录" xml:space="preserve"><value>工作目录</value></data>
+  <data name="模型" xml:space="preserve"><value>模型</value></data>
   <data name="连接" xml:space="preserve"><value>连接</value></data>
   <data name="断开" xml:space="preserve"><value>断开</value></data>
   <data name="新对话" xml:space="preserve"><value>新对话</value></data>

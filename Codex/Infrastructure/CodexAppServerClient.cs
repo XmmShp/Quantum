@@ -61,6 +61,7 @@ internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger)
 
     public async Task<string> StartThreadAsync(
         string workingDirectory,
+        string model,
         JsonArray dynamicTools,
         CancellationToken cancellationToken)
     {
@@ -68,6 +69,7 @@ internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger)
             "thread/start",
             new JsonObject
             {
+                ["model"] = model,
                 ["cwd"] = workingDirectory,
                 ["approvalPolicy"] = "never",
                 ["sandbox"] = "read-only",
@@ -77,6 +79,40 @@ internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger)
             cancellationToken).ConfigureAwait(false);
         return response.GetProperty("thread").GetProperty("id").GetString()
             ?? throw new InvalidOperationException("Codex did not return a thread id.");
+    }
+
+    public async Task<IReadOnlyList<CodexModelOption>> ListModelsAsync(
+        CancellationToken cancellationToken)
+    {
+        var response = await SendRequestAsync(
+            "model/list",
+            new { limit = 100, includeHidden = false },
+            cancellationToken).ConfigureAwait(false);
+        if (!response.TryGetProperty("data", out var data)
+            || data.ValueKind != JsonValueKind.Array)
+        {
+            return [];
+        }
+
+        return data.EnumerateArray()
+            .Select(static model =>
+            {
+                var id = model.TryGetProperty("id", out var idElement)
+                    ? idElement.GetString()
+                    : model.TryGetProperty("model", out var modelElement)
+                        ? modelElement.GetString()
+                        : null;
+                var displayName = model.TryGetProperty("displayName", out var displayNameElement)
+                    ? displayNameElement.GetString()
+                    : null;
+                return string.IsNullOrWhiteSpace(id)
+                    ? null
+                    : new CodexModelOption(id, string.IsNullOrWhiteSpace(displayName) ? id : displayName);
+            })
+            .Where(static model => model is not null)
+            .Cast<CodexModelOption>()
+            .DistinctBy(static model => model.Id, StringComparer.Ordinal)
+            .ToArray();
     }
 
     public Task<JsonElement> StartTurnAsync(

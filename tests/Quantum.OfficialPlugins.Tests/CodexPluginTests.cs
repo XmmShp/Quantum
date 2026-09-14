@@ -8,6 +8,26 @@ namespace Quantum.Tests;
 public sealed class CodexPluginTests
 {
     [Fact]
+    public void LunaIsTheDefaultModel()
+    {
+        Assert.Equal("gpt-5.6-luna", CodexIntegrationService.DefaultModel);
+        Assert.Equal(
+            "gpt-5.6-luna",
+            CodexIntegrationService.ResolveModel(
+                CodexIntegrationService.DefaultModel,
+                CodexIntegrationService.InitialModels));
+    }
+
+    [Fact]
+    public void UnavailableModelIsRejectedBeforeStartingAThread()
+    {
+        var exception = Assert.Throws<InvalidOperationException>(() =>
+            CodexIntegrationService.ResolveModel("gpt-missing", CodexIntegrationService.InitialModels));
+
+        Assert.Contains("not available", exception.Message, StringComparison.Ordinal);
+    }
+
+    [Fact]
     public void NestedUpgradeErrorBecomesActionableMessage()
     {
         const string response =

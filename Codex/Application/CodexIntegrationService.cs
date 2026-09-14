@@ -12,12 +12,24 @@ internal sealed class CodexIntegrationService(
     ILoggerFactory loggerFactory,
     ILogger<CodexIntegrationService> logger) : ICodexIntegrationService, IAsyncDisposable
 {
+    internal const string DefaultModel = "gpt-5.6-luna";
+
+    internal static readonly IReadOnlyList<CodexModelOption> InitialModels =
+    [
+        new("gpt-5.6-luna", "GPT-5.6 Luna"),
+        new("gpt-5.6-terra", "GPT-5.6 Terra"),
+        new("gpt-5.6-sol", "GPT-5.6 Sol"),
+        new("gpt-6-astra", "GPT-6 Astra")
+    ];
+
     private readonly object _sync = new();
     private readonly SemaphoreSlim _operationGate = new(1, 1);
     private readonly List<CodexChatMessage> _messages = [];
     private readonly Dictionary<string, PendingQuantumRpcCall> _pendingCalls = new(StringComparer.Ordinal);
     private readonly ConcurrentDictionary<string, TaskCompletionSource<bool>> _approvals = new(StringComparer.Ordinal);
     private IReadOnlyList<QuantumRpcTool> _tools = [];
+    private IReadOnlyList<CodexModelOption> _models = InitialModels;
+    private string _selectedModel = DefaultModel;
     private CodexAppServerClient? _client;
     private CodexConnectionState _connectionState;
     private string? _threadId;
@@ -40,6 +52,8 @@ internal sealed class CodexIntegrationService(
                     _isBusy,
                     _tools.Count,
                     _workingDirectory,
+                    _models,
+                    _selectedModel,
                     _messages.ToArray(),
                     _pendingCalls.Values.ToArray(),
                     _errorMessage);
@@ -47,7 +61,10 @@ internal sealed class CodexIntegrationService(
         }
     }
 
-    public async Task ConnectAsync(string workingDirectory, CancellationToken cancellationToken = default)
+    public async Task ConnectAsync(
+        string workingDirectory,
+        string model,
+        CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -99,6 +116,7 @@ internal sealed class CodexIntegrationService(
             }
 
             var tools = QuantumRpcToolCatalog.Parse(catalogResult.Value);
+            var selectedModel = ResolveModel(model, InitialModels);
             var client = new CodexAppServerClient(loggerFactory.CreateLogger<CodexAppServerClient>());
             client.NotificationReceived += HandleNotificationAsync;
             client.DynamicToolCallReceived += HandleDynamicToolCallAsync;
@@ -106,14 +124,23 @@ internal sealed class CodexIntegrationService(
             try
             {
                 await client.StartAsync(cancellationToken).ConfigureAwait(false);
+                var availableModels = await client.ListModelsAsync(cancellationToken).ConfigureAwait(false);
+                if (availableModels.Count > 0)
+                {
+                    selectedModel = ResolveModel(selectedModel, availableModels);
+                }
+
                 var threadId = await client.StartThreadAsync(
                     normalizedDirectory,
+                    selectedModel,
                     QuantumRpcToolCatalog.ToDynamicTools(tools),
                     cancellationToken).ConfigureAwait(false);
                 lock (_sync)
                 {
                     _client = client;
                     _tools = tools;
+                    _models = availableModels.Count > 0 ? availableModels : InitialModels;
+                    _selectedModel = selectedModel;
                     _workingDirectory = normalizedDirectory;
                     _threadId = threadId;
                     _connectionState = CodexConnectionState.Connected;
@@ -121,7 +148,7 @@ internal sealed class CodexIntegrationService(
                     _messages.Add(new CodexChatMessage(
                         Guid.NewGuid(),
                         CodexMessageRole.System,
-                        $"Codex connected. {tools.Count} Quantum RPC tools are available.",
+                        $"Codex connected with {selectedModel}. {tools.Count} Quantum RPC tools are available.",
                         DateTimeOffset.Now));
                 }
 
@@ -144,7 +171,9 @@ internal sealed class CodexIntegrationService(
         }
     }
 
-    public async Task StartNewThreadAsync(CancellationToken cancellationToken = default)
+    public async Task StartNewThreadAsync(
+        string? model = null,
+        CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
@@ -153,27 +182,31 @@ internal sealed class CodexIntegrationService(
             CodexAppServerClient client;
             IReadOnlyList<QuantumRpcTool> tools;
             string workingDirectory;
+            string selectedModel;
             lock (_sync)
             {
                 client = _client ?? throw new InvalidOperationException("Codex is not connected.");
                 tools = _tools;
                 workingDirectory = _workingDirectory;
+                selectedModel = ResolveModel(model ?? _selectedModel, _models);
             }
 
             var threadId = await client.StartThreadAsync(
                 workingDirectory,
+                selectedModel,
                 QuantumRpcToolCatalog.ToDynamicTools(tools),
                 cancellationToken).ConfigureAwait(false);
             lock (_sync)
             {
                 _threadId = threadId;
+                _selectedModel = selectedModel;
                 _isBusy = false;
                 _errorMessage = null;
                 _messages.Clear();
                 _messages.Add(new CodexChatMessage(
                     Guid.NewGuid(),
                     CodexMessageRole.System,
-                    $"New Codex conversation started with {tools.Count} Quantum RPC tools.",
+                    $"New {selectedModel} conversation started with {tools.Count} Quantum RPC tools.",
                     DateTimeOffset.Now));
             }
 
@@ -442,6 +475,17 @@ internal sealed class CodexIntegrationService(
 
     private static CodexDynamicToolResult Failure(string errorCode, string message)
         => new(false, JsonSerializer.Serialize(new { isSuccess = false, errorCode, message }));
+
+    internal static string ResolveModel(
+        string model,
+        IReadOnlyList<CodexModelOption> availableModels)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(model);
+        var match = availableModels.FirstOrDefault(option =>
+            string.Equals(option.Id, model.Trim(), StringComparison.OrdinalIgnoreCase));
+        return match?.Id
+            ?? throw new InvalidOperationException($"Codex model '{model}' is not available.");
+    }
 
     private void AppendAssistantDelta(string delta)
     {

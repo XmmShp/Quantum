@@ -13,6 +13,7 @@
   <data name="连接本机 Codex" xml:space="preserve"><value>Connect local Codex</value></data>
   <data name="插件会启动 codex app-server，并复用本机已有登录状态。" xml:space="preserve"><value>The plugin starts codex app-server and reuses your existing local sign-in.</value></data>
   <data name="工作目录" xml:space="preserve"><value>Working directory</value></data>
+  <data name="模型" xml:space="preserve"><value>Model</value></data>
   <data name="连接" xml:space="preserve"><value>Connect</value></data>
   <data name="断开" xml:space="preserve"><value>Disconnect</value></data>
   <data name="新对话" xml:space="preserve"><value>New conversation</value></data>
