@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using NOF.Application;
@@ -67,6 +68,79 @@ public sealed class PluginRpcRegistryTests
         Assert.True(result.IsSuccess, $"{result.ErrorCode}: {result.Message}");
     }
 
+    [Fact]
+    public async Task CatalogExportsDescriptionsSchemasAndAllAttributeMetadata()
+    {
+        await using var runtime = CreateRuntime("quantum.plugin.a");
+        var registry = PluginRpcRegistry.Create([runtime.Runtime], NullLogger.Instance);
+        using var callerSerializer = new PluginRpcSerializer();
+        using var invoker = new PluginRpcInvoker(
+            PluginId.Of("quantum.plugin.caller"),
+            Guid.NewGuid(),
+            callerSerializer);
+        invoker.UseRegistry(registry);
+
+        var result = await invoker.InvokeAsync<System.Text.Json.JsonElement>(
+            "quantum.rpc.catalog",
+            new { },
+            Context.Empty);
+
+        Assert.True(result.IsSuccess, $"{result.ErrorCode}: {result.Message}");
+        Assert.Equal(1, result.Value.GetProperty("schemaVersion").GetInt32());
+        var service = result.Value.GetProperty("services")
+            .EnumerateArray()
+            .Single(item => item.GetProperty("pluginId").GetString() == "quantum.plugin.a"
+                && item.GetProperty("serviceName").GetString() == "ordering");
+        Assert.Equal("Ordering RPC service.", service.GetProperty("description").GetString());
+        Assert.Contains(
+            service.GetProperty("attributes").EnumerateArray(),
+            attribute => attribute.GetProperty("type").GetString()
+                == typeof(CategoryAttribute).FullName);
+        var probe = service.GetProperty("attributes")
+            .EnumerateArray()
+            .Single(attribute => attribute.GetProperty("type").GetString()
+                == typeof(RpcCatalogProbeAttribute).FullName);
+        Assert.Equal(
+            "service",
+            probe.GetProperty("constructorArguments")[0].GetProperty("value").GetString());
+        Assert.True(
+            probe.GetProperty("namedArguments")
+                .GetProperty(nameof(RpcCatalogProbeAttribute.Enabled))
+                .GetProperty("value")
+                .GetBoolean());
+
+        var method = service.GetProperty("methods")
+            .EnumerateArray()
+            .Single(item => item.GetProperty("methodName").GetString() == nameof(IOrderingRpcService.Ping));
+        Assert.Equal("Returns the selected provider.", method.GetProperty("description").GetString());
+        Assert.Equal("quantum.plugin.a.ordering.ping", method.GetProperty("qualifiedName").GetString());
+        Assert.Contains(
+            method.GetProperty("attributes").EnumerateArray(),
+            attribute => attribute.GetProperty("type").GetString()
+                == typeof(CategoryAttribute).FullName);
+        Assert.Contains(
+            method.GetProperty("parameterAttributes").EnumerateArray(),
+            attribute => attribute.GetProperty("type").GetString()
+                == typeof(DescriptionAttribute).FullName);
+        Assert.Contains(
+            method.GetProperty("returnAttributes").EnumerateArray(),
+            attribute => attribute.GetProperty("type").GetString()
+                == typeof(DescriptionAttribute).FullName);
+        Assert.Equal(
+            "Ordering request payload.",
+            method.GetProperty("inputSchema").GetProperty("description").GetString());
+        Assert.Equal(
+            "Selected provider plugin id.",
+            method.GetProperty("outputSchema").GetProperty("description").GetString());
+        Assert.Equal(
+            "Probe input value.",
+            method.GetProperty("inputSchema")
+                .GetProperty("properties")
+                .GetProperty("value")
+                .GetProperty("description")
+                .GetString());
+    }
+
     private static async Task<Result<string>> InvokeAsync(
         PluginRpcRegistry registry,
         string rpcName,
@@ -120,19 +194,34 @@ public sealed class PluginRpcRegistryTests
     }
 }
 
-public sealed record OrderingRequest;
+public sealed record OrderingRequest(
+    [property: Description("Probe input value.")] string? Value = null);
 
 public sealed record RpcProviderMarker(string PluginId);
 
+[Description("Ordering RPC service.")]
+[Category("testing")]
+[RpcCatalogProbe("service", Enabled = true)]
 [TransportOverQuantum]
 [RpcInvocationName("ordering")]
 public interface IOrderingRpcService : IRpcService
 {
+    [Description("Returns the selected provider.")]
+    [Category("testing")]
+    [return: Description("Selected provider plugin id.")]
     [RpcInvocationName("ping")]
     [RpcInvocationAlias("ordering.alias")]
-    Result<string> Ping(OrderingRequest request);
+    Result<string> Ping([Description("Ordering request payload.")] OrderingRequest request);
 
     Result Reset(OrderingRequest request);
+}
+
+[AttributeUsage(AttributeTargets.All)]
+public sealed class RpcCatalogProbeAttribute(string label) : Attribute
+{
+    public string Label { get; } = label;
+
+    public bool Enabled { get; set; }
 }
 
 public partial class OrderingRpcServer : RpcServer<IOrderingRpcService>;

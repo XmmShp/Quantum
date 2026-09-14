@@ -204,7 +204,12 @@
               return Promise.reject(new TypeError("An RPC payload cannot be undefined."));
             }
             return hostRpc("rpc", "invoke", { rpcName, payload, context }, options);
-          }
+          },
+          catalog: options => hostRpc("rpc", "invoke", {
+            rpcName: "quantum.rpc.catalog",
+            payload: {},
+            context: {}
+          }, options)
         }),
         log: Object.freeze({
           trace: message => hostRpc("log", "trace", { message }),

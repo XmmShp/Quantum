@@ -507,4 +507,6 @@ test("the iframe bootstrap script parses as JavaScript", async () => {
   const script = html.match(/<script>([\s\S]*?)<\/script>/)?.[1];
   assert.ok(script, "bootstrap script was not found");
   assert.doesNotThrow(() => new Function(script));
+  assert.match(script, /catalog: options => hostRpc\("rpc", "invoke", \{/);
+  assert.match(script, /rpcName: "quantum\.rpc\.catalog"/);
 });

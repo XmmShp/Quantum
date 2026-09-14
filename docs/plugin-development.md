@@ -159,6 +159,18 @@ var result = await services.GetRequiredService<IRpcInvoker>().InvokeAsync<string
 目标插件 scope，并在 Handler 完成且结果序列化后释放。`dependencies` 仍用于确保提供方先启动、后停止，但不作为 RPC
 访问权限；没有依赖或 integration 声明的已加载插件也可以被调用。
 
+Host 还内置 `quantum.rpc.catalog`，用于发现当前所有可用 RPC，插件无需声明依赖即可读取：
+
+```csharp
+var catalog = await services.GetRequiredService<IRpcInvoker>()
+    .GetCatalogAsync(cancellationToken);
+```
+
+目录按插件和服务列出完整名称、短名称、Alias、请求/响应 CLR 类型以及可直接提供给 AI 工具的 JSON Schema。
+在服务接口、方法、唯一请求参数、返回值、DTO 类型和 DTO 属性上声明的全部 Attribute 都会以类型名、构造参数和命名参数
+导出；`DescriptionAttribute` 还会提升为相应节点的 `description`。元数据读取使用 `CustomAttributeData`，不会为了发现接口而
+实例化 Attribute。Web 插件可使用 `context.rpc.catalog()` 获取同一份目录。
+
 ## 3. 注册服务和启动逻辑
 
 插件装载时有两条独立的服务注册链路：宿主先执行程序集中的所有 NOF `IAssemblyInitializer`，再调用入口程序集内

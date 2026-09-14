@@ -293,13 +293,22 @@ internal sealed class PluginRpcRuntime : IAsyncDisposable
                     .GetCustomAttributes<RpcInvocationAliasAttribute>(inherit: false)
                     .Select(static attribute => attribute.Name)
                     .ToArray();
+                var parameter = contractMethod.GetParameters()[0];
+                var responseType = returnsValue
+                    ? contractMethod.ReturnType.GetGenericArguments()[0]
+                    : null;
                 definitions.Add(new PluginRpcMethodDefinition(
                     serviceName,
                     methodName,
                     aliases,
                     mapping.Value,
                     returnsValue,
-                    $"{serverType.FullName}.{contractMethod.Name}"));
+                    $"{serverType.FullName}.{contractMethod.Name}",
+                    PluginRpcCatalogMetadataReader.Describe(
+                        serviceType,
+                        contractMethod,
+                        parameter,
+                        responseType)));
             }
         }
 
@@ -355,7 +364,8 @@ internal sealed record PluginRpcMethodDefinition(
     IReadOnlyList<string> Aliases,
     RpcHandlerMapping Mapping,
     bool ReturnsValue,
-    string Declaration)
+    string Declaration,
+    PluginRpcMethodCatalogMetadata Catalog)
 {
     public string CanonicalName => $"{ServiceName}.{MethodName}";
 }

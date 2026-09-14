@@ -91,6 +91,46 @@ public sealed class WebPluginInteropBridgeTests
     }
 
     [Fact]
+    public async Task RpcCatalogIsAvailableThroughTheWebPluginBridge()
+    {
+        await using var host = CreateHost();
+        await using var target = CreateRpcTarget(host);
+        var runtimeId = Guid.NewGuid();
+        var catalog = new PluginCatalog([
+            LoadedWebPlugin(runtimeId),
+            target.Plugin
+        ]);
+        using var rpcRouter = new PluginRpcRouter(catalog, NullLogger<PluginRpcRouter>.Instance);
+        using var bridge = CreateBridge(
+            catalog,
+            rpcRouter,
+            host,
+            new RejectingEventDeliveryJavaScriptRuntime());
+
+        var result = await bridge.InvokeAsync(
+            PluginId,
+            runtimeId.ToString("N"),
+            Guid.NewGuid().ToString("N"),
+            "rpc",
+            "invoke",
+            JsonSerializer.SerializeToElement(new
+            {
+                rpcName = "quantum.rpc.catalog",
+                payload = new { },
+                context = new { }
+            }));
+
+        Assert.True(result.GetProperty("isSuccess").GetBoolean());
+        var value = result.GetProperty("value");
+        Assert.Equal("quantum.rpc.catalog", value.GetProperty("catalogRpcName").GetString());
+        Assert.Contains(
+            value.GetProperty("services").EnumerateArray(),
+            service => service.GetProperty("pluginId").GetString() == TargetPluginId
+                && service.GetProperty("methods").EnumerateArray().Any(method =>
+                    method.GetProperty("canonicalName").GetString() == "test.echo"));
+    }
+
+    [Fact]
     public async Task MissingRpcReturnsFailedResultInsteadOfThrowing()
     {
         await using var host = CreateHost();
