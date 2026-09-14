@@ -32,26 +32,6 @@ public sealed class LocalizationTests
     }
 
     [Fact]
-    public void PluginLoadContext_LoadsCultureSpecificSatelliteAssembly()
-    {
-        var entryPath = typeof(Quantum.OfficialPlugins.Calendar.CalendarPlugin).Assembly.Location;
-        var loadContext = new PluginLoadContext(entryPath);
-        try
-        {
-            var pluginAssembly = loadContext.LoadEntryAssembly();
-
-            var satellite = pluginAssembly.GetSatelliteAssembly(CultureInfo.GetCultureInfo("en-US"));
-
-            Assert.Equal("en-US", satellite.GetName().CultureName);
-            Assert.EndsWith(".resources", satellite.GetName().Name, StringComparison.Ordinal);
-        }
-        finally
-        {
-            loadContext.Unload();
-        }
-    }
-
-    [Fact]
     public void ApplicationResources_ProvideEnglishTranslation()
     {
         var resources = new ResourceManager(

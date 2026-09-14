@@ -377,7 +377,7 @@ var subscription = events.Subscribe(
 `head` 和 `postBlazor` 接受 HTML 片段。该能力等同于在宿主内执行代码，只应安装来源可信且经过审核的插件。
 
 动态插件不会在宿主编译期作为 Razor 项目引用，因此 CSS isolation 生成的 project bundle 需要由插件项目复制到输出目录的
-`wwwroot`，再通过 manifest 的 `web.head` 引用。`official-plugins/Calendar` 展示了完整做法：
+`wwwroot`，再通过 manifest 的 `web.head` 引用。[Quantum.OfficialPlugins 的 Calendar](https://github.com/XmmShp/Quantum.OfficialPlugins/tree/main/Calendar) 展示了完整做法：
 `Calendar.razor.css` 构建为 `Quantum.CalendarPlugin.bundle.scp.css`，组件的 scope attribute 与 bundle
 选择器仍由 Razor SDK 自动生成。
 
@@ -415,7 +415,7 @@ artifact 约束如下：
 migration 是 forward-only 的持久化提交。新 runtime 后续启动失败时 Host 可以恢复旧代码运行，但不会执行 `Down`
 或撤销已经成功提交的 schema；升级 SQL 应采用 expand/migrate/contract，先添加兼容结构，等不再需要旧版本后再删除旧结构。
 
-`official-plugins/Calendar/Application/CalendarApplicationService` 只依赖 `NOF.Domain.IRepository<CalendarEntry>` 与
+`Quantum.OfficialPlugins/Calendar/Application/CalendarApplicationService` 只依赖 `NOF.Domain.IRepository<CalendarEntry>` 与
 `NOF.Application.IDbContext`；插件自身最多引用 `NOF.Infrastructure`，不引用 EF Core、SQLite provider 或宿主持久化项目。
 Quantum 的本地优先数据库遵循 NOF 的默认硬删除行为。确有恢复或审计需求的插件才应显式启用软删除，并自行提供相应迁移。
 运行期仍可通过纯 NOF 抽象贡献 EF 模型：

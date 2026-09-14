@@ -29,14 +29,14 @@ quantum/
 │       └── Platforms/           macOS 与 Windows 启动入口
 └── tests/
     └── Quantum.Tests/           插件模型与运行时测试
-official-plugins/
-└── Calendar/                       日程、待办、共享 SQLite 与跨插件 RPC 的官方插件
 samples/
 ├── Quantum.ExamplePlugin/          .NET、Blazor、DI 与静态资源示例
 ├── Quantum.ExampleDependentPlugin/ 声明并验证强前置依赖的 .NET 示例
 └── Quantum.ExampleWebPlugin/       纯 TypeScript iframe 插件示例
 docs/                            架构与插件开发文档
 ```
+
+官方插件已迁移至独立仓库 [Quantum.OfficialPlugins](https://github.com/XmmShp/Quantum.OfficialPlugins)，并通过 Quantum Platform CI 发布。
 
 ## 本地开发
 
