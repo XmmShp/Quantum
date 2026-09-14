@@ -16,7 +16,7 @@ Quantum (单一 NOF MAUI Host 项目)
 - manifest、运行时环境和 EventBus envelope 共用 SDK 中基于 NOF `IValueObject<string>` 生成的 `PluginId` 与
   `SemanticVersion` 值对象；Web adapter 保持
   字符串 JSON 形状，并在 TypeScript SDK 中映射为具有相同校验与比较语义的 branded string。
-- `quantum-platform` 是独立部署的统一后端平台，平台级用户身份、权限、插件市场、密码哈希、文件存储、JWT 与 EF Core 持久化均由该宿主组合；其 Contract 通过 `/rpc` 的 JSON-RPC 2.0 暴露，不进入桌面插件 ABI。
+- [Quantum Platform](https://github.com/XmmShp/Quantum.Platform) 是独立仓库、独立部署的统一后端平台，平台级用户身份、权限、插件市场、密码哈希、文件存储、JWT 与 EF Core 持久化均由该宿主组合；其 Contract 通过 `/rpc` 的 JSON-RPC 2.0 暴露，不进入桌面插件 ABI。
 
 ## 启动顺序
 

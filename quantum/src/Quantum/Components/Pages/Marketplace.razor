@@ -24,7 +24,28 @@
         </div>
     </header>
 
-    <div class="search-panel">
+    <nav class="marketplace-sections" aria-label="@L["插件市场视图"]">
+        <button type="button"
+                class="@(_activeArea == MarketplaceArea.Discover ? "active" : null)"
+                @onclick="() => SwitchArea(MarketplaceArea.Discover)">
+            <span aria-hidden="true">▦</span>
+            <strong>@L["发现插件"]</strong>
+        </button>
+        <button type="button"
+                class="@(_activeArea == MarketplaceArea.DeveloperTesting ? "active" : null)"
+                @onclick="() => SwitchArea(MarketplaceArea.DeveloperTesting)">
+            <span aria-hidden="true">⌘</span>
+            <strong>@L["我的测试版本"]</strong>
+        </button>
+    </nav>
+
+    @if (_activeArea == MarketplaceArea.DeveloperTesting)
+    {
+        <DeveloperPortal />
+    }
+    else
+    {
+        <div class="search-panel">
         <label>
             <span class="search-icon" aria-hidden="true">⌕</span>
             <input placeholder="@L["搜索名称、标识或简介"]"
@@ -39,7 +60,7 @@
         {
             <button type="button" class="tag-filter" disabled="@_isBusy" @onclick="ClearTagAsync">#@_selectedTag ×</button>
         }
-    </div>
+        </div>
 
     @if (_message is not null)
     {
@@ -120,6 +141,7 @@
                 </article>
             }
         </div>
+        }
     }
 </section>
 
@@ -208,6 +230,7 @@
     private bool _isLoading = true;
     private bool _isBusy;
     private bool _platformReachable;
+    private MarketplaceArea _activeArea;
 
     protected override Task OnInitializedAsync() => LoadPluginsAsync();
 
@@ -284,6 +307,12 @@
     }
 
     private void CloseDetails() => _details = null;
+
+    private void SwitchArea(MarketplaceArea area)
+    {
+        _activeArea = area;
+        _details = null;
+    }
 
     private async Task PrepareMarketplaceInstallAsync(MarketplacePlugin plugin)
     {
@@ -398,4 +427,10 @@
             : $"{Math.Max(1, bytes / 1024d):0.#} KB";
 
     private sealed record PendingMarketplaceInstall(string PluginName, PluginInstallPreview Preview);
+
+    private enum MarketplaceArea
+    {
+        Discover,
+        DeveloperTesting
+    }
 }

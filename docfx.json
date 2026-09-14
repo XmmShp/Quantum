@@ -5,11 +5,7 @@
         {
           "files": [
             "quantum/src/Quantum/**.csproj",
-            "sdk/dotnet/src/Quantum.Plugin.Abstraction/**.csproj",
-            "quantum-platform/src/Quantum.Platform.Domain/**.csproj",
-            "quantum-platform/src/Quantum.Platform.Contract/**.csproj",
-            "quantum-platform/src/Quantum.Platform.Application/**.csproj",
-            "quantum-platform/src/Quantum.Platform/**.csproj"
+            "sdk/dotnet/src/Quantum.Plugin.Abstraction/**.csproj"
           ],
           "src": "."
         }
@@ -33,7 +29,6 @@
         "files": [
           "docs/**.md",
           "docs/**/toc.yml",
-          "quantum-platform/**.md",
           "*.md",
           "toc.yml"
         ]

@@ -5,7 +5,9 @@
 @inject IStringLocalizer<AppStrings> L
 
 <div class="global-install-surface">
-    @ChildContent
+    <CascadingValue Value="this" IsFixed="true">
+        @ChildContent
+    </CascadingValue>
 
     <div @ref="_dropOverlay" class="global-plugin-drop-overlay" aria-hidden="true">
         <InputFile @key="_fileInputKey"
@@ -140,7 +142,11 @@
         }
     }
 
-    private async Task PrepareInstallAsync(InputFileChangeEventArgs eventArgs)
+    public bool IsProcessing => _isProcessing;
+
+    public int FileInputKey => _fileInputKey;
+
+    public async Task PrepareInstallAsync(InputFileChangeEventArgs eventArgs)
     {
         await JSRuntime.InvokeVoidAsync(
             "quantum.pluginInstallerDropTarget.hide",

@@ -138,11 +138,6 @@ a {
   margin-top: auto;
 }
 
-.developer-nav-item {
-  flex: 0 0 auto;
-  margin-top: 4px;
-}
-
 .settings-nav-item {
   flex: 0 0 auto;
   margin-top: 4px;
@@ -152,6 +147,41 @@ a {
 .settings-gear {
   font-size: 19px;
   line-height: 1;
+}
+
+.developer-toolbar {
+  align-items: center;
+  background: linear-gradient(135deg, #f0edff, #faf9ff 62%, #edf7ff);
+  border: 1px solid #e5e1ef;
+  border-radius: 22px;
+  display: flex;
+  justify-content: space-between;
+  padding: 22px 25px;
+}
+
+.developer-toolbar h2 {
+  color: #211f2b;
+  font-size: 1.4rem;
+  letter-spacing: -.035em;
+  margin: 0;
+}
+
+.developer-toolbar p:last-child {
+  color: #77727f;
+  font-size: .76rem;
+  margin: 8px 0 0;
+}
+
+.developer-toolbar .portal-link {
+  background: #6554d9;
+  border: 1px solid #6554d9;
+  border-radius: 999px;
+  color: white;
+  flex: 0 0 auto;
+  font-size: .72rem;
+  font-weight: 800;
+  padding: 10px 15px;
+  text-decoration: none;
 }
 
 .brand:focus-visible,
@@ -233,10 +263,11 @@ a {
   line-height: 1.6;
 }
 
-.global-drop-hint {
+.local-install-card {
   position: relative;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 16px;
   min-height: 112px;
   padding: 22px 24px;
@@ -245,6 +276,13 @@ a {
   border-radius: 20px;
   background: linear-gradient(135deg, rgba(239, 237, 255, 0.86), rgba(255, 255, 255, 0.88));
   box-shadow: 0 16px 44px rgba(47, 40, 76, 0.05);
+}
+
+.local-install-copy {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  min-width: 0;
 }
 
 .drop-symbol {
@@ -261,16 +299,54 @@ a {
   font-weight: 800;
 }
 
-.global-drop-hint strong,
-.global-drop-hint p {
+.local-install-card strong,
+.local-install-card p {
   display: block;
 }
 
-.global-drop-hint p {
+.local-install-card p {
   margin: 5px 0 0;
   color: #7d778b;
   font-size: 12px;
   line-height: 1.55;
+}
+
+.archive-picker {
+  position: relative;
+  flex: 0 0 auto;
+  overflow: hidden;
+  border-radius: 11px;
+  color: #fff;
+  background: #6553e7;
+  box-shadow: 0 8px 20px rgba(91, 72, 223, 0.2);
+  cursor: pointer;
+}
+
+.archive-picker input[type="file"] {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  cursor: pointer;
+}
+
+.archive-picker span {
+  display: block;
+  padding: 11px 16px;
+  font-size: 12px;
+  font-weight: 750;
+  pointer-events: none;
+}
+
+.archive-picker:focus-within {
+  outline: 3px solid rgba(101, 83, 231, 0.24);
+  outline-offset: 3px;
+}
+
+.archive-picker:has(input:disabled) {
+  opacity: 0.55;
+  cursor: wait;
 }
 
 .global-plugin-drop-overlay {
@@ -794,8 +870,14 @@ a {
     padding-inline: 32px;
   }
 
-  .global-drop-hint {
+  .local-install-card {
     align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .archive-picker {
+    width: 100%;
+    text-align: center;
   }
 
   .package-limit {

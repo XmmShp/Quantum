@@ -29,9 +29,6 @@ quantum/
 │       └── Platforms/           macOS 与 Windows 启动入口
 └── tests/
     └── Quantum.Tests/           插件模型与运行时测试
-quantum-platform/
-├── src/                         NOF 分层的平台身份、插件市场与 JSON-RPC Host
-└── tests/                       平台领域与安全存储测试
 sdk/
 ├── dotnet/
 │   ├── src/                     插件与宿主共享的 .NET ABI/SDK
@@ -57,7 +54,6 @@ docs/                            架构与插件开发文档
 dotnet restore Quantum.slnx
 dotnet build Quantum.slnx
 dotnet test quantum/tests/Quantum.Tests/Quantum.Tests.csproj
-dotnet test quantum-platform/tests/Quantum.Platform.Tests/Quantum.Platform.Tests.csproj
 dotnet test sdk/dotnet/test/Quantum.Plugin.Abstraction.Tests/Quantum.Plugin.Abstraction.Tests.csproj
 npm ci --prefix sdk/typescript && npm test --prefix sdk/typescript
 npm ci --prefix samples/Quantum.ExampleWebPlugin && npm test --prefix samples/Quantum.ExampleWebPlugin
@@ -120,7 +116,7 @@ dotnet run --project quantum/src/Quantum/Quantum.csproj `
 
 ## 平台服务
 
-[Quantum Platform](quantum-platform/README.md) 是独立部署的统一后端平台，使用 .NET 10 + NOF 的 Domain/Contract/Application/Host 分层。平台当前提供用户身份与权限，以及插件发布、审核、下载、兼容性和审计能力；后续平台业务继续在这一边界内扩展。Contract 统一通过 `/rpc` 的 JSON-RPC 2.0 暴露，PostgreSQL、JWT、ZIP 安全校验和 Docker 部署说明见子项目文档。
+[Quantum Platform](https://github.com/XmmShp/Quantum.Platform) 已拆分为独立仓库和独立部署的统一后端平台。它使用 .NET 10 + NOF 的 Domain/Contract/Application/Host 分层，提供用户身份与权限，以及插件发布、审核、下载、兼容性和审计能力；Contract 统一通过 `/rpc` 的 JSON-RPC 2.0 暴露。
 
 ## 路线图
 

@@ -30,7 +30,6 @@
    dotnet restore Quantum.slnx
    dotnet build Quantum.slnx --no-restore
    dotnet test quantum/tests/Quantum.Tests/Quantum.Tests.csproj --no-build
-   dotnet test quantum-platform/tests/Quantum.Platform.Tests/Quantum.Platform.Tests.csproj --no-build
    ```
 2. 更新文档（如有接口变更）：
    ```markdown

@@ -5,6 +5,6 @@
 - name: Documents
   href: docs/
 - name: Quantum Platform
-  href: quantum-platform/README.md
+  href: https://github.com/XmmShp/Quantum.Platform
 - name: Contributing
   href: CONTRIBUTING.md

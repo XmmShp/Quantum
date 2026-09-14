@@ -32,7 +32,6 @@ _pkginfo.txt
 /_site/
 
 # Local application data
-quantum-platform/**/Files/
 /data/
 *.zip
 

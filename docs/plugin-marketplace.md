@@ -4,7 +4,7 @@ Quantum 桌面端通过独立部署的 Quantum Platform 浏览和安装已审核
 
 ## 连接平台
 
-默认平台地址为 `http://localhost:5080/`，与 `quantum-platform/compose.yaml` 暴露的端口一致。可以在启动 Quantum 前配置：
+默认平台地址为 `http://localhost:5080/`，与独立 [Quantum Platform](https://github.com/XmmShp/Quantum.Platform) 仓库的 `compose.yaml` 暴露端口一致。可以在启动 Quantum 前配置：
 
 ```powershell
 $env:QUANTUM_PLATFORM_URL = "https://plugins.example.com"
@@ -27,7 +27,7 @@ $env:QUANTUM_VERSION = "0.1.0"
 
 Quantum 原生客户端只负责插件的浏览、下载、安装与升级，不提供创建、上传或审核写操作。
 
-市场页面支持匿名浏览已发布插件。开发者测试页位于 `/marketplace/developer`：
+客户端 `/marketplace` 将公开市场与“我的测试版本”放在同一页面：
 
 - 使用邮箱和密码登录，访问令牌保存在操作系统安全存储中；
 - 查看自己拥有的插件及其版本状态；

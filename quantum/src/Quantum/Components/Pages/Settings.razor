@@ -1,5 +1,6 @@
 @page "/settings"
 @implements IDisposable
+@using Microsoft.AspNetCore.Components.Forms
 @inject PluginCatalog PluginCatalog
 @inject IPluginRuntimeManager PluginRuntimeManager
 @inject CultureService CultureService
@@ -34,16 +35,25 @@
     <div class="section-heading">
         <div>
             <p class="eyebrow">@L["INSTALL"]</p>
-            <h2>@L["安装插件整合包"]</h2>
+            <h2>@L["从本地安装插件"]</h2>
         </div>
         <span class="package-limit">@L["单包最多 512 MiB · 256 个插件"]</span>
     </div>
-    <div class="global-drop-hint">
-        <span class="drop-symbol">⇩</span>
-        <div>
-            <strong>@L["将 ZIP 拖到窗口中的任意位置"]</strong>
-            <p>@L["松开后会扫描包内插件、选择最新版本并执行整份兼容性预检；只有一个插件时流程完全相同。"]</p>
+    <div class="local-install-card">
+        <div class="local-install-copy">
+            <span class="drop-symbol">＋</span>
+            <div>
+                <strong>@L["选择 Quantum 插件 ZIP"]</strong>
+                <p>@L["选择后会先检查包结构、版本与兼容性，确认后才会写入本机。也可以直接把 ZIP 拖到窗口中。"]</p>
+            </div>
         </div>
+        <label class="archive-picker">
+            <InputFile @key="PluginInstaller.FileInputKey"
+                       accept=".zip,application/zip,application/x-zip-compressed"
+                       disabled="@(IsBusy || PluginInstaller.IsProcessing)"
+                       OnChange="PluginInstaller.PrepareInstallAsync" />
+            <span>@(PluginInstaller.IsProcessing ? L["正在处理插件包"] : L["选择压缩包"])</span>
+        </label>
     </div>
 </section>
 
@@ -250,6 +260,9 @@
 }
 
 @code {
+    [CascadingParameter]
+    private GlobalPluginInstaller PluginInstaller { get; set; } = default!;
+
     private string? _busyPluginId;
     private string? _operationMessage;
     private bool _operationSucceeded;

@@ -19,6 +19,10 @@
   <data name="卸载" xml:space="preserve"><value>卸载</value></data>
   <data name="取消" xml:space="preserve"><value>取消</value></data>
   <data name="安装插件整合包" xml:space="preserve"><value>安装插件整合包</value></data>
+  <data name="从本地安装插件" xml:space="preserve"><value>从本地安装插件</value></data>
+  <data name="选择 Quantum 插件 ZIP" xml:space="preserve"><value>选择 Quantum 插件 ZIP</value></data>
+  <data name="选择后会先检查包结构、版本与兼容性，确认后才会写入本机。也可以直接把 ZIP 拖到窗口中。" xml:space="preserve"><value>选择后会先检查包结构、版本与兼容性，确认后才会写入本机。也可以直接把 ZIP 拖到窗口中。</value></data>
+  <data name="选择压缩包" xml:space="preserve"><value>选择压缩包</value></data>
   <data name="将 ZIP 拖到窗口中的任意位置" xml:space="preserve"><value>将 ZIP 拖到窗口中的任意位置</value></data>
   <data name="将插件 ZIP 拖到窗口中，或通过 QUANTUM_MODULES_PATH 指定开发目录。" xml:space="preserve"><value>将插件 ZIP 拖到窗口中，或通过 QUANTUM_MODULES_PATH 指定开发目录。</value></data>
   <data name="尚未发现插件" xml:space="preserve"><value>尚未发现插件</value></data>
@@ -252,4 +256,7 @@
   <data name="版本已提交审核。" xml:space="preserve"><value>版本已提交审核。</value></data>
   <data name="版本已发布。" xml:space="preserve"><value>版本已发布。</value></data>
   <data name="版本已拒绝。" xml:space="preserve"><value>版本已拒绝。</value></data>
+  <data name="插件市场视图" xml:space="preserve"><value>插件市场视图</value></data>
+  <data name="发现插件" xml:space="preserve"><value>发现插件</value></data>
+  <data name="我的测试版本" xml:space="preserve"><value>我的测试版本</value></data>
 </root>

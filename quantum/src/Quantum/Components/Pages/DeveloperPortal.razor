@@ -1,17 +1,14 @@
-@page "/marketplace/developer"
 @implements IAsyncDisposable
 @inject IQuantumMarketplaceClient MarketplaceClient
 @inject QuantumMarketplaceSession MarketplaceSession
 @inject IPluginRuntimeManager PluginRuntimeManager
 @inject IStringLocalizer<AppStrings> L
 
-<PageTitle>@L["开发者测试"] · Quantum</PageTitle>
-
 <section class="developer-page">
-    <header class="developer-header">
+    <header class="developer-toolbar">
         <div>
             <p class="eyebrow">@L["TEST CHANNEL"]</p>
-            <h1>@L["开发者测试"]</h1>
+            <h2>@L["开发者测试"]</h2>
             <p>@L["登录后下载并安装你自己的待审核版本；发布与审核统一在网页端完成。"]</p>
         </div>
         <a class="portal-link" href="@PortalUri" target="_blank" rel="noreferrer">@L["打开网页发布台"] ↗</a>
