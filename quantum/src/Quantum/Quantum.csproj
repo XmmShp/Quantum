@@ -64,7 +64,7 @@
   <Target Name="BuildExamplePlugins"
           BeforeTargets="Build"
           Condition="'$(Configuration)' == 'Debug' And '$(TargetFramework)' != '' And '$(TargetFramework)' != 'net10.0'">
-    <MSBuild Projects="$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExamplePlugin\Quantum.ExamplePlugin.csproj;$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExampleDependentPlugin\Quantum.ExampleDependentPlugin.csproj;$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExampleCalendarPlugin\Quantum.ExampleCalendarPlugin.csproj"
+    <MSBuild Projects="$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExamplePlugin\Quantum.ExamplePlugin.csproj;$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExampleDependentPlugin\Quantum.ExampleDependentPlugin.csproj"
              Targets="Restore;Build"
              Properties="Configuration=$(Configuration);TargetFramework=net10.0"
              RemoveProperties="RuntimeIdentifier;TargetFrameworks" />
@@ -115,34 +115,6 @@
           SkipUnchangedFiles="true" />
     <Copy SourceFiles="@(ExampleDependentPluginAsset)"
           DestinationFolder="$(ExampleDependentPluginTarget)\wwwroot\%(RecursiveDir)"
-          SkipUnchangedFiles="true" />
-  </Target>
-
-  <Target Name="StageExampleCalendarPlugin"
-          AfterTargets="Build"
-          Condition="'$(Configuration)' == 'Debug' And '$(TargetFramework)' != '' And '$(TargetFramework)' != 'net10.0'">
-    <PropertyGroup>
-      <ExampleCalendarPluginOutput>$(MSBuildProjectDirectory)\..\..\..\samples\Quantum.ExampleCalendarPlugin\bin\$(Configuration)\net10.0</ExampleCalendarPluginOutput>
-      <ExampleCalendarPluginTarget>$(TargetDir)Modules\quantum.plugin.example-calendar</ExampleCalendarPluginTarget>
-    </PropertyGroup>
-    <ItemGroup>
-      <ExampleCalendarPluginBinary Include="$(ExampleCalendarPluginOutput)\Quantum.ExampleCalendarPlugin.dll" />
-      <ExampleCalendarPluginBinary Include="$(ExampleCalendarPluginOutput)\Quantum.ExampleCalendarPlugin.pdb" Condition="Exists('$(ExampleCalendarPluginOutput)\Quantum.ExampleCalendarPlugin.pdb')" />
-      <ExampleCalendarPluginBinary Include="$(ExampleCalendarPluginOutput)\plugin.json" />
-      <ExampleCalendarPluginResource Include="$(ExampleCalendarPluginOutput)\**\*.resources.dll" />
-      <ExampleCalendarPluginAsset Include="$(ExampleCalendarPluginOutput)\wwwroot\**\*" />
-      <ExampleCalendarPluginMigration Include="$(ExampleCalendarPluginOutput)\migrations\**\*.sql" />
-    </ItemGroup>
-    <MakeDir Directories="$(ExampleCalendarPluginTarget)\wwwroot;$(ExampleCalendarPluginTarget)\migrations" />
-    <Copy SourceFiles="@(ExampleCalendarPluginBinary)" DestinationFolder="$(ExampleCalendarPluginTarget)" SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(ExampleCalendarPluginResource)"
-          DestinationFolder="$(ExampleCalendarPluginTarget)\%(RecursiveDir)"
-          SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(ExampleCalendarPluginAsset)"
-          DestinationFolder="$(ExampleCalendarPluginTarget)\wwwroot\%(RecursiveDir)"
-          SkipUnchangedFiles="true" />
-    <Copy SourceFiles="@(ExampleCalendarPluginMigration)"
-          DestinationFolder="$(ExampleCalendarPluginTarget)\migrations\%(RecursiveDir)"
           SkipUnchangedFiles="true" />
   </Target>
 

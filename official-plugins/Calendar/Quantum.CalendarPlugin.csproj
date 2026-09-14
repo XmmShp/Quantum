@@ -14,6 +14,7 @@
     <PackageReference Include="Microsoft.Extensions.Localization" />
     <PackageReference Include="NOF.Abstraction" />
     <PackageReference Include="NOF.Application" />
+    <PackageReference Include="NOF.Contract" />
     <PackageReference Include="NOF.Domain" />
     <PackageReference Include="NOF.Infrastructure" />
   </ItemGroup>

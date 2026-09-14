@@ -5,8 +5,9 @@ using Microsoft.Extensions.Logging.Abstractions;
 using NOF.Application;
 using NOF.Domain;
 using NOF.Infrastructure;
-using Quantum.ExampleCalendarPlugin.Application;
-using Quantum.ExampleCalendarPlugin.Hosting;
+using Quantum.OfficialPlugins.Calendar.Application;
+using Quantum.OfficialPlugins.Calendar.Domain;
+using Quantum.OfficialPlugins.Calendar.Hosting;
 using Quantum.Plugins;
 using Quantum.Plugins.Persistence;
 
@@ -42,30 +43,34 @@ public sealed class CalendarPluginPersistenceTests
             await using (var provider = BuildCalendarProvider(fixture.DatabasePath))
             {
                 await using var scope = await CreateInitializedScopeAsync(provider);
-                var calendar = scope.ServiceProvider.GetRequiredService<ICalendarItemApplicationService>();
-                var created = await calendar.CreateAsync(new CreateCalendarItemRequest(
+                var calendar = scope.ServiceProvider.GetRequiredService<ICalendarApplicationService>();
+                var created = await calendar.CreateAsync(new SaveCalendarEntryRequest(
                     "持久化演示",
                     "关闭容器后仍然存在",
+                    CalendarEntryKind.Event,
                     new DateOnly(2026, 9, 8),
                     new TimeOnly(10, 30),
-                    "event-violet"));
+                    null,
+                    "violet"));
                 itemId = created.Id;
             }
 
             await using (var provider = BuildCalendarProvider(fixture.DatabasePath))
             {
                 await using var scope = await CreateInitializedScopeAsync(provider);
-                var calendar = scope.ServiceProvider.GetRequiredService<ICalendarItemApplicationService>();
+                var calendar = scope.ServiceProvider.GetRequiredService<ICalendarApplicationService>();
                 var persisted = await calendar.GetAsync(itemId);
                 Assert.NotNull(persisted);
                 Assert.Equal("持久化演示", persisted.Title);
 
-                var updated = await calendar.UpdateAsync(itemId, new UpdateCalendarItemRequest(
+                var updated = await calendar.UpdateAsync(itemId, new SaveCalendarEntryRequest(
                     "已更新事项",
                     "更新也会落盘",
+                    CalendarEntryKind.Event,
                     new DateOnly(2026, 9, 9),
                     new TimeOnly(14, 0),
-                    "event-green"));
+                    null,
+                    "green"));
                 Assert.Equal(new DateOnly(2026, 9, 9), updated.Date);
 
                 var items = await calendar.ListAsync(
@@ -94,13 +99,15 @@ public sealed class CalendarPluginPersistenceTests
             await using (var provider = BuildCalendarProvider(fixture.DatabasePath))
             {
                 await using var scope = await CreateInitializedScopeAsync(provider);
-                var calendar = scope.ServiceProvider.GetRequiredService<ICalendarItemApplicationService>();
-                calendarItemId = (await calendar.CreateAsync(new CreateCalendarItemRequest(
+                var calendar = scope.ServiceProvider.GetRequiredService<ICalendarApplicationService>();
+                calendarItemId = (await calendar.CreateAsync(new SaveCalendarEntryRequest(
                     "共享数据库",
                     string.Empty,
+                    CalendarEntryKind.Event,
                     new DateOnly(2026, 9, 10),
                     new TimeOnly(9, 0),
-                    "event-blue"))).Id;
+                    null,
+                    "blue"))).Id;
             }
 
             await using (var provider = BuildProbeProvider(fixture.DatabasePath))
@@ -115,7 +122,7 @@ public sealed class CalendarPluginPersistenceTests
             await using (var provider = BuildCalendarProvider(fixture.DatabasePath))
             {
                 await using var scope = await CreateInitializedScopeAsync(provider);
-                var calendar = scope.ServiceProvider.GetRequiredService<ICalendarItemApplicationService>();
+                var calendar = scope.ServiceProvider.GetRequiredService<ICalendarApplicationService>();
                 Assert.NotNull(await calendar.GetAsync(calendarItemId));
             }
 
@@ -173,12 +180,12 @@ public sealed class CalendarPluginPersistenceTests
         DatabaseFixture fixture)
     {
         var modulesRoot = Path.Combine(fixture.RootPath, "Modules");
-        var pluginRoot = Path.Combine(modulesRoot, "quantum.plugin.example-calendar");
+        var pluginRoot = Path.Combine(modulesRoot, "quantum.plugin.calendar");
         var shadowRoot = Path.Combine(fixture.RootPath, "Shadow");
         Directory.CreateDirectory(pluginRoot);
         File.Copy(
-            Path.Combine(AppContext.BaseDirectory, "Quantum.ExampleCalendarPlugin.dll"),
-            Path.Combine(pluginRoot, "Quantum.ExampleCalendarPlugin.dll"));
+            Path.Combine(AppContext.BaseDirectory, "Quantum.CalendarPlugin.dll"),
+            Path.Combine(pluginRoot, "Quantum.CalendarPlugin.dll"));
         var migrationsRoot = Path.Combine(pluginRoot, "migrations");
         Directory.CreateDirectory(migrationsRoot);
         File.Copy(
@@ -188,9 +195,9 @@ public sealed class CalendarPluginPersistenceTests
             Path.Combine(pluginRoot, "plugin.json"),
             """
             {
-              "id": "quantum.plugin.example-calendar",
+              "id": "quantum.plugin.calendar",
               "version": "1.0.0",
-              "entryAssembly": "Quantum.ExampleCalendarPlugin.dll",
+              "entryAssembly": "Quantum.CalendarPlugin.dll",
               "database": { "migrations": "./migrations" }
             }
             """);
@@ -212,9 +219,9 @@ public sealed class CalendarPluginPersistenceTests
         Assert.NotNull(loadContext);
         var weakReference = new WeakReference(loadContext, trackResurrection: false);
 
-        var impact = manager.GetUninstallImpact("quantum.plugin.example-calendar");
+        var impact = manager.GetUninstallImpact("quantum.plugin.calendar");
         var result = await manager.UninstallAsync(
-            "quantum.plugin.example-calendar",
+            "quantum.plugin.calendar",
             impact.CatalogRevision);
         Assert.True(result.Succeeded, result.Message);
         return weakReference;

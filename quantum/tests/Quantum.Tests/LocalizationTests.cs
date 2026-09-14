@@ -34,7 +34,7 @@ public sealed class LocalizationTests
     [Fact]
     public void PluginLoadContext_LoadsCultureSpecificSatelliteAssembly()
     {
-        var entryPath = typeof(Quantum.ExampleCalendarPlugin.CalendarPlugin).Assembly.Location;
+        var entryPath = typeof(Quantum.OfficialPlugins.Calendar.CalendarPlugin).Assembly.Location;
         var loadContext = new PluginLoadContext(entryPath);
         try
         {
