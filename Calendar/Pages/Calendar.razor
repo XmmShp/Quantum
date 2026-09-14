@@ -180,6 +180,72 @@
             </footer>
         </aside>
     </div>
+
+    <section class="task-board" aria-busy="@_isBusy">
+        <header class="task-board-header">
+            <div>
+                <p class="eyebrow">@L["TASKS"]</p>
+                <h2>@L["待办清单"]</h2>
+                <p>@L["把下一步写清楚，然后一次完成一件事。"]</p>
+            </div>
+            <button type="button" class="task-create-button" disabled="@_isBusy" @onclick="BeginCreateTaskAsync">＋ @L["新建待办"]</button>
+        </header>
+
+        <div class="task-list-toolbar">
+            <div class="task-filters" role="group" aria-label="@L["筛选待办"]">
+                @foreach (var filter in Enum.GetValues<TaskFilter>())
+                {
+                    <button type="button" class="@(_taskFilter == filter ? "active" : null)" @onclick="() => _taskFilter = filter">@FilterLabel(filter)</button>
+                }
+            </div>
+            <span>@L["{0} 项未完成", AllOpenTaskCount]</span>
+        </div>
+
+        @if (FilteredTasks.Count > 0)
+        {
+            <div class="task-list">
+                @foreach (var task in FilteredTasks)
+                {
+                    <article @key="task.Id" class="task-item @task.Style @(task.IsCompleted ? "completed" : null)">
+                        <button type="button"
+                                class="completion-toggle"
+                                aria-label="@(task.IsCompleted ? L["标记为未完成"] : L["标记为已完成"])"
+                                aria-pressed="@task.IsCompleted"
+                                disabled="@_isBusy"
+                                @onclick="() => ToggleCompletedAsync(task)">
+                            @(task.IsCompleted ? "✓" : null)
+                        </button>
+                        <div class="task-content">
+                            <h3>@task.Title</h3>
+                            <div class="task-date @(IsOverdue(task) ? "overdue" : null)">
+                                <time datetime="@task.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">@FormatDeadline(task)</time>
+                                @if (IsOverdue(task))
+                                {
+                                    <span>@L["已逾期"]</span>
+                                }
+                            </div>
+                            @if (!string.IsNullOrWhiteSpace(task.Notes))
+                            {
+                                <p>@task.Notes</p>
+                            }
+                        </div>
+                        <div class="task-actions">
+                            <button type="button" disabled="@_isBusy" @onclick="() => EditTaskAsync(task)">@L["编辑"]</button>
+                            <button type="button" class="danger" disabled="@_isBusy" @onclick="() => DeleteAsync(task.Id)">@L["删除"]</button>
+                        </div>
+                    </article>
+                }
+            </div>
+        }
+        else
+        {
+            <div class="empty-tasks">
+                <span aria-hidden="true">✓</span>
+                <h3>@L["这里已经清空了"]</h3>
+                <p>@L["没有符合当前筛选条件的待办。"]</p>
+            </div>
+        }
+    </section>
 </section>
 
 @code {
@@ -202,9 +268,11 @@
 
     private readonly DateOnly _today = DateOnly.FromDateTime(DateTime.Today);
     private IReadOnlyList<CalendarEntryDetails> _items = [];
+    private IReadOnlyList<CalendarEntryDetails> _tasks = [];
     private DateOnly _visibleMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
     private DateOnly _selectedDate = DateOnly.FromDateTime(DateTime.Today);
     private EntryDraft _draft = EntryDraft.Create(DateOnly.FromDateTime(DateTime.Today));
+    private TaskFilter _taskFilter = TaskFilter.Open;
     private Guid? _editingId;
     private bool _isEditorOpen;
     private bool _isBusy;
@@ -216,7 +284,15 @@
     private IReadOnlyList<CalendarEntryDetails> SelectedItems => [.. _items.Where(item => item.Date == _selectedDate)];
     private int EventCount => _items.Count(item => item.Kind == CalendarEntryKind.Event);
     private int OpenTaskCount => _items.Count(item => item.Kind == CalendarEntryKind.Task && !item.IsCompleted);
+    private int AllOpenTaskCount => _tasks.Count(task => !task.IsCompleted);
     private int FreeDayCount => DateTime.DaysInMonth(_visibleMonth.Year, _visibleMonth.Month) - _items.Select(item => item.Date).Distinct().Count();
+    private IReadOnlyList<CalendarEntryDetails> FilteredTasks =>
+        [.. _tasks.Where(task => _taskFilter switch
+        {
+            TaskFilter.Open => !task.IsCompleted,
+            TaskFilter.Completed => task.IsCompleted,
+            _ => true
+        })];
 
     private IReadOnlyList<CalendarDay> CalendarDays
     {
@@ -237,7 +313,7 @@
         }
     }
 
-    protected override Task OnInitializedAsync() => LoadMonthAsync();
+    protected override Task OnInitializedAsync() => ExecuteAsync(LoadAllCoreAsync);
 
     private async Task ChangeMonthAsync(int offset)
     {
@@ -274,12 +350,29 @@
         _errorMessage = null;
     }
 
+    private async Task BeginCreateTaskAsync()
+    {
+        _selectedDate = _today;
+        _visibleMonth = new DateOnly(_today.Year, _today.Month, 1);
+        await ExecuteAsync(LoadMonthCoreAsync);
+        BeginCreate();
+        SetDraftKind(CalendarEntryKind.Task);
+    }
+
     private void BeginEdit(CalendarEntryDetails item)
     {
         _editingId = item.Id;
         _draft = EntryDraft.From(item);
         _isEditorOpen = true;
         _errorMessage = null;
+    }
+
+    private async Task EditTaskAsync(CalendarEntryDetails task)
+    {
+        _selectedDate = task.Date;
+        _visibleMonth = new DateOnly(task.Date.Year, task.Date.Month, 1);
+        await ExecuteAsync(LoadMonthCoreAsync);
+        BeginEdit(task);
     }
 
     private void SetDraftKind(CalendarEntryKind kind)
@@ -319,7 +412,7 @@
             _selectedDate = _draft.Date;
             _visibleMonth = new DateOnly(_draft.Date.Year, _draft.Date.Month, 1);
             CancelEdit();
-            await LoadMonthCoreAsync();
+            await LoadAllCoreAsync();
         });
     }
 
@@ -327,14 +420,19 @@
         => ExecuteAsync(async () =>
         {
             await CalendarService.SetCompletedAsync(item.Id, !item.IsCompleted);
-            await LoadMonthCoreAsync();
+            await LoadAllCoreAsync();
         });
 
     private Task DeleteAsync(Guid id)
         => ExecuteAsync(async () =>
         {
             await CalendarService.DeleteAsync(id);
-            await LoadMonthCoreAsync();
+            if (_editingId == id)
+            {
+                CancelEdit();
+            }
+
+            await LoadAllCoreAsync();
         });
 
     private Task LoadMonthAsync() => ExecuteAsync(LoadMonthCoreAsync);
@@ -344,6 +442,25 @@
         var firstDay = new DateOnly(_visibleMonth.Year, _visibleMonth.Month, 1);
         _items = await CalendarService.ListAsync(firstDay, firstDay.AddMonths(1).AddDays(-1));
     }
+
+    private async Task LoadAllCoreAsync()
+    {
+        await LoadMonthCoreAsync();
+        _tasks = await CalendarService.ListTasksAsync();
+    }
+
+    private bool IsOverdue(CalendarEntryDetails task)
+        => !task.IsCompleted && (task.Date < _today || (task.Date == _today && task.StartTime < TimeOnly.FromDateTime(DateTime.Now)));
+
+    private static string FormatDeadline(CalendarEntryDetails task)
+        => $"{task.Date.ToDateTime(task.StartTime):D} · {task.StartTime:HH:mm}";
+
+    private string FilterLabel(TaskFilter filter) => filter switch
+    {
+        TaskFilter.Open => L["未完成"],
+        TaskFilter.Completed => L["已完成"],
+        _ => L["全部"]
+    };
 
     private async Task ExecuteAsync(Func<Task> action)
     {
@@ -384,6 +501,13 @@
             : item.StartTime.ToString("HH:mm", CultureInfo.InvariantCulture);
 
     private sealed record CalendarDay(DateOnly Date, bool IsVisibleMonth, bool IsToday, IReadOnlyList<CalendarEntryDetails> Items);
+
+    private enum TaskFilter
+    {
+        Open,
+        Completed,
+        All
+    }
 
     private sealed class EntryDraft
     {
