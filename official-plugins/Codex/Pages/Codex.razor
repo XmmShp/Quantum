@@ -4,7 +4,6 @@
 @using Quantum.OfficialPlugins.Codex.Application
 @using Quantum.OfficialPlugins.Codex.Localization
 @implements IDisposable
-@inject ICodexIntegrationService CodexService
 @inject IStringLocalizer<PluginStrings> L
 
 <PageTitle>Codex · Quantum</PageTitle>
@@ -128,10 +127,16 @@
 </section>
 
 @code {
+    private readonly ICodexIntegrationService CodexService;
     private CodexIntegrationSnapshot _snapshot = default!;
     private string _workingDirectory = Environment.CurrentDirectory;
     private string _prompt = string.Empty;
     private string? _localError;
+
+    public Codex(ICodexIntegrationService codexService)
+    {
+        CodexService = codexService;
+    }
 
     protected override void OnInitialized()
     {

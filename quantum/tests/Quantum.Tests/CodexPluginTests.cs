@@ -1,10 +1,21 @@
 using System.Text.Json;
+using Quantum.OfficialPlugins.Codex.Pages;
 using Quantum.OfficialPlugins.Codex.Application;
 
 namespace Quantum.Tests;
 
 public sealed class CodexPluginTests
 {
+    [Fact]
+    public void PageUsesConstructorInjectionForPluginOwnedServices()
+    {
+        var constructor = Assert.Single(typeof(Codex).GetConstructors());
+
+        Assert.Equal(
+            typeof(ICodexIntegrationService),
+            Assert.Single(constructor.GetParameters()).ParameterType);
+    }
+
     [Fact]
     public void RpcCatalogBecomesNamespacedCodexTools()
     {
