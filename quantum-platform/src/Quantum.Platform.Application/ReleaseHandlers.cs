@@ -239,20 +239,25 @@ public sealed class CheckCompatibility(
             .Where(release => release.ListingId == listing.Id &&
                 release.Status == PluginReleaseStatus.Published)
             .ToArrayAsync(cancellationToken);
-        var latest = published.OrderByDescending(
+        var ordered = published.OrderByDescending(
                 static release => release.Version,
-                Comparer<string>.Create(QuantumVersionConstraint.CompareSemanticVersions))
-            .FirstOrDefault();
+            Comparer<string>.Create(QuantumVersionConstraint.CompareSemanticVersions))
+            .ToArray();
+        var latest = ordered.FirstOrDefault();
         if (latest is null)
         {
             return Result.Fail("plugin_not_found", "The plugin has no published releases.");
         }
 
+        var compatible = ordered.FirstOrDefault(release =>
+            QuantumVersionConstraint.Contains(release.QuantumVersionSupport, request.QuantumVersion));
+        var selected = compatible ?? latest;
+
         return new CompatibilityResponse
         {
-            IsCompatible = QuantumVersionConstraint.Contains(latest.QuantumVersionSupport, request.QuantumVersion),
-            MatchedReleaseVersion = latest.Version,
-            QuantumVersionSupport = latest.QuantumVersionSupport
+            IsCompatible = compatible is not null,
+            MatchedReleaseVersion = selected.Version,
+            QuantumVersionSupport = selected.QuantumVersionSupport
         };
     }
 }

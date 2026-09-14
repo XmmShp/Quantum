@@ -133,9 +133,14 @@ a {
   font-size: 19px;
 }
 
-.settings-nav-item {
+.marketplace-nav-item {
   flex: 0 0 auto;
   margin-top: auto;
+}
+
+.settings-nav-item {
+  flex: 0 0 auto;
+  margin-top: 4px;
   background: transparent;
 }
 

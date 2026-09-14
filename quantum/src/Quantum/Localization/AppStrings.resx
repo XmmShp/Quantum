@@ -54,7 +54,6 @@
   <data name="注册页面。" xml:space="preserve"><value>注册页面。</value></data>
   <data name="热升级" xml:space="preserve"><value>热升级</value></data>
   <data name="确认后才会写入 Modules；安装失败时会保留当前运行版本并恢复插件文件。" xml:space="preserve"><value>确认后才会写入 Modules；安装失败时会保留当前运行版本并恢复插件文件。</value></data>
-  <data name="确认安装" xml:space="preserve"><value>确认安装</value></data>
   <data name="确认禁用 {0}？" xml:space="preserve"><value>确认禁用 {0}？</value></data>
   <data name="确认禁用" xml:space="preserve"><value>确认禁用</value></data>
   <data name="禁用" xml:space="preserve"><value>禁用</value></data>
@@ -154,4 +153,37 @@
   <data name="INSTALL PLUGINS" xml:space="preserve"><value>INSTALL PLUGINS</value></data>
   <data name="WEB PLUGIN ERROR" xml:space="preserve"><value>WEB PLUGIN ERROR</value></data>
   <data name="PLUGIN ROUTE" xml:space="preserve"><value>PLUGIN ROUTE</value></data>
+  <data name="MARKETPLACE" xml:space="preserve"><value>MARKETPLACE</value></data>
+  <data name="DISCOVER" xml:space="preserve"><value>DISCOVER</value></data>
+  <data name="PLUGIN DETAILS" xml:space="preserve"><value>PLUGIN DETAILS</value></data>
+  <data name="INSTALL PLUGIN" xml:space="preserve"><value>INSTALL PLUGIN</value></data>
+  <data name="插件市场" xml:space="preserve"><value>插件市场</value></data>
+  <data name="发现经过审核的插件，并在安装前由本机再次完成兼容性预检。" xml:space="preserve"><value>发现经过审核的插件，并在安装前由本机再次完成兼容性预检。</value></data>
+  <data name="Quantum Platform" xml:space="preserve"><value>Quantum Platform</value></data>
+  <data name="搜索名称、标识或简介" xml:space="preserve"><value>搜索名称、标识或简介</value></data>
+  <data name="搜索" xml:space="preserve"><value>搜索</value></data>
+  <data name="正在连接插件市场…" xml:space="preserve"><value>正在连接插件市场…</value></data>
+  <data name="没有找到插件" xml:space="preserve"><value>没有找到插件</value></data>
+  <data name="尝试更换关键词、清除标签筛选，或检查平台地址。" xml:space="preserve"><value>尝试更换关键词、清除标签筛选，或检查平台地址。</value></data>
+  <data name="重新加载" xml:space="preserve"><value>重新加载</value></data>
+  <data name="{0} 个可用插件" xml:space="preserve"><value>{0} 个可用插件</value></data>
+  <data name="刷新" xml:space="preserve"><value>刷新</value></data>
+  <data name="已安装" xml:space="preserve"><value>已安装</value></data>
+  <data name="暂无简介" xml:space="preserve"><value>暂无简介</value></data>
+  <data name="作者" xml:space="preserve"><value>作者</value></data>
+  <data name="详情" xml:space="preserve"><value>详情</value></data>
+  <data name="获取" xml:space="preserve"><value>获取</value></data>
+  <data name="检查更新" xml:space="preserve"><value>检查更新</value></data>
+  <data name="已发布版本" xml:space="preserve"><value>已发布版本</value></data>
+  <data name="次下载" xml:space="preserve"><value>次下载</value></data>
+  <data name="支持 Quantum {0}" xml:space="preserve"><value>支持 Quantum {0}</value></data>
+  <data name="准备安装 {0}" xml:space="preserve"><value>准备安装 {0}</value></data>
+  <data name="无法安装 {0}" xml:space="preserve"><value>无法安装 {0}</value></data>
+  <data name="本机预检未通过" xml:space="preserve"><value>本机预检未通过</value></data>
+  <data name="包的大小与 SHA-256 已核对；确认后将以事务方式更新本机插件。" xml:space="preserve"><value>包的大小与 SHA-256 已核对；确认后将以事务方式更新本机插件。</value></data>
+  <data name="确认安装" xml:space="preserve"><value>确认安装</value></data>
+  <data name="无法连接插件市场：{0}" xml:space="preserve"><value>无法连接插件市场：{0}</value></data>
+  <data name="{0} 与当前 Quantum {1} 不兼容（要求 {2}）。" xml:space="preserve"><value>{0} 与当前 Quantum {1} 不兼容（要求 {2}）。</value></data>
+  <data name="未知版本" xml:space="preserve"><value>未知版本</value></data>
+  <data name="下载的插件包超过本机安装大小限制。" xml:space="preserve"><value>下载的插件包超过本机安装大小限制。</value></data>
 </root>

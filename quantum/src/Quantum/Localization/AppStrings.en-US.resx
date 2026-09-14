@@ -154,4 +154,36 @@
   <data name="INSTALL PLUGINS" xml:space="preserve"><value>INSTALL PLUGINS</value></data>
   <data name="WEB PLUGIN ERROR" xml:space="preserve"><value>WEB PLUGIN ERROR</value></data>
   <data name="PLUGIN ROUTE" xml:space="preserve"><value>PLUGIN ROUTE</value></data>
+  <data name="MARKETPLACE" xml:space="preserve"><value>MARKETPLACE</value></data>
+  <data name="DISCOVER" xml:space="preserve"><value>DISCOVER</value></data>
+  <data name="PLUGIN DETAILS" xml:space="preserve"><value>PLUGIN DETAILS</value></data>
+  <data name="INSTALL PLUGIN" xml:space="preserve"><value>INSTALL PLUGIN</value></data>
+  <data name="插件市场" xml:space="preserve"><value>Plugin marketplace</value></data>
+  <data name="发现经过审核的插件，并在安装前由本机再次完成兼容性预检。" xml:space="preserve"><value>Discover reviewed plugins and run a local compatibility check before installation.</value></data>
+  <data name="Quantum Platform" xml:space="preserve"><value>Quantum Platform</value></data>
+  <data name="搜索名称、标识或简介" xml:space="preserve"><value>Search names, ids, or descriptions</value></data>
+  <data name="搜索" xml:space="preserve"><value>Search</value></data>
+  <data name="正在连接插件市场…" xml:space="preserve"><value>Connecting to the marketplace…</value></data>
+  <data name="没有找到插件" xml:space="preserve"><value>No plugins found</value></data>
+  <data name="尝试更换关键词、清除标签筛选，或检查平台地址。" xml:space="preserve"><value>Try another search, clear the tag filter, or check the platform address.</value></data>
+  <data name="重新加载" xml:space="preserve"><value>Reload</value></data>
+  <data name="{0} 个可用插件" xml:space="preserve"><value>{0} available plugins</value></data>
+  <data name="刷新" xml:space="preserve"><value>Refresh</value></data>
+  <data name="已安装" xml:space="preserve"><value>Installed</value></data>
+  <data name="暂无简介" xml:space="preserve"><value>No description</value></data>
+  <data name="作者" xml:space="preserve"><value>By</value></data>
+  <data name="详情" xml:space="preserve"><value>Details</value></data>
+  <data name="获取" xml:space="preserve"><value>Get</value></data>
+  <data name="检查更新" xml:space="preserve"><value>Check for update</value></data>
+  <data name="已发布版本" xml:space="preserve"><value>Published versions</value></data>
+  <data name="次下载" xml:space="preserve"><value>downloads</value></data>
+  <data name="支持 Quantum {0}" xml:space="preserve"><value>Supports Quantum {0}</value></data>
+  <data name="准备安装 {0}" xml:space="preserve"><value>Ready to install {0}</value></data>
+  <data name="无法安装 {0}" xml:space="preserve"><value>Cannot install {0}</value></data>
+  <data name="本机预检未通过" xml:space="preserve"><value>Local preflight failed</value></data>
+  <data name="包的大小与 SHA-256 已核对；确认后将以事务方式更新本机插件。" xml:space="preserve"><value>Package size and SHA-256 are verified. Confirmation applies the local update transactionally.</value></data>
+  <data name="无法连接插件市场：{0}" xml:space="preserve"><value>Could not connect to the marketplace: {0}</value></data>
+  <data name="{0} 与当前 Quantum {1} 不兼容（要求 {2}）。" xml:space="preserve"><value>{0} is incompatible with Quantum {1} (requires {2}).</value></data>
+  <data name="未知版本" xml:space="preserve"><value>unknown version</value></data>
+  <data name="下载的插件包超过本机安装大小限制。" xml:space="preserve"><value>The downloaded package exceeds the local installation size limit.</value></data>
 </root>

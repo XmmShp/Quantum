@@ -74,7 +74,7 @@ public interface IQuantumPlatformService : IRpcService
     [Category("Releases")]
     Result<DownloadPluginReleaseResponse> DownloadPluginRelease(DownloadPluginReleaseRequest request);
 
-    [Summary("Check the latest published release against a Quantum version")]
+    [Summary("Find the latest published release compatible with a Quantum version")]
     [Category("Releases")]
     Result<CompatibilityResponse> CheckCompatibility(CheckCompatibilityRequest request);
 

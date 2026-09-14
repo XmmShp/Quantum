@@ -1,0 +1,401 @@
+@page "/marketplace"
+@implements IAsyncDisposable
+@inject IQuantumMarketplaceClient MarketplaceClient
+@inject QuantumMarketplaceOptions MarketplaceOptions
+@inject IPluginRuntimeManager PluginRuntimeManager
+@inject PluginCatalog PluginCatalog
+@inject IStringLocalizer<AppStrings> L
+
+<PageTitle>@L["插件市场"] · Quantum</PageTitle>
+
+<section class="marketplace-page">
+    <header class="marketplace-hero">
+        <div>
+            <p class="eyebrow">@L["MARKETPLACE"]</p>
+            <h1>@L["插件市场"]</h1>
+            <p>@L["发现经过审核的插件，并在安装前由本机再次完成兼容性预检。"]</p>
+        </div>
+        <div class="platform-status @(_platformReachable ? "connected" : "unavailable")">
+            <span aria-hidden="true">●</span>
+            <div>
+                <strong>@L["Quantum Platform"]</strong>
+                <small>@MarketplaceClient.BaseAddress.Authority · Quantum @MarketplaceOptions.QuantumVersion</small>
+            </div>
+        </div>
+    </header>
+
+    <div class="search-panel">
+        <label>
+            <span class="search-icon" aria-hidden="true">⌕</span>
+            <input placeholder="@L["搜索名称、标识或简介"]"
+                   maxlength="200"
+                   disabled="@_isBusy"
+                   @bind="_search"
+                   @bind:event="oninput"
+                   @onkeydown="HandleSearchKeyDown" />
+        </label>
+        <button type="button" class="primary-button" disabled="@_isBusy" @onclick="LoadPluginsAsync">@L["搜索"]</button>
+        @if (_selectedTag is not null)
+        {
+            <button type="button" class="tag-filter" disabled="@_isBusy" @onclick="ClearTagAsync">#@_selectedTag ×</button>
+        }
+    </div>
+
+    @if (_message is not null)
+    {
+        <div class="market-message @(_messageIsError ? "error" : "success")" role="status">
+            <span>@_message</span>
+            <button type="button" aria-label="@L["关闭消息"]" @onclick="() => _message = null">×</button>
+        </div>
+    }
+
+    @if (_isLoading)
+    {
+        <div class="market-state" aria-live="polite">
+            <span class="spinner" aria-hidden="true"></span>
+            <strong>@L["正在连接插件市场…"]</strong>
+        </div>
+    }
+    else if (_plugins.Count == 0)
+    {
+        <div class="market-state">
+            <span class="empty-icon" aria-hidden="true">◇</span>
+            <strong>@L["没有找到插件"]</strong>
+            <p>@L["尝试更换关键词、清除标签筛选，或检查平台地址。"]</p>
+            <button type="button" class="secondary-button" disabled="@_isBusy" @onclick="LoadPluginsAsync">@L["重新加载"]</button>
+        </div>
+    }
+    else
+    {
+        <div class="result-heading">
+            <div>
+                <p class="eyebrow">@L["DISCOVER"]</p>
+                <h2>@L["{0} 个可用插件", _plugins.Count]</h2>
+            </div>
+            <button type="button" class="refresh-button" disabled="@_isBusy" @onclick="LoadPluginsAsync">↻ @L["刷新"]</button>
+        </div>
+
+        <div class="plugin-grid">
+            @foreach (var plugin in _plugins)
+            {
+                var installedVersion = GetInstalledVersion(plugin.PluginId);
+                <article @key="plugin.PluginId" class="market-plugin-card">
+                    <div class="card-topline">
+                        <span class="plugin-mark">@plugin.Name[0].ToString().ToUpperInvariant()</span>
+                        @if (installedVersion is not null)
+                        {
+                            <span class="installed-badge">✓ @L["已安装"] v@installedVersion</span>
+                        }
+                    </div>
+                    <div>
+                        <h3>@plugin.Name</h3>
+                        <p class="plugin-id">@plugin.PluginId</p>
+                    </div>
+                    <p class="plugin-description">@(string.IsNullOrWhiteSpace(plugin.Description) ? L["暂无简介"] : plugin.Description)</p>
+                    @if (plugin.Tags.Length > 0)
+                    {
+                        <div class="tag-list">
+                            @foreach (var tag in plugin.Tags.Take(4))
+                            {
+                                <button type="button" disabled="@_isBusy" @onclick="() => FilterByTagAsync(tag)">#@tag</button>
+                            }
+                        </div>
+                    }
+                    <div class="release-line">
+                        <span>@L["作者"] · @plugin.AuthorName</span>
+                        @if (plugin.LatestRelease is { } release)
+                        {
+                            <span>v@release.Version · @FormatSize(release.PackageSizeBytes)</span>
+                        }
+                    </div>
+                    <div class="card-actions">
+                        <button type="button" class="secondary-button" disabled="@_isBusy" @onclick="() => ShowDetailsAsync(plugin.PluginId)">@L["详情"]</button>
+                        @if (plugin.LatestRelease is not null)
+                        {
+                            <button type="button" class="primary-button" disabled="@_isBusy" @onclick="() => PrepareMarketplaceInstallAsync(plugin)">
+                                @(installedVersion is null ? L["获取"] : L["检查更新"])
+                            </button>
+                        }
+                    </div>
+                </article>
+            }
+        </div>
+    }
+</section>
+
+@if (_details is { } details)
+{
+    <div class="dialog-backdrop">
+        <section class="market-dialog details-dialog" role="dialog" aria-modal="true" aria-labelledby="market-details-title">
+            <button type="button" class="dialog-close" aria-label="@L["关闭"]" @onclick="CloseDetails">×</button>
+            <p class="eyebrow">@L["PLUGIN DETAILS"]</p>
+            <h2 id="market-details-title">@details.Plugin.Name</h2>
+            <p class="plugin-id">@details.Plugin.PluginId · @details.Plugin.AuthorName</p>
+            <p class="details-description">@(string.IsNullOrWhiteSpace(details.Plugin.Description) ? L["暂无简介"] : details.Plugin.Description)</p>
+            <h3>@L["已发布版本"]</h3>
+            <div class="release-list">
+                @foreach (var release in details.Releases)
+                {
+                    <article>
+                        <div><strong>v@release.Version</strong><span>@FormatSize(release.PackageSizeBytes) · @release.DownloadCount @L["次下载"]</span></div>
+                        <p>@L["支持 Quantum {0}", release.QuantumVersionSupport]</p>
+                        @if (!string.IsNullOrWhiteSpace(release.ReleaseNotes))
+                        {
+                            <p>@release.ReleaseNotes</p>
+                        }
+                    </article>
+                }
+            </div>
+        </section>
+    </div>
+}
+
+@if (_pendingInstall is { } pending)
+{
+    <div class="dialog-backdrop">
+        <section class="market-dialog install-dialog" role="alertdialog" aria-modal="true" aria-labelledby="market-install-title">
+            <p class="eyebrow">@L["INSTALL PLUGIN"]</p>
+            <h2 id="market-install-title">@(pending.Preview.CanInstall ? L["准备安装 {0}", pending.PluginName] : L["无法安装 {0}", pending.PluginName])</h2>
+            <p class="dialog-note">@pending.Preview.ArchiveFileName</p>
+            @if (pending.Preview.Plugins.Count > 0)
+            {
+                <ul class="preview-list">
+                    @foreach (var item in pending.Preview.Plugins)
+                    {
+                        <li>
+                            <div><strong>@item.PluginId</strong><span>@GetPreviewVersion(item)</span></div>
+                            <span>@GetPreviewAction(item.Action)</span>
+                        </li>
+                    }
+                </ul>
+            }
+            @if (pending.Preview.Issues.Count > 0)
+            {
+                <div class="preview-issues">
+                    <strong>@L["本机预检未通过"]</strong>
+                    <ul>
+                        @foreach (var issue in pending.Preview.Issues)
+                        {
+                            <li>@issue.Reason</li>
+                        }
+                    </ul>
+                </div>
+            }
+            else
+            {
+                <p class="dialog-note">@L["包的大小与 SHA-256 已核对；确认后将以事务方式更新本机插件。"]</p>
+            }
+            <div class="dialog-actions">
+                <button type="button" class="secondary-button" disabled="@_isBusy" @onclick="CancelInstallAsync">@(pending.Preview.CanInstall ? L["取消"] : L["关闭"])</button>
+                @if (pending.Preview.CanInstall)
+                {
+                    <button type="button" class="primary-button" disabled="@_isBusy" @onclick="ConfirmInstallAsync">@L["确认安装"]</button>
+                }
+            </div>
+        </section>
+    </div>
+}
+
+@code {
+    private readonly CancellationTokenSource _lifetime = new();
+    private IReadOnlyList<MarketplacePlugin> _plugins = [];
+    private MarketplacePluginDetails? _details;
+    private PendingMarketplaceInstall? _pendingInstall;
+    private string _search = string.Empty;
+    private string? _selectedTag;
+    private string? _message;
+    private bool _messageIsError;
+    private bool _isLoading = true;
+    private bool _isBusy;
+    private bool _platformReachable;
+
+    protected override Task OnInitializedAsync() => LoadPluginsAsync();
+
+    public async ValueTask DisposeAsync()
+    {
+        _lifetime.Cancel();
+        _lifetime.Dispose();
+        if (_pendingInstall?.Preview.PreviewId is { } previewId)
+        {
+            await PluginRuntimeManager.CancelInstallAsync(previewId);
+        }
+    }
+
+    private async Task LoadPluginsAsync()
+    {
+        if (_isBusy)
+        {
+            return;
+        }
+
+        _isBusy = true;
+        _isLoading = true;
+        _message = null;
+        try
+        {
+            _plugins = await MarketplaceClient.ListPluginsAsync(
+                _search,
+                _selectedTag is null ? null : [_selectedTag],
+                _lifetime.Token);
+            _platformReachable = true;
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            _plugins = [];
+            _platformReachable = false;
+            ShowError(L["无法连接插件市场：{0}", exception.Message]);
+        }
+        finally
+        {
+            _isLoading = false;
+            _isBusy = false;
+        }
+    }
+
+    private async Task HandleSearchKeyDown(KeyboardEventArgs eventArgs)
+    {
+        if (eventArgs.Key == "Enter")
+        {
+            await LoadPluginsAsync();
+        }
+    }
+
+    private async Task FilterByTagAsync(string tag)
+    {
+        _selectedTag = tag;
+        await LoadPluginsAsync();
+    }
+
+    private async Task ClearTagAsync()
+    {
+        _selectedTag = null;
+        await LoadPluginsAsync();
+    }
+
+    private async Task ShowDetailsAsync(string pluginId)
+    {
+        await RunBusyAsync(async () =>
+        {
+            _details = await MarketplaceClient.GetPluginAsync(pluginId, _lifetime.Token);
+        });
+    }
+
+    private void CloseDetails() => _details = null;
+
+    private async Task PrepareMarketplaceInstallAsync(MarketplacePlugin plugin)
+    {
+        await RunBusyAsync(async () =>
+        {
+            var compatibility = await MarketplaceClient.CheckCompatibilityAsync(
+                plugin.PluginId,
+                MarketplaceOptions.QuantumVersion,
+                _lifetime.Token);
+            if (!compatibility.IsCompatible || compatibility.MatchedReleaseVersion is null)
+            {
+                ShowError(L[
+                    "{0} 与当前 Quantum {1} 不兼容（要求 {2}）。",
+                    plugin.Name,
+                    MarketplaceOptions.QuantumVersion,
+                    compatibility.QuantumVersionSupport ?? L["未知版本"]]);
+                return;
+            }
+
+            var matchedRelease = compatibility.MatchedReleaseVersion;
+            var download = await MarketplaceClient.DownloadAsync(plugin.PluginId, matchedRelease, _lifetime.Token);
+            if (download.Archive.LongLength > PluginPackageLimits.MaximumArchiveBytes)
+            {
+                throw new InvalidDataException(L["下载的插件包超过本机安装大小限制。"]);
+            }
+
+            await using var stream = new MemoryStream(download.Archive, writable: false);
+            var preview = await PluginRuntimeManager.PrepareInstallAsync(stream, download.FileName, _lifetime.Token);
+            _pendingInstall = new PendingMarketplaceInstall(plugin.Name, preview);
+        });
+    }
+
+    private async Task ConfirmInstallAsync()
+    {
+        var pending = _pendingInstall;
+        if (pending?.Preview.PreviewId is not { } previewId || !pending.Preview.CanInstall)
+        {
+            return;
+        }
+
+        await RunBusyAsync(async () =>
+        {
+            var result = await PluginRuntimeManager.InstallAsync(previewId, _lifetime.Token);
+            _pendingInstall = null;
+            _messageIsError = !result.Succeeded;
+            _message = result.Message;
+        });
+    }
+
+    private async Task CancelInstallAsync()
+    {
+        var previewId = _pendingInstall?.Preview.PreviewId;
+        _pendingInstall = null;
+        if (previewId is not null)
+        {
+            await PluginRuntimeManager.CancelInstallAsync(previewId, _lifetime.Token);
+        }
+    }
+
+    private async Task RunBusyAsync(Func<Task> action)
+    {
+        if (_isBusy)
+        {
+            return;
+        }
+
+        _isBusy = true;
+        _message = null;
+        try
+        {
+            await action();
+        }
+        catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
+        {
+        }
+        catch (Exception exception)
+        {
+            ShowError(exception.Message);
+        }
+        finally
+        {
+            _isBusy = false;
+        }
+    }
+
+    private void ShowError(string message)
+    {
+        _messageIsError = true;
+        _message = message;
+    }
+
+    private string? GetInstalledVersion(string pluginId)
+        => PluginCatalog.Plugins.FirstOrDefault(plugin =>
+            string.Equals((string)plugin.Manifest.Id, pluginId, StringComparison.Ordinal))?.Manifest.Version.ToString();
+
+    private string GetPreviewVersion(PluginInstallPreviewItem item) => item.Action switch
+    {
+        PluginInstallAction.Upgrade => $"v{item.InstalledVersion} → v{item.PackageVersion}",
+        _ => $"v{item.PackageVersion}"
+    };
+
+    private string GetPreviewAction(PluginInstallAction action) => action switch
+    {
+        PluginInstallAction.Install => L["新安装"],
+        PluginInstallAction.Upgrade => L["升级"],
+        _ => L["跳过"]
+    };
+
+    private static string FormatSize(long bytes)
+        => bytes >= 1024 * 1024
+            ? $"{bytes / 1024d / 1024d:0.#} MB"
+            : $"{Math.Max(1, bytes / 1024d):0.#} KB";
+
+    private sealed record PendingMarketplaceInstall(string PluginName, PluginInstallPreview Preview);
+}

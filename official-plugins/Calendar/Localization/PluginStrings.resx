@@ -1,0 +1,73 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="CALENDAR" xml:space="preserve"><value>CALENDAR</value></data>
+  <data name="SELECTED DAY" xml:space="preserve"><value>SELECTED DAY</value></data>
+  <data name="TASKS" xml:space="preserve"><value>TASKS</value></data>
+  <data name="NEW TASK" xml:space="preserve"><value>NEW TASK</value></data>
+  <data name="EDIT TASK" xml:space="preserve"><value>EDIT TASK</value></data>
+  <data name="日历" xml:space="preserve"><value>日历</value></data>
+  <data name="日程" xml:space="preserve"><value>日程</value></data>
+  <data name="待办" xml:space="preserve"><value>待办</value></data>
+  <data name="待办清单" xml:space="preserve"><value>待办清单</value></data>
+  <data name="把日程和待办放在同一条时间线上。" xml:space="preserve"><value>把日程和待办放在同一条时间线上。</value></data>
+  <data name="把下一步写清楚，然后一次完成一件事。" xml:space="preserve"><value>把下一步写清楚，然后一次完成一件事。</value></data>
+  <data name="月份导航" xml:space="preserve"><value>月份导航</value></data>
+  <data name="上个月" xml:space="preserve"><value>上个月</value></data>
+  <data name="下个月" xml:space="preserve"><value>下个月</value></data>
+  <data name="今天" xml:space="preserve"><value>今天</value></data>
+  <data name="新建" xml:space="preserve"><value>新建</value></data>
+  <data name="关闭" xml:space="preserve"><value>关闭</value></data>
+  <data name="关闭编辑器" xml:space="preserve"><value>关闭编辑器</value></data>
+  <data name="取消编辑" xml:space="preserve"><value>取消编辑</value></data>
+  <data name="事项类型" xml:space="preserve"><value>事项类型</value></data>
+  <data name="标题" xml:space="preserve"><value>标题</value></data>
+  <data name="要做什么？" xml:space="preserve"><value>要做什么？</value></data>
+  <data name="日期" xml:space="preserve"><value>日期</value></data>
+  <data name="截止日期" xml:space="preserve"><value>截止日期</value></data>
+  <data name="截止时间" xml:space="preserve"><value>截止时间</value></data>
+  <data name="开始时间" xml:space="preserve"><value>开始时间</value></data>
+  <data name="结束时间（可选）" xml:space="preserve"><value>结束时间（可选）</value></data>
+  <data name="备注" xml:space="preserve"><value>备注</value></data>
+  <data name="补充一些细节…" xml:space="preserve"><value>补充一些细节…</value></data>
+  <data name="颜色" xml:space="preserve"><value>颜色</value></data>
+  <data name="取消" xml:space="preserve"><value>取消</value></data>
+  <data name="添加" xml:space="preserve"><value>添加</value></data>
+  <data name="保存" xml:space="preserve"><value>保存</value></data>
+  <data name="保存修改" xml:space="preserve"><value>保存修改</value></data>
+  <data name="新建事项" xml:space="preserve"><value>新建事项</value></data>
+  <data name="编辑事项" xml:space="preserve"><value>编辑事项</value></data>
+  <data name="编辑" xml:space="preserve"><value>编辑</value></data>
+  <data name="删除" xml:space="preserve"><value>删除</value></data>
+  <data name="恢复" xml:space="preserve"><value>恢复</value></data>
+  <data name="完成" xml:space="preserve"><value>完成</value></data>
+  <data name="这一天还很自由" xml:space="preserve"><value>这一天还很自由</value></data>
+  <data name="添加日程或待办，让计划落到具体的一天。" xml:space="preserve"><value>添加日程或待办，让计划落到具体的一天。</value></data>
+  <data name="本月日程" xml:space="preserve"><value>本月日程</value></data>
+  <data name="未完成待办" xml:space="preserve"><value>未完成待办</value></data>
+  <data name="自由日" xml:space="preserve"><value>自由日</value></data>
+  <data name="新建待办" xml:space="preserve"><value>新建待办</value></data>
+  <data name="筛选待办" xml:space="preserve"><value>筛选待办</value></data>
+  <data name="{0} 项未完成" xml:space="preserve"><value>{0} 项未完成</value></data>
+  <data name="标记为未完成" xml:space="preserve"><value>标记为未完成</value></data>
+  <data name="标记为已完成" xml:space="preserve"><value>标记为已完成</value></data>
+  <data name="已逾期" xml:space="preserve"><value>已逾期</value></data>
+  <data name="这里已经清空了" xml:space="preserve"><value>这里已经清空了</value></data>
+  <data name="没有符合当前筛选条件的待办。" xml:space="preserve"><value>没有符合当前筛选条件的待办。</value></data>
+  <data name="安排下一步" xml:space="preserve"><value>安排下一步</value></data>
+  <data name="调整待办" xml:space="preserve"><value>调整待办</value></data>
+  <data name="添加待办" xml:space="preserve"><value>添加待办</value></data>
+  <data name="未完成" xml:space="preserve"><value>未完成</value></data>
+  <data name="已完成" xml:space="preserve"><value>已完成</value></data>
+  <data name="全部" xml:space="preserve"><value>全部</value></data>
+  <data name="{0}，{1} 个事项" xml:space="preserve"><value>{0}，{1} 个事项</value></data>
+  <data name="标题不能超过 120 个字符。" xml:space="preserve"><value>标题不能超过 120 个字符。</value></data>
+  <data name="备注不能超过 1000 个字符。" xml:space="preserve"><value>备注不能超过 1000 个字符。</value></data>
+  <data name="颜色不受支持。" xml:space="preserve"><value>颜色不受支持。</value></data>
+  <data name="结束时间必须晚于开始时间。" xml:space="preserve"><value>结束时间必须晚于开始时间。</value></data>
+  <data name="结束日期不能早于开始日期。" xml:space="preserve"><value>结束日期不能早于开始日期。</value></data>
+  <data name="未找到事项 '{0}'。" xml:space="preserve"><value>未找到事项 '{0}'。</value></data>
+</root>

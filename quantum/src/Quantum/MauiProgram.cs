@@ -4,6 +4,7 @@ using NOF.Hosting;
 using NOF.Hosting.Maui;
 using Quantum.Logging;
 using Quantum.Localization;
+using Quantum.Marketplace;
 using Quantum.Plugins;
 using Quantum.WebPlugins;
 
@@ -62,6 +63,13 @@ public static class MauiProgram
             logger: services.GetRequiredService<ILogger<PluginRuntimeManager>>()));
         builder.Services.AddSingleton<IPluginRuntimeManager>(services =>
             services.GetRequiredService<PluginRuntimeManager>());
+        var marketplaceOptions = QuantumMarketplaceOptions.FromEnvironment();
+        builder.Services.AddSingleton(marketplaceOptions);
+        builder.Services.AddSingleton(new HttpClient
+        {
+            Timeout = TimeSpan.FromMinutes(5)
+        });
+        builder.Services.AddSingleton<IQuantumMarketplaceClient, QuantumMarketplaceClient>();
         builder.Services.AddSingleton<PluginStaticAssetFileProvider>();
         builder.Services.AddScoped<WebPluginInteropBridge>();
         builder.Services.AddSingleton<MainPage>();

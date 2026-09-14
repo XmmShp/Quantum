@@ -16,6 +16,7 @@
   <Project Path="quantum-platform/tests/Quantum.Platform.Tests/Quantum.Platform.Tests.csproj" />
   <Project Path="sdk/dotnet/src/Quantum.Plugin.Abstraction/Quantum.Plugin.Abstraction.csproj" />
   <Project Path="sdk/dotnet/test/Quantum.Plugin.Abstraction.Tests/Quantum.Plugin.Abstraction.Tests.csproj" />
+  <Project Path="official-plugins/Calendar/Quantum.CalendarPlugin.csproj" />
   <Project Path="samples/Quantum.ExampleCalendarPlugin/Quantum.ExampleCalendarPlugin.csproj" />
   <Project Path="samples/Quantum.ExampleDependentPlugin/Quantum.ExampleDependentPlugin.csproj" />
   <Project Path="samples/Quantum.ExamplePlugin/Quantum.ExamplePlugin.csproj" />
