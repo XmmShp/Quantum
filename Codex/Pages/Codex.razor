@@ -12,8 +12,8 @@
     <header class="hero">
         <div class="hero-copy">
             <p class="eyebrow">CODEX × QUANTUM</p>
-            <h1>@L["你的本地智能中枢"]</h1>
-            <p>@L["让本机 Codex 理解并调用 Quantum 中的插件能力。"]</p>
+            <h1>@L["Your local intelligence hub"]</h1>
+            <p>@L["Let local Codex understand and invoke capabilities from every Quantum plugin."]</p>
         </div>
         <div class="connection-pill @StateClass">
             <span></span>
@@ -34,11 +34,11 @@
         <section class="connect-card">
             <div class="codex-mark" aria-hidden="true">⌘</div>
             <div>
-                <h2>@L["连接本机 Codex"]</h2>
-                <p>@L["插件会启动 codex app-server，并复用本机已有登录状态。"]</p>
+                <h2>@L["Connect local Codex"]</h2>
+                <p>@L["The plugin starts codex app-server and reuses your existing local sign-in."]</p>
             </div>
             <label>
-                <span>@L["模型"]</span>
+                <span>@L["Model"]</span>
                 <select @bind="_selectedModel" disabled="@IsConnecting">
                     @foreach (var model in _snapshot.Models)
                     {
@@ -47,11 +47,11 @@
                 </select>
             </label>
             <label>
-                <span>@L["工作目录"]</span>
+                <span>@L["Working directory"]</span>
                 <input @bind="_workingDirectory" disabled="@IsConnecting" />
             </label>
             <button type="button" class="primary-button" disabled="@IsConnecting" @onclick="ConnectAsync">
-                @(IsConnecting ? L["连接中"] : L["连接"])
+                @(IsConnecting ? L["Connecting"] : L["Connect"])
             </button>
         </section>
     }
@@ -61,10 +61,10 @@
             <header class="workspace-toolbar">
                 <div>
                     <strong>@_snapshot.ToolCount</strong>
-                    <span>@L["项 Quantum 工具"]</span>
+                    <span>@L["Quantum tools"]</span>
                 </div>
                 <label class="model-picker">
-                    <span>@L["模型"]</span>
+                    <span>@L["Model"]</span>
                     <select value="@_selectedModel" disabled="@_snapshot.IsBusy" @onchange="ChangeModelAsync">
                         @foreach (var model in _snapshot.Models)
                         {
@@ -74,8 +74,8 @@
                 </label>
                 <code title="@_snapshot.ThreadId">@ShortThreadId</code>
                 <div class="toolbar-actions">
-                    <button type="button" disabled="@_snapshot.IsBusy" @onclick="NewThreadAsync">＋ @L["新对话"]</button>
-                    <button type="button" @onclick="DisconnectAsync">@L["断开"]</button>
+                    <button type="button" disabled="@_snapshot.IsBusy" @onclick="NewThreadAsync">＋ @L["New conversation"]</button>
+                    <button type="button" @onclick="DisconnectAsync">@L["Disconnect"]</button>
                 </div>
             </header>
 
@@ -84,8 +84,8 @@
                 {
                     <div class="empty-state">
                         <span aria-hidden="true">✦</span>
-                        <h2>@L["开始对话"]</h2>
-                        <p>@L["你可以让 Codex 查询日历、创建待办，或调用其他插件公开的 RPC。"]</p>
+                        <h2>@L["Start a conversation"]</h2>
+                        <p>@L["Ask Codex to inspect your calendar, create a task, or use RPCs published by other plugins."]</p>
                     </div>
                 }
                 else
@@ -108,11 +108,11 @@
 
             <footer class="composer">
                 <textarea rows="3"
-                          placeholder="@L["输入消息…"]"
+                          placeholder="@L["Message Codex…"]"
                           disabled="@_snapshot.IsBusy"
                           @bind="_prompt"
                           @onkeydown="HandleKeyDownAsync"></textarea>
-                <button type="button" class="send-button" disabled="@(!CanSend)" @onclick="SendAsync">@L["发送"] <span>↗</span></button>
+                <button type="button" class="send-button" disabled="@(!CanSend)" @onclick="SendAsync">@L["Send"] <span>↗</span></button>
             </footer>
         </section>
     }
@@ -147,10 +147,10 @@
 
     private string StateLabel => _snapshot.ConnectionState switch
     {
-        CodexConnectionState.Connected => L["已连接"],
-        CodexConnectionState.Connecting => L["连接中"],
-        CodexConnectionState.Failed => L["连接失败"],
-        _ => L["未连接"]
+        CodexConnectionState.Connected => L["Connected"],
+        CodexConnectionState.Connecting => L["Connecting"],
+        CodexConnectionState.Failed => L["Connection failed"],
+        _ => L["Disconnected"]
     };
 
     private string ShortThreadId => _snapshot.ThreadId is { Length: > 12 } threadId

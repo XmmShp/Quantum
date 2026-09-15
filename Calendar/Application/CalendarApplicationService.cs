@@ -20,7 +20,7 @@ internal sealed class CalendarApplicationService(
         {
             throw new ArgumentOutOfRangeException(
                 nameof(endDate),
-                PluginText.Get("结束日期不能早于开始日期。"));
+                PluginText.Get("End date cannot be earlier than start date."));
         }
 
         var query = entries.AsNoTracking()
@@ -124,7 +124,7 @@ internal sealed class CalendarApplicationService(
 
     private async Task<CalendarEntry> FindRequiredAsync(Guid id, CancellationToken cancellationToken)
         => await entries.Where(item => item.Id == id).SingleOrDefaultAsync(cancellationToken)
-            ?? throw new KeyNotFoundException(PluginText.Get("未找到事项 '{0}'。", id));
+            ?? throw new KeyNotFoundException(PluginText.Get("Item '{0}' was not found.", id));
 
     private static CalendarEntryDetails ToDetails(CalendarEntry item)
         => new(

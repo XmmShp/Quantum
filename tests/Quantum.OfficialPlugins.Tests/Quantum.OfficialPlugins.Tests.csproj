@@ -25,5 +25,11 @@
     <None Include="..\..\Codex\plugin.json"
           Link="plugin-manifests\codex.json"
           CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\Codex\Localization\PluginStrings*.resx"
+          Link="localization\codex\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\Calendar\Localization\PluginStrings*.resx"
+          Link="localization\calendar\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

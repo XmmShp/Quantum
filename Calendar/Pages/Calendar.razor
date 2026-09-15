@@ -7,20 +7,20 @@
 @using Quantum.OfficialPlugins.Calendar.Localization
 @inject IStringLocalizer<PluginStrings> L
 
-<PageTitle>@L["日历"] · Quantum</PageTitle>
+<PageTitle>@L["Calendar"] · Quantum</PageTitle>
 
 <section class="calendar-shell">
     <header class="page-header">
         <div>
-            <p class="eyebrow">@L["CALENDAR"]</p>
+            <p class="eyebrow">@L["Calendar section"]</p>
             <h1>@MonthTitle</h1>
-            <p>@L["把日程和待办放在同一条时间线上。"]</p>
+            <p>@L["Keep events and tasks on one timeline."]</p>
         </div>
-        <div class="toolbar" aria-label="@L["月份导航"]">
-            <button type="button" class="icon-button" aria-label="@L["上个月"]" disabled="@_isBusy" @onclick="() => ChangeMonthAsync(-1)">←</button>
-            <button type="button" disabled="@_isBusy" @onclick="ShowTodayAsync">@L["今天"]</button>
-            <button type="button" class="icon-button" aria-label="@L["下个月"]" disabled="@_isBusy" @onclick="() => ChangeMonthAsync(1)">→</button>
-            <button type="button" class="primary-button" disabled="@_isBusy" @onclick="BeginCreate">＋ @L["新建"]</button>
+        <div class="toolbar" aria-label="@L["Month navigation"]">
+            <button type="button" class="icon-button" aria-label="@L["Previous month"]" disabled="@_isBusy" @onclick="() => ChangeMonthAsync(-1)">←</button>
+            <button type="button" disabled="@_isBusy" @onclick="ShowTodayAsync">@L["Today"]</button>
+            <button type="button" class="icon-button" aria-label="@L["Next month"]" disabled="@_isBusy" @onclick="() => ChangeMonthAsync(1)">→</button>
+            <button type="button" class="primary-button" disabled="@_isBusy" @onclick="BeginCreate">＋ @L["New"]</button>
         </div>
     </header>
 
@@ -28,7 +28,7 @@
     {
         <div class="error-banner" role="alert">
             <span>@_errorMessage</span>
-            <button type="button" @onclick="() => _errorMessage = null">@L["关闭"]</button>
+            <button type="button" @onclick="() => _errorMessage = null">@L["Close"]</button>
         </div>
     }
 
@@ -77,7 +77,7 @@
                         <span>@SelectedDateTitle</span>
                     </div>
                 </div>
-                <button type="button" class="round-add" aria-label="@L["新建"]" disabled="@_isBusy" @onclick="BeginCreate">＋</button>
+                <button type="button" class="round-add" aria-label="@L["New"]" disabled="@_isBusy" @onclick="BeginCreate">＋</button>
             </div>
 
             @if (_isEditorOpen)
@@ -85,39 +85,39 @@
                 <section class="entry-editor" aria-label="@EditorTitle">
                     <div class="editor-title">
                         <h2>@EditorTitle</h2>
-                        <button type="button" aria-label="@L["关闭编辑器"]" @onclick="CancelEdit">×</button>
+                        <button type="button" aria-label="@L["Close editor"]" @onclick="CancelEdit">×</button>
                     </div>
-                    <div class="kind-switch" role="group" aria-label="@L["事项类型"]">
-                        <button type="button" class="@(_draft.Kind == CalendarEntryKind.Event ? "active" : null)" @onclick="() => SetDraftKind(CalendarEntryKind.Event)">@L["日程"]</button>
-                        <button type="button" class="@(_draft.Kind == CalendarEntryKind.Task ? "active" : null)" @onclick="() => SetDraftKind(CalendarEntryKind.Task)">@L["待办"]</button>
+                    <div class="kind-switch" role="group" aria-label="@L["Item type"]">
+                        <button type="button" class="@(_draft.Kind == CalendarEntryKind.Event ? "active" : null)" @onclick="() => SetDraftKind(CalendarEntryKind.Event)">@L["Event"]</button>
+                        <button type="button" class="@(_draft.Kind == CalendarEntryKind.Task ? "active" : null)" @onclick="() => SetDraftKind(CalendarEntryKind.Task)">@L["Task"]</button>
                     </div>
                     <label>
-                        <span>@L["标题"]</span>
-                        <input maxlength="120" placeholder="@L["要做什么？"]" @bind="_draft.Title" />
+                        <span>@L["Title"]</span>
+                        <input maxlength="120" placeholder="@L["What needs to be done?"]" @bind="_draft.Title" />
                     </label>
                     <div class="form-row">
                         <label>
-                            <span>@L["日期"]</span>
+                            <span>@L["Date"]</span>
                             <input type="date" @bind="_draft.Date" />
                         </label>
                         <label>
-                            <span>@(_draft.Kind == CalendarEntryKind.Task ? L["截止时间"] : L["开始时间"])</span>
+                            <span>@(_draft.Kind == CalendarEntryKind.Task ? L["Due time"] : L["Start time"])</span>
                             <input type="time" @bind="_draft.StartTime" />
                         </label>
                     </div>
                     @if (_draft.Kind == CalendarEntryKind.Event)
                     {
                         <label>
-                            <span>@L["结束时间（可选）"]</span>
+                            <span>@L["End time (optional)"]</span>
                             <input type="time" @bind="_draft.EndTime" />
                         </label>
                     }
                     <label>
-                        <span>@L["备注"]</span>
-                        <textarea maxlength="1000" rows="3" placeholder="@L["补充一些细节…"]" @bind="_draft.Notes"></textarea>
+                        <span>@L["Notes"]</span>
+                        <textarea maxlength="1000" rows="3" placeholder="@L["Add some details…"]" @bind="_draft.Notes"></textarea>
                     </label>
                     <fieldset class="color-picker">
-                        <legend>@L["颜色"]</legend>
+                        <legend>@L["Color"]</legend>
                         @foreach (var style in Styles)
                         {
                             <button type="button"
@@ -128,9 +128,9 @@
                         }
                     </fieldset>
                     <div class="editor-actions">
-                        <button type="button" disabled="@_isBusy" @onclick="CancelEdit">@L["取消"]</button>
+                        <button type="button" disabled="@_isBusy" @onclick="CancelEdit">@L["Cancel"]</button>
                         <button type="button" class="primary-button" disabled="@(_isBusy || string.IsNullOrWhiteSpace(_draft.Title))" @onclick="SaveAsync">
-                            @(_editingId is null ? L["添加"] : L["保存"])
+                            @(_editingId is null ? L["Add"] : L["Save"])
                         </button>
                     </div>
                 </section>
@@ -142,7 +142,7 @@
                     {
                         <article @key="item.Id" class="agenda-entry @item.Style @(item.IsCompleted ? "completed" : null)">
                             <div class="entry-meta">
-                                <span>@(item.Kind == CalendarEntryKind.Task ? L["待办"] : L["日程"])</span>
+                                <span>@(item.Kind == CalendarEntryKind.Task ? L["Task"] : L["Event"])</span>
                                 <time>@FormatTime(item)</time>
                             </div>
                             <h2>@item.Title</h2>
@@ -154,11 +154,11 @@
                                 @if (item.Kind == CalendarEntryKind.Task)
                                 {
                                     <button type="button" disabled="@_isBusy" @onclick="() => ToggleCompletedAsync(item)">
-                                        @(item.IsCompleted ? L["恢复"] : L["完成"])
+                                        @(item.IsCompleted ? L["Restore"] : L["Complete"])
                                     </button>
                                 }
-                                <button type="button" disabled="@_isBusy" @onclick="() => BeginEdit(item)">@L["编辑"]</button>
-                                <button type="button" class="danger" disabled="@_isBusy" @onclick="() => DeleteAsync(item.Id)">@L["删除"]</button>
+                                <button type="button" disabled="@_isBusy" @onclick="() => BeginEdit(item)">@L["Edit"]</button>
+                                <button type="button" class="danger" disabled="@_isBusy" @onclick="() => DeleteAsync(item.Id)">@L["Delete"]</button>
                             </div>
                         </article>
                     }
@@ -168,15 +168,15 @@
             {
                 <div class="empty-state">
                     <span aria-hidden="true">○</span>
-                    <h2>@L["这一天还很自由"]</h2>
-                    <p>@L["添加日程或待办，让计划落到具体的一天。"]</p>
+                    <h2>@L["This day is wide open"]</h2>
+                    <p>@L["Add an event or task to turn the day into a plan."]</p>
                 </div>
             }
 
             <footer class="month-stats">
-                <div><strong>@EventCount</strong><span>@L["本月日程"]</span></div>
-                <div><strong>@OpenTaskCount</strong><span>@L["未完成待办"]</span></div>
-                <div><strong>@FreeDayCount</strong><span>@L["自由日"]</span></div>
+                <div><strong>@EventCount</strong><span>@L["Events"]</span></div>
+                <div><strong>@OpenTaskCount</strong><span>@L["Open tasks"]</span></div>
+                <div><strong>@FreeDayCount</strong><span>@L["Free days"]</span></div>
             </footer>
         </aside>
     </div>
@@ -184,21 +184,21 @@
     <section class="task-board" aria-busy="@_isBusy">
         <header class="task-board-header">
             <div>
-                <p class="eyebrow">@L["TASKS"]</p>
-                <h2>@L["待办清单"]</h2>
-                <p>@L["把下一步写清楚，然后一次完成一件事。"]</p>
+                <p class="eyebrow">@L["Tasks section"]</p>
+                <h2>@L["Tasks"]</h2>
+                <p>@L["Make the next step clear, then finish one thing at a time."]</p>
             </div>
-            <button type="button" class="task-create-button" disabled="@_isBusy" @onclick="BeginCreateTaskAsync">＋ @L["新建待办"]</button>
+            <button type="button" class="task-create-button" disabled="@_isBusy" @onclick="BeginCreateTaskAsync">＋ @L["New task"]</button>
         </header>
 
         <div class="task-list-toolbar">
-            <div class="task-filters" role="group" aria-label="@L["筛选待办"]">
+            <div class="task-filters" role="group" aria-label="@L["Filter tasks"]">
                 @foreach (var filter in Enum.GetValues<TaskFilter>())
                 {
                     <button type="button" class="@(_taskFilter == filter ? "active" : null)" @onclick="() => _taskFilter = filter">@FilterLabel(filter)</button>
                 }
             </div>
-            <span>@L["{0} 项未完成", AllOpenTaskCount]</span>
+            <span>@L["{0} open", AllOpenTaskCount]</span>
         </div>
 
         @if (FilteredTasks.Count > 0)
@@ -209,7 +209,7 @@
                     <article @key="task.Id" class="task-item @task.Style @(task.IsCompleted ? "completed" : null)">
                         <button type="button"
                                 class="completion-toggle"
-                                aria-label="@(task.IsCompleted ? L["标记为未完成"] : L["标记为已完成"])"
+                                aria-label="@(task.IsCompleted ? L["Mark as open"] : L["Mark as complete"])"
                                 aria-pressed="@task.IsCompleted"
                                 disabled="@_isBusy"
                                 @onclick="() => ToggleCompletedAsync(task)">
@@ -221,7 +221,7 @@
                                 <time datetime="@task.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">@FormatDeadline(task)</time>
                                 @if (IsOverdue(task))
                                 {
-                                    <span>@L["已逾期"]</span>
+                                    <span>@L["Overdue"]</span>
                                 }
                             </div>
                             @if (!string.IsNullOrWhiteSpace(task.Notes))
@@ -230,8 +230,8 @@
                             }
                         </div>
                         <div class="task-actions">
-                            <button type="button" disabled="@_isBusy" @onclick="() => EditTaskAsync(task)">@L["编辑"]</button>
-                            <button type="button" class="danger" disabled="@_isBusy" @onclick="() => DeleteAsync(task.Id)">@L["删除"]</button>
+                            <button type="button" disabled="@_isBusy" @onclick="() => EditTaskAsync(task)">@L["Edit"]</button>
+                            <button type="button" class="danger" disabled="@_isBusy" @onclick="() => DeleteAsync(task.Id)">@L["Delete"]</button>
                         </div>
                     </article>
                 }
@@ -241,8 +241,8 @@
         {
             <div class="empty-tasks">
                 <span aria-hidden="true">✓</span>
-                <h3>@L["这里已经清空了"]</h3>
-                <p>@L["没有符合当前筛选条件的待办。"]</p>
+                <h3>@L["All clear here"]</h3>
+                <p>@L["No tasks match this filter."]</p>
             </div>
         }
     </section>
@@ -280,7 +280,7 @@
 
     private string MonthTitle => _visibleMonth.ToDateTime(TimeOnly.MinValue).ToString("Y", CultureInfo.CurrentCulture);
     private string SelectedDateTitle => _selectedDate.ToDateTime(TimeOnly.MinValue).ToString("MMMM dddd", CultureInfo.CurrentCulture);
-    private string EditorTitle => _editingId is null ? L["新建事项"] : L["编辑事项"];
+    private string EditorTitle => _editingId is null ? L["New item"] : L["Edit item"];
     private IReadOnlyList<CalendarEntryDetails> SelectedItems => [.. _items.Where(item => item.Date == _selectedDate)];
     private int EventCount => _items.Count(item => item.Kind == CalendarEntryKind.Event);
     private int OpenTaskCount => _items.Count(item => item.Kind == CalendarEntryKind.Task && !item.IsCompleted);
@@ -457,9 +457,9 @@
 
     private string FilterLabel(TaskFilter filter) => filter switch
     {
-        TaskFilter.Open => L["未完成"],
-        TaskFilter.Completed => L["已完成"],
-        _ => L["全部"]
+        TaskFilter.Open => L["Open"],
+        TaskFilter.Completed => L["Completed"],
+        _ => L["All"]
     };
 
     private async Task ExecuteAsync(Func<Task> action)
@@ -492,7 +492,7 @@
     private string GetDayAriaLabel(CalendarDay day)
     {
         var date = day.Date.ToDateTime(TimeOnly.MinValue).ToString("D", CultureInfo.CurrentCulture);
-        return L["{0}，{1} 个事项", date, day.Items.Count];
+        return L["{0}, {1} items", date, day.Items.Count];
     }
 
     private static string FormatTime(CalendarEntryDetails item)

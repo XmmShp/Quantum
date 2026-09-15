@@ -79,12 +79,12 @@ public sealed class CalendarEntry
         var normalizedStyle = style.Trim();
         if (normalizedTitle.Length > 120)
         {
-            throw new ArgumentException(PluginText.Get("标题不能超过 120 个字符。"), nameof(title));
+            throw new ArgumentException(PluginText.Get("Titles cannot exceed 120 characters."), nameof(title));
         }
 
         if (normalizedNotes.Length > 1000)
         {
-            throw new ArgumentException(PluginText.Get("备注不能超过 1000 个字符。"), nameof(notes));
+            throw new ArgumentException(PluginText.Get("Notes cannot exceed 1,000 characters."), nameof(notes));
         }
 
         if (!Enum.IsDefined(kind))
@@ -94,12 +94,12 @@ public sealed class CalendarEntry
 
         if (!SupportedStyles.Contains(normalizedStyle))
         {
-            throw new ArgumentException(PluginText.Get("颜色不受支持。"), nameof(style));
+            throw new ArgumentException(PluginText.Get("The selected color is not supported."), nameof(style));
         }
 
         if (kind == CalendarEntryKind.Event && endTime is not null && endTime <= startTime)
         {
-            throw new ArgumentException(PluginText.Get("结束时间必须晚于开始时间。"), nameof(endTime));
+            throw new ArgumentException(PluginText.Get("End time must be later than start time."), nameof(endTime));
         }
 
         Title = normalizedTitle;
