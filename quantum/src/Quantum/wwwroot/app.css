@@ -798,8 +798,18 @@ a {
 }
 
 .primary-button {
+  margin-top: 16px;
+  padding: 11px 16px;
+  border-radius: 11px;
+  color: white;
+  background: #6553e7;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.disable-plugin-dialog .primary-button {
+  background: #6553e7;
   color: #fff;
-  background: #6654e8;
 }
 
 .failure-row {
@@ -828,16 +838,6 @@ a {
 
 .empty-state p:not(.eyebrow) {
   color: #777184;
-}
-
-.primary-button {
-  margin-top: 16px;
-  padding: 11px 16px;
-  border-radius: 11px;
-  color: white;
-  background: #6553e7;
-  font-size: 13px;
-  font-weight: 700;
 }
 
 #blazor-error-ui {
