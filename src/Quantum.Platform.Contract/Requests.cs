@@ -148,3 +148,15 @@ public sealed record GetAuditEntryRequest
 {
     public required string AuditEntryId { get; init; }
 }
+
+public sealed record RequestPasswordResetEmailCodeRequest
+{
+    public required string Email { get; init; }
+}
+
+public sealed record ResetPasswordRequest
+{
+    public required string Email { get; init; }
+    public required string VerificationCode { get; init; }
+    public required string NewPassword { get; init; }
+}

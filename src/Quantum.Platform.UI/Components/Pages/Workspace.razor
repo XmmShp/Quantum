@@ -29,19 +29,35 @@
                 <div class="auth-points"><span><b>01</b>创建插件</span><span><b>02</b>配置 CI</span><span><b>03</b>自动审核</span></div>
             </section>
             <form class="auth-panel" @onsubmit="AuthenticateAsync" @onsubmit:preventDefault>
-                <div class="auth-tabs"><button class="@(!_registering ? "active" : null)" @onclick="() => _registering = false">登录</button><button class="@(_registering ? "active" : null)" @onclick="() => _registering = true">注册</button></div>
-                <p class="overline">DEVELOPER ACCOUNT</p><h2>@(_registering ? "创建开发者账号" : "欢迎回来")</h2>
+                <div class="auth-tabs"><button type="button" disabled="@_busy" class="@(!_registering && !_resettingPassword ? "active" : null)" @onclick="() => SetAuthMode(false)">登录</button><button type="button" disabled="@_busy" class="@(_registering ? "active" : null)" @onclick="() => SetAuthMode(true)">注册</button></div>
+                <p class="overline">DEVELOPER ACCOUNT</p><h2>@(_resettingPassword ? "找回密码" : _registering ? "创建开发者账号" : "欢迎回来")</h2>
+                @if (_resettingPassword)
+                {
+                    <p>通过注册邮箱接收验证码，设置新的登录密码。验证码 10 分钟内有效。</p>
+                }
                 @if (_registering)
                 {
-                    <label>开发者名称<input @bind="_username" maxlength="64" autocomplete="username" /></label>
+                    <label>开发者名称<input @bind="_username" maxlength="64" autocomplete="username" required /></label>
                 }
-                <label>邮箱<input @bind="_email" type="email" maxlength="320" autocomplete="email" /></label>
-                @if (_registering)
+                <label>邮箱<input @bind="_email" type="email" maxlength="320" autocomplete="email" required /></label>
+                @if (_registering || _resettingPassword)
                 {
-                    <label>邮箱验证码<span class="inline-control"><input @bind="_verificationCode" inputmode="numeric" maxlength="6" /><button type="button" @onclick="SendVerificationCodeAsync">发送验证码</button></span></label>
+                    <label>邮箱验证码<span class="inline-control"><input @bind="_verificationCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required /><button type="button" disabled="@_busy" @onclick="SendVerificationCodeAsync">发送验证码</button></span></label>
                 }
-                <label>密码<input @bind="_password" type="password" minlength="12" autocomplete="@(_registering ? "new-password" : "current-password")" /></label>
-                <button type="submit" class="primary-button wide" disabled="@_busy">@(_registering ? "注册并登录" : "登录工作台")</button>
+                <label>@(_resettingPassword ? "新密码" : "密码")<input @bind="_password" type="password" minlength="12" maxlength="1024" autocomplete="@(_registering || _resettingPassword ? "new-password" : "current-password")" required /></label>
+                @if (_resettingPassword)
+                {
+                    <label>确认新密码<input @bind="_confirmPassword" type="password" minlength="12" maxlength="1024" autocomplete="new-password" required /></label>
+                }
+                <button type="submit" class="primary-button wide" disabled="@_busy">@(_resettingPassword ? "重置密码" : _registering ? "注册并登录" : "登录工作台")</button>
+                @if (!_registering && !_resettingPassword)
+                {
+                    <button type="button" class="quiet-button wide" disabled="@_busy" @onclick="BeginPasswordReset">忘记密码？</button>
+                }
+                @if (_resettingPassword)
+                {
+                    <button type="button" class="quiet-button wide" disabled="@_busy" @onclick="() => SetAuthMode(false)">返回登录</button>
+                }
             </form>
         </main>
     }

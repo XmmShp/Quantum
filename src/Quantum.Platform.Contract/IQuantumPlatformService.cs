@@ -10,6 +10,14 @@ public interface IQuantumPlatformService : IRpcService
     [Category("Users")]
     Result RequestRegistrationEmailCode(RequestRegistrationEmailCodeRequest request);
 
+    [Summary("Send an email code to recover an account password")]
+    [Category("Users")]
+    Result RequestPasswordResetEmailCode(RequestPasswordResetEmailCodeRequest request);
+
+    [Summary("Reset a password using an email verification code")]
+    [Category("Users")]
+    Result ResetPassword(ResetPasswordRequest request);
+
     [Summary("Register a developer account")]
     [Category("Users")]
     Result<UserSummary> RegisterUser(RegisterUserRequest request);

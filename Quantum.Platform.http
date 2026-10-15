@@ -74,3 +74,29 @@ Content-Type: application/json
     "tags": ["sample"]
   }
 }
+
+### Request password reset code (same response for unknown addresses)
+POST {{host}}/rpc
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "password-reset-code-1",
+  "method": "RequestPasswordResetEmailCode",
+  "params": { "email": "developer@example.com" }
+}
+
+### Reset password using the code from email (or Development logs)
+POST {{host}}/rpc
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "password-reset-1",
+  "method": "ResetPassword",
+  "params": {
+    "email": "developer@example.com",
+    "verificationCode": "123456",
+    "newPassword": "a-new-strong-development-password"
+  }
+}

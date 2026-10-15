@@ -17,7 +17,7 @@ tests/
 
 ## 能力
 
-- 邮箱验证码注册、邮箱密码登录、个人资料、角色与管理员删除流程；首位完成邮箱验证的注册用户自动成为系统管理员。
+- 邮箱验证码注册、邮箱密码登录、邮箱验证码找回密码、个人资料、角色与管理员删除流程；首位完成邮箱验证的注册用户自动成为系统管理员。
 - 开发环境通过日志输出验证码邮件，非开发环境强制使用 SMTP，通过 MailKit 发送验证码、欢迎和版本审核结果邮件。
 - 插件目录创建、更新、检索与按作者/标签过滤。
 - 插件 ZIP 上传、SHA-256 校验、审核、下载计数，并为当前 Quantum 选择最高兼容版本。
@@ -90,6 +90,12 @@ Content-Type: application/json; charset=utf-8
 
 收到验证码后调用 `RegisterUser`，同时提交 `username`、`email`、`password` 和六位
 `verificationCode`。Development 环境从应用日志读取验证码。
+
+忘记密码时，在发布台登录页选择“忘记密码？”，或调用 `RequestPasswordResetEmailCode`（`email`），
+再调用 `ResetPassword`（`email`、`verificationCode`、`newPassword`）。新密码须为 12–1024 字符，
+重置后返回登录页使用新密码登录。找回验证码与注册验证码隔离，只保存哈希；10 分钟有效，60 秒内
+不会重发，累计 5 次错误后必须重新申请，重置成功立即失效。申请接口对未注册邮箱和重发限制返回统一成功响应，
+避免暴露账号是否存在。邮件发送失败记录服务端警告，用户可在 60 秒后重试。
 
 登录后在受保护操作中携带 `Authorization: Bearer {accessToken}`。完整样例见 [Quantum.Platform.http](Quantum.Platform.http)。成功响应的 `result` 是 NOF Result envelope；调用方仍需检查 `result.isSuccess`。
 

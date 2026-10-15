@@ -13,6 +13,8 @@ public partial class Workspace
     private bool _initialized;
     private bool _busy;
     private bool _registering;
+    private bool _resettingPassword;
+    private string _confirmPassword = string.Empty;
     private bool _noticeError;
     private bool _editing;
     private bool _confirmedPrivateKey;
@@ -77,10 +79,40 @@ public partial class Workspace
         StateHasChanged();
     }
 
+    private void SetAuthMode(bool registering)
+    {
+        _registering = registering;
+        _resettingPassword = false;
+        _password = _confirmPassword = _verificationCode = string.Empty;
+        _notice = null;
+    }
+
+    private void BeginPasswordReset()
+    {
+        SetAuthMode(false);
+        _resettingPassword = true;
+    }
+
     private async Task AuthenticateAsync()
     {
         await RunAsync(async () =>
         {
+            if (_resettingPassword)
+            {
+                if (_password != _confirmPassword)
+                {
+                    throw new InvalidOperationException("两次输入的新密码不一致。");
+                }
+                await RpcAsync("ResetPassword", new
+                {
+                    email = _email,
+                    verificationCode = _verificationCode,
+                    newPassword = _password
+                }, authenticated: false);
+                SetAuthMode(false);
+                Notify("密码已重置，请使用新密码登录。");
+                return;
+            }
             if (_registering)
             {
                 await RpcAsync("RegisterUser", new
@@ -104,8 +136,11 @@ public partial class Workspace
 
     private Task SendVerificationCodeAsync() => RunAsync(async () =>
     {
-        await RpcAsync("RequestRegistrationEmailCode", new { email = _email }, authenticated: false);
-        Notify("验证码已发送，有效期 10 分钟。");
+        await RpcAsync(_resettingPassword ? "RequestPasswordResetEmailCode" : "RequestRegistrationEmailCode",
+            new { email = _email }, authenticated: false);
+        Notify(_resettingPassword
+            ? "若该邮箱已注册，将收到找回密码验证码；请检查邮箱（包括垃圾邮件），60 秒后可重试。"
+            : "验证码已发送，有效期 10 分钟。");
     });
 
     private async Task LogoutAsync()

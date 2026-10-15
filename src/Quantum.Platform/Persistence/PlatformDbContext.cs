@@ -42,6 +42,21 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
             entity.HasIndex(verification => verification.ExpiresAtUtc);
         });
 
+        modelBuilder.Entity<PasswordResetVerification>(entity =>
+        {
+            entity.ToTable(nameof(PasswordResetVerification));
+            entity.IsHostOnly();
+            entity.Property(verification => verification.UserId).IsRequired();
+            entity.HasKey(verification => verification.Id);
+            entity.Property(verification => verification.Id).ValueGeneratedNever();
+            entity.Property(verification => verification.Email).HasMaxLength(320).IsRequired();
+            entity.Property(verification => verification.CodeHash).HasMaxLength(512).IsRequired();
+            entity.Property(verification => verification.RequestedAtUtc).HasColumnType("timestamp with time zone").IsRequired();
+            entity.Property(verification => verification.ExpiresAtUtc).HasColumnType("timestamp with time zone").IsRequired();
+            entity.HasIndex(verification => verification.Email).IsUnique();
+            entity.HasIndex(verification => verification.ExpiresAtUtc);
+        });
+
         modelBuilder.Entity<PluginListing>(entity =>
         {
             entity.ToTable(nameof(PluginListing));

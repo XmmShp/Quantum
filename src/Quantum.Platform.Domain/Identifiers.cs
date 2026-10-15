@@ -16,3 +16,6 @@ public readonly partial struct AuditEntryId : IValueObject<long>;
 
 [NewableValueObject]
 public readonly partial struct RegistrationEmailVerificationId : IValueObject<long>;
+
+[NewableValueObject]
+public readonly partial struct PasswordResetVerificationId : IValueObject<long>;

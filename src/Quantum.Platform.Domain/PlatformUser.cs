@@ -65,6 +65,9 @@ public sealed class PlatformUser
         Email = NormalizeEmail(email);
     }
 
+    public void ResetPassword(string passwordHash)
+        => PasswordHash = RequirePasswordHash(passwordHash);
+
     public void SetRoles(PlatformUserRole roles) => Roles = ValidateRoles(roles);
 
     public void RecordLogin(TimeProvider? timeProvider = null)

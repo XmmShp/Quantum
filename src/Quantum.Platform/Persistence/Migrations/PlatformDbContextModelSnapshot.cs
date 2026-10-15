@@ -732,6 +732,54 @@ namespace Quantum.Platform.Persistence.Migrations
                     b.HasAnnotation("NOF:HostOnly", true);
                 });
 
+            modelBuilder.Entity("Quantum.Platform.Domain.PasswordResetVerification", b =>
+                {
+                    b.Property<long>("Id")
+                        .HasColumnType("bigint");
+
+                    b.Property<long>("UserId")
+                        .HasColumnType("bigint");
+
+                    b.Property<string>("CodeHash")
+                        .IsRequired()
+                        .HasMaxLength(512)
+                        .HasColumnType("character varying(512)");
+
+                    b.Property<string>("Email")
+                        .IsRequired()
+                        .HasMaxLength(320)
+                        .HasColumnType("character varying(320)");
+
+                    b.Property<DateTime>("ExpiresAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<int>("FailedAttempts")
+                        .HasColumnType("integer");
+
+                    b.Property<DateTime>("RequestedAtUtc")
+                        .HasColumnType("timestamp with time zone");
+
+                    b.Property<long>("__DeletedAtUnixTime")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint")
+                        .HasDefaultValue(0L);
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("Email");
+
+                    b.HasIndex("ExpiresAtUtc");
+
+                    b.HasIndex("__DeletedAtUnixTime");
+
+                    b.HasIndex("Email", "__DeletedAtUnixTime")
+                        .IsUnique();
+
+                    b.ToTable("PasswordResetVerification", (string)null);
+
+                    b.HasAnnotation("NOF:HostOnly", true);
+                });
+
             modelBuilder.Entity("Quantum.Platform.Domain.RegistrationEmailVerification", b =>
                 {
                     b.Property<long>("Id")
