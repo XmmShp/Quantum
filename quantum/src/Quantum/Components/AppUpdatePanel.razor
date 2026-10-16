@@ -1,0 +1,36 @@
+@implements IDisposable
+@using Quantum.Updates
+@inject AppUpdateService Updates
+@inject IStringLocalizer<AppStrings> L
+
+<section class="section-block" aria-label="@L["AppUpdates"]">
+    <div class="section-heading">
+        <div>
+            <h2>@L["AppUpdates"]</h2>
+            <p>@L["InstalledAppVersion", Updates.CurrentVersion]</p>
+        </div>
+        <button class="secondary-button" disabled="@(Updates.IsBusy || Updates.State == AppUpdateState.Unavailable)"
+                @onclick="Updates.CheckAsync">@L["CheckForAppUpdates"]</button>
+    </div>
+    <p role="status" aria-live="polite">@L[$"AppUpdate{Updates.State}"]</p>
+    @if (Updates.TargetVersion is { } version)
+    {
+        <p>@L["AvailableAppVersion", version]</p>
+    }
+    @if (Updates.State == AppUpdateState.Downloading)
+    {
+        <progress max="100" value="@Updates.Progress" aria-label="@L["AppUpdateDownloading"]"></progress>
+        <span>@Updates.Progress%</span>
+    }
+    @if (Updates.State is AppUpdateState.Available or AppUpdateState.Ready or AppUpdateState.Failed)
+    {
+        <p>@L["AppUpdateRestartNotice"]</p>
+        <button class="secondary-button" @onclick="Updates.UpdateAndRestartAsync">@L["UpdateAppAndRestart"]</button>
+    }
+</section>
+
+@code {
+    protected override void OnInitialized() => Updates.Changed += Refresh;
+    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => Updates.Changed -= Refresh;
+}

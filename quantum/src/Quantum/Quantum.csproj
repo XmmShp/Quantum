@@ -11,6 +11,7 @@
     <ApplicationId>io.quantum.desktop</ApplicationId>
     <ApplicationDisplayVersion>0.1.0</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
+    <Version>$(ApplicationDisplayVersion)</Version>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">15.0</SupportedOSPlatformVersion>
     <MtouchLink Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">None</MtouchLink>
     <UseInterpreter Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">true</UseInterpreter>
@@ -20,12 +21,23 @@
     <WindowsAppSDKSelfContained Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows' And '$(Configuration)' == 'Debug'">true</WindowsAppSDKSelfContained>
   </PropertyGroup>
 
+  <!-- Direct desktop distribution: Velopack owns installation and updates. -->
+  <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+    <WindowsPackageType>None</WindowsPackageType>
+    <WindowsAppSDKSelfContained>true</WindowsAppSDKSelfContained>
+    <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(QuantumDirectDistribution)' == 'true' And $([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">
+    <CodesignEntitlements>Platforms/MacCatalyst/DirectDistribution.entitlements</CodesignEntitlements>
+  </PropertyGroup>
+
   <ItemGroup Condition="'$(TargetFramework)' != 'net10.0'">
     <MauiIcon Include="Resources\AppIcon\appicon.svg" ForegroundFile="Resources\AppIcon\appiconfg.svg" Color="#6D5DFB" />
     <MauiSplashScreen Include="Resources\Splash\splash.svg" Color="#171528" BaseSize="128,128" />
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Velopack" />
     <PackageReference Include="Quantum.Plugin.Abstraction" />
   </ItemGroup>
 

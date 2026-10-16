@@ -1,0 +1,20 @@
+@implements IDisposable
+@using Quantum.Updates
+@inject AppUpdateService Updates
+@inject IStringLocalizer<AppStrings> L
+
+@if (Updates.State is AppUpdateState.Available or AppUpdateState.Ready)
+{
+    <aside class="operation-message success" role="status">
+        @L["AvailableAppVersion", Updates.TargetVersion ?? ""]
+        <a href="/settings">@L["AppUpdates"]</a>
+    </aside>
+}
+
+@code {
+    protected override void OnInitialized() => Updates.Changed += Refresh;
+    protected override Task OnAfterRenderAsync(bool firstRender) => firstRender
+        ? Updates.CheckOnStartupAsync() : Task.CompletedTask;
+    private void Refresh() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => Updates.Changed -= Refresh;
+}

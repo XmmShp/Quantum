@@ -102,6 +102,12 @@ dotnet run --project quantum/src/Quantum/Quantum.csproj `
   --framework net10.0-windows10.0.19041.0 -- --console
 ```
 
+## 桌面发行与应用内更新
+
+桌面安装包与增量更新通过 GitHub Actions / Velopack 发布。推送 `desktop-vX.Y.Z` 标签可发布 Windows 安装器；配置 Apple 凭据并设置 `ENABLE_MACOS_RELEASE=true` 后同时发布 macOS arm64 / Intel 安装器。应用启动后检查更新，在设置页点击“一键更新并重启”即可下载安装，增量不可用时回退完整包。
+
+证书、GitHub Secrets / Variables 清单、试打包与发布验收步骤见 [桌面发行指南](docs/desktop-releases.md)。
+
 ## 插件开发
 
 当前版本建议使用 .NET 作为主要的插件开发方式。JavaScript/TypeScript 插件支持仍处于实验阶段，许多能力暂不可用，不建议用于主要开发路径。

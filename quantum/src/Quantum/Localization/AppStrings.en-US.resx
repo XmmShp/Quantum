@@ -285,4 +285,19 @@
   <data name="插件市场视图" xml:space="preserve"><value>Marketplace views</value></data>
   <data name="发现插件" xml:space="preserve"><value>Discover</value></data>
   <data name="我的测试版本" xml:space="preserve"><value>My test releases</value></data>
+  <data name="AppUpdates" xml:space="preserve"><value>Quantum updates</value></data>
+  <data name="InstalledAppVersion" xml:space="preserve"><value>Installed version: {0}</value></data>
+  <data name="AvailableAppVersion" xml:space="preserve"><value>New version available: {0}</value></data>
+  <data name="CheckForAppUpdates" xml:space="preserve"><value>Check for updates</value></data>
+  <data name="UpdateAppAndRestart" xml:space="preserve"><value>Update and restart</value></data>
+  <data name="AppUpdateRestartNotice" xml:space="preserve"><value>Save your work first. Quantum will download the update and restart automatically. Delta updates are preferred; a full download is used when necessary.</value></data>
+  <data name="AppUpdateUnavailable" xml:space="preserve"><value>Install Quantum using the official desktop installer to enable updates. Updates are unavailable in development builds.</value></data>
+  <data name="AppUpdateIdle" xml:space="preserve"><value>Updates are checked automatically on startup.</value></data>
+  <data name="AppUpdateChecking" xml:space="preserve"><value>Checking for updates…</value></data>
+  <data name="AppUpdateCurrent" xml:space="preserve"><value>Quantum is up to date.</value></data>
+  <data name="AppUpdateAvailable" xml:space="preserve"><value>A new Quantum version is ready to download.</value></data>
+  <data name="AppUpdateDownloading" xml:space="preserve"><value>Downloading and verifying the update…</value></data>
+  <data name="AppUpdateReady" xml:space="preserve"><value>An update has been downloaded and is ready to install.</value></data>
+  <data name="AppUpdateApplying" xml:space="preserve"><value>Installing the update and restarting Quantum…</value></data>
+  <data name="AppUpdateFailed" xml:space="preserve"><value>The update did not complete. Check your connection and retry. Your installed version is still available.</value></data>
 </root>

@@ -3,6 +3,8 @@
 **/obj/
 /artifacts/
 /publish/
+/.tools/
+/Releases/
 *.nupkg
 *.snupkg
 

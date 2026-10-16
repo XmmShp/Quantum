@@ -37,6 +37,12 @@ public static class MauiProgram
             .UseMauiApp<App>();
 
         builder.Services.AddMauiBlazorWebView();
+#if MACCATALYST
+        builder.Services.AddSingleton<Quantum.Updates.IAppUpdateBackend, Quantum.Updates.MacAppUpdateBackend>();
+#else
+        builder.Services.AddSingleton<Quantum.Updates.IAppUpdateBackend, Quantum.Updates.VelopackUpdateBackend>();
+#endif
+        builder.Services.AddSingleton<Quantum.Updates.AppUpdateService>();
         builder.Services.AddLocalization();
         var requestedCulture = Preferences.Default.Get(
             CultureService.PreferenceKey,
