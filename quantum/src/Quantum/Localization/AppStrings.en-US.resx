@@ -300,4 +300,9 @@
   <data name="AppUpdateReady" xml:space="preserve"><value>An update has been downloaded and is ready to install.</value></data>
   <data name="AppUpdateApplying" xml:space="preserve"><value>Installing the update and restarting Quantum…</value></data>
   <data name="AppUpdateFailed" xml:space="preserve"><value>The update did not complete. Check your connection and retry. Your installed version is still available.</value></data>
+  <data name="InstallingPlugin" xml:space="preserve"><value>Installing…</value></data>
+  <data name="MarketplacePluginIncompatible" xml:space="preserve"><value>{0} is not compatible with Quantum {1}.</value></data>
+  <data name="MarketplacePackageIdentityMismatch" xml:space="preserve"><value>The package does not match the selected plugin and version. Nothing was installed.</value></data>
+  <data name="TheDownloadedPackageExceedsTheLocalInstallationSize" xml:space="preserve"><value>The downloaded package exceeds the local installation size limit.</value></data>
+  <data name="LocalPreflightFailed" xml:space="preserve"><value>Local preflight failed</value></data>
 </root>

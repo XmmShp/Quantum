@@ -89,7 +89,7 @@
                             var state = (MarketplaceReleaseState)release.Status;
                             <article>
                                 <div class="release-main">
-                                    <div><strong>v@release.Version</strong><span>@L["支持 Quantum {0}", release.QuantumVersionSupport] · @FormatSize(release.PackageSizeBytes)</span></div>
+                                    <div><strong>v@(release.Version)</strong><span>@L["支持 Quantum {0}", release.QuantumVersionSupport] · @FormatSize(release.PackageSizeBytes)</span></div>
                                     <span class="status @state.ToString().ToLowerInvariant()">@GetStatusText(state)</span>
                                 </div>
                                 @if (!string.IsNullOrWhiteSpace(release.ReleaseNotes))

@@ -1,8 +1,8 @@
 @page "/marketplace"
 @implements IAsyncDisposable
 @inject IQuantumMarketplaceClient MarketplaceClient
+@inject MarketplacePluginInstaller MarketplaceInstaller
 @inject QuantumMarketplaceOptions MarketplaceOptions
-@inject IPluginRuntimeManager PluginRuntimeManager
 @inject PluginCatalog PluginCatalog
 @inject IStringLocalizer<AppStrings> L
 
@@ -105,7 +105,7 @@
                         <span class="plugin-mark">@plugin.Name[0].ToString().ToUpperInvariant()</span>
                         @if (installedVersion is not null)
                         {
-                            <span class="installed-badge">✓ @L["已安装"] v@installedVersion</span>
+                            <span class="installed-badge">✓ @L["已安装"] v@(installedVersion)</span>
                         }
                     </div>
                     <div>
@@ -126,7 +126,7 @@
                         <span>@L["作者"] · @plugin.AuthorName</span>
                         @if (plugin.LatestRelease is { } release)
                         {
-                            <span>v@release.Version · @FormatSize(release.PackageSizeBytes)</span>
+                            <span>v@(release.Version) · @FormatSize(release.PackageSizeBytes)</span>
                         }
                     </div>
                     <div class="card-actions">
@@ -134,7 +134,8 @@
                         @if (plugin.LatestRelease is not null)
                         {
                             <button type="button" class="primary-button" disabled="@_isBusy" @onclick="() => PrepareMarketplaceInstallAsync(plugin)">
-                                @(installedVersion is null ? L["获取"] : L["检查更新"])
+                                <span aria-hidden="true">↓</span>
+                                @(_installingPluginId == plugin.PluginId ? L["正在安装…"] : installedVersion is null ? L["下载并安装"] : L["检查更新"])
                             </button>
                         }
                     </div>
@@ -159,7 +160,7 @@
                 @foreach (var release in details.Releases)
                 {
                     <article>
-                        <div><strong>v@release.Version</strong><span>@FormatSize(release.PackageSizeBytes) · @release.DownloadCount @L["次下载"]</span></div>
+                        <div><strong>v@(release.Version)</strong><span>@FormatSize(release.PackageSizeBytes) · @release.DownloadCount @L["次下载"]</span></div>
                         <p>@L["支持 Quantum {0}", release.QuantumVersionSupport]</p>
                         @if (!string.IsNullOrWhiteSpace(release.ReleaseNotes))
                         {
@@ -172,57 +173,10 @@
     </div>
 }
 
-@if (_pendingInstall is { } pending)
-{
-    <div class="dialog-backdrop">
-        <section class="market-dialog install-dialog" role="alertdialog" aria-modal="true" aria-labelledby="market-install-title">
-            <p class="eyebrow">@L["INSTALL PLUGIN"]</p>
-            <h2 id="market-install-title">@(pending.Preview.CanInstall ? L["准备安装 {0}", pending.PluginName] : L["无法安装 {0}", pending.PluginName])</h2>
-            <p class="dialog-note">@pending.Preview.ArchiveFileName</p>
-            @if (pending.Preview.Plugins.Count > 0)
-            {
-                <ul class="preview-list">
-                    @foreach (var item in pending.Preview.Plugins)
-                    {
-                        <li>
-                            <div><strong>@item.PluginId</strong><span>@GetPreviewVersion(item)</span></div>
-                            <span>@GetPreviewAction(item.Action)</span>
-                        </li>
-                    }
-                </ul>
-            }
-            @if (pending.Preview.Issues.Count > 0)
-            {
-                <div class="preview-issues">
-                    <strong>@L["本机预检未通过"]</strong>
-                    <ul>
-                        @foreach (var issue in pending.Preview.Issues)
-                        {
-                            <li>@issue.Reason</li>
-                        }
-                    </ul>
-                </div>
-            }
-            else
-            {
-                <p class="dialog-note">@L["包的大小与 SHA-256 已核对；确认后将以事务方式更新本机插件。"]</p>
-            }
-            <div class="dialog-actions">
-                <button type="button" class="secondary-button" disabled="@_isBusy" @onclick="CancelInstallAsync">@(pending.Preview.CanInstall ? L["取消"] : L["关闭"])</button>
-                @if (pending.Preview.CanInstall)
-                {
-                    <button type="button" class="primary-button" disabled="@_isBusy" @onclick="ConfirmInstallAsync">@L["确认安装"]</button>
-                }
-            </div>
-        </section>
-    </div>
-}
-
 @code {
     private readonly CancellationTokenSource _lifetime = new();
     private IReadOnlyList<MarketplacePlugin> _plugins = [];
     private MarketplacePluginDetails? _details;
-    private PendingMarketplaceInstall? _pendingInstall;
     private string _search = string.Empty;
     private string? _selectedTag;
     private string? _message;
@@ -230,6 +184,7 @@
     private bool _isLoading = true;
     private bool _isBusy;
     private bool _platformReachable;
+    private string? _installingPluginId;
     private MarketplaceArea _activeArea;
 
     protected override Task OnInitializedAsync() => LoadPluginsAsync();
@@ -238,10 +193,6 @@
     {
         _lifetime.Cancel();
         _lifetime.Dispose();
-        if (_pendingInstall?.Preview.PreviewId is { } previewId)
-        {
-            await PluginRuntimeManager.CancelInstallAsync(previewId);
-        }
     }
 
     private async Task LoadPluginsAsync()
@@ -318,58 +269,18 @@
     {
         await RunBusyAsync(async () =>
         {
-            var compatibility = await MarketplaceClient.CheckCompatibilityAsync(
-                plugin.PluginId,
-                MarketplaceOptions.QuantumVersion,
-                _lifetime.Token);
-            if (!compatibility.IsCompatible || compatibility.MatchedReleaseVersion is null)
+            _installingPluginId = plugin.PluginId;
+            try
             {
-                ShowError(L[
-                    "{0} 与当前 Quantum {1} 不兼容（要求 {2}）。",
-                    plugin.Name,
-                    MarketplaceOptions.QuantumVersion,
-                    compatibility.QuantumVersionSupport ?? L["未知版本"]]);
-                return;
+                var result = await MarketplaceInstaller.InstallAsync(plugin, _lifetime.Token);
+                _messageIsError = !result.Succeeded;
+                _message = result.Message;
             }
-
-            var matchedRelease = compatibility.MatchedReleaseVersion;
-            var download = await MarketplaceClient.DownloadAsync(plugin.PluginId, matchedRelease, _lifetime.Token);
-            if (download.Archive.LongLength > PluginPackageLimits.MaximumArchiveBytes)
+            finally
             {
-                throw new InvalidDataException(L["下载的插件包超过本机安装大小限制。"]);
+                _installingPluginId = null;
             }
-
-            await using var stream = new MemoryStream(download.Archive, writable: false);
-            var preview = await PluginRuntimeManager.PrepareInstallAsync(stream, download.FileName, _lifetime.Token);
-            _pendingInstall = new PendingMarketplaceInstall(plugin.Name, preview);
         });
-    }
-
-    private async Task ConfirmInstallAsync()
-    {
-        var pending = _pendingInstall;
-        if (pending?.Preview.PreviewId is not { } previewId || !pending.Preview.CanInstall)
-        {
-            return;
-        }
-
-        await RunBusyAsync(async () =>
-        {
-            var result = await PluginRuntimeManager.InstallAsync(previewId, _lifetime.Token);
-            _pendingInstall = null;
-            _messageIsError = !result.Succeeded;
-            _message = result.Message;
-        });
-    }
-
-    private async Task CancelInstallAsync()
-    {
-        var previewId = _pendingInstall?.Preview.PreviewId;
-        _pendingInstall = null;
-        if (previewId is not null)
-        {
-            await PluginRuntimeManager.CancelInstallAsync(previewId, _lifetime.Token);
-        }
     }
 
     private async Task RunBusyAsync(Func<Task> action)
@@ -408,26 +319,10 @@
         => PluginCatalog.Plugins.FirstOrDefault(plugin =>
             string.Equals((string)plugin.Manifest.Id, pluginId, StringComparison.Ordinal))?.Manifest.Version.ToString();
 
-    private string GetPreviewVersion(PluginInstallPreviewItem item) => item.Action switch
-    {
-        PluginInstallAction.Upgrade => $"v{item.InstalledVersion} → v{item.PackageVersion}",
-        _ => $"v{item.PackageVersion}"
-    };
-
-    private string GetPreviewAction(PluginInstallAction action) => action switch
-    {
-        PluginInstallAction.Install => L["新安装"],
-        PluginInstallAction.Upgrade => L["升级"],
-        _ => L["跳过"]
-    };
-
     private static string FormatSize(long bytes)
         => bytes >= 1024 * 1024
             ? $"{bytes / 1024d / 1024d:0.#} MB"
             : $"{Math.Max(1, bytes / 1024d):0.#} KB";
-
-    private sealed record PendingMarketplaceInstall(string PluginName, PluginInstallPreview Preview);
-
     private enum MarketplaceArea
     {
         Discover,

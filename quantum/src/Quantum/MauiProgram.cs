@@ -88,6 +88,7 @@ public static class MauiProgram
                 return Task.CompletedTask;
             }));
         builder.Services.AddSingleton<IQuantumMarketplaceClient, QuantumMarketplaceClient>();
+        builder.Services.AddSingleton<MarketplacePluginInstaller>();
         builder.Services.AddSingleton<PluginStaticAssetFileProvider>();
         builder.Services.AddScoped<WebPluginInteropBridge>();
         builder.Services.AddSingleton<MainPage>();

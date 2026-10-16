@@ -274,4 +274,9 @@
   <data name="AppUpdateReady" xml:space="preserve"><value>更新已下载，重启后即可安装。</value></data>
   <data name="AppUpdateApplying" xml:space="preserve"><value>正在安装更新并重启 Quantum…</value></data>
   <data name="AppUpdateFailed" xml:space="preserve"><value>更新未完成，请检查网络后重试。当前已安装的版本仍可继续使用。</value></data>
+  <data name="InstallingPlugin" xml:space="preserve"><value>正在安装…</value></data>
+  <data name="MarketplacePluginIncompatible" xml:space="preserve"><value>{0} 与 Quantum {1} 不兼容。</value></data>
+  <data name="MarketplacePackageIdentityMismatch" xml:space="preserve"><value>安装包与所选插件或版本不一致，未执行安装。</value></data>
+  <data name="TheDownloadedPackageExceedsTheLocalInstallationSize" xml:space="preserve"><value>下载的插件包超过本机安装大小限制。</value></data>
+  <data name="LocalPreflightFailed" xml:space="preserve"><value>本机预检未通过</value></data>
 </root>
