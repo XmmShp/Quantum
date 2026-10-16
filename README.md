@@ -186,6 +186,10 @@ quantum-cli plugins publish ./dist/plugin \
 
 CLI 0.1.1 支持 `--wait-seconds`（0–3600，默认 0）。指定等待时间后，只有平台状态达到 `Published` 才成功；拒绝、转人工、审核失败及超时均返回非零退出码。JSON 输出包含 `status`、`releaseId`、版本和 SHA-256。同版本重跑仅在包哈希与兼容范围相同的情况下复用现有发布。Credential Client 只能读取其 `plugin:publish` 与插件白名单共同授权的非公开审核状态。
 
+自动审核现在会从包内托管 DLL 的实际 IL 生成 C#，并按原始 SHA-256 提供 `assembly-inspection.json` 和派生审查文件；本地化资源只读原始字符串，不加载或执行程序集，也不反序列化资源对象。原生/混合代码、无法反编译的方法、非字符串资源、超时或超出审查预算仍保留为不可审查证据并交人工判断。
+
+补齐审查能力后，插件所有者可通过 `RetryPluginReleaseReview`（`pluginId`、`version`）重新提交 Pending 且处于 ManualReview/Failed 的版本；客户端仍受发布权限和插件白名单限制。重审不改包、不覆盖已发布或已拒绝的决定，写入审计，并以尝试次数区分 AgentFn 幂等键。
+
 `POSTGRES_PASSWORD` 对应既有 `koala-pp-postgresql`
 实例中的独立 `quantum_platform` 用户和同名数据库。Compose 仅把宿主健康检查端口绑定到
 `127.0.0.1:5080`，应用同时接入 `agentfn-overlay-net` 和 `koala-pp-overlay-net`。公网流量通过

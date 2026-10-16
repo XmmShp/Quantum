@@ -98,6 +98,10 @@ public interface IQuantumPlatformService : IRpcService
     [Category("Releases")]
     Result<PluginReleaseSummary> UploadPluginRelease(UploadPluginReleaseRequest request);
 
+    [Summary("Retry an owned pending release after manual review or review failure")]
+    [Category("Releases")]
+    Result<PluginReleaseSummary> RetryPluginReleaseReview(RetryPluginReleaseReviewRequest request);
+
     [Summary("Download a published plugin ZIP, or an owned pending release for testing")]
     [Category("Releases")]
     Result<DownloadPluginReleaseResponse> DownloadPluginRelease(DownloadPluginReleaseRequest request);

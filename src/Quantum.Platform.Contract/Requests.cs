@@ -100,6 +100,12 @@ public sealed record ListPluginReleasesRequest
     public required string PluginId { get; init; }
 }
 
+public sealed record RetryPluginReleaseReviewRequest
+{
+    public required string PluginId { get; init; }
+    public required string Version { get; init; }
+}
+
 public sealed record UploadPluginReleaseRequest
 {
     public required string PluginId { get; init; }

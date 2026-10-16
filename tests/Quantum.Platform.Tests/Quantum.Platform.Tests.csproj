@@ -7,12 +7,16 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="..\ManagedReviewFixture\ManagedReviewFixture.csproj" />
     <ProjectReference Include="..\..\src\Quantum.Platform.Cli\Quantum.Platform.Cli.csproj" />
     <ProjectReference Include="..\..\src\Quantum.Platform.Application\Quantum.Platform.Application.csproj" />
     <ProjectReference Include="..\..\src\Quantum.Platform.Contract\Quantum.Platform.Contract.csproj" />
     <ProjectReference Include="..\..\src\Quantum.Platform.Domain\Quantum.Platform.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\..\src\Quantum.Platform\Services\ManagedAssemblyReview.cs" Link="Host\ManagedAssemblyReview.cs" />
+    <Compile Include="..\..\src\Quantum.Platform\Services\AgentFnPluginReleaseAutomatedReviewer.cs" Link="Host\AgentFnPluginReleaseAutomatedReviewer.cs" />
+    <Compile Include="..\..\src\Quantum.Platform\Services\AgentFnAutomatedReviewOptions.cs" Link="Host\AgentFnAutomatedReviewOptions.cs" />
     <Compile Include="..\..\src\Quantum.Platform\Email\MailKitPlatformEmailSender.cs"
              Link="Host\Email\MailKitPlatformEmailSender.cs" />
     <Compile Include="..\..\src\Quantum.Platform\Email\PlatformEmailOptions.cs"
@@ -25,6 +29,8 @@
              Link="Host\Services\PhysicalPluginPackageStore.cs" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="ICSharpCode.Decompiler" />
+    <PackageReference Include="AgentFn.Sdk" />
     <PackageReference Include="MailKit" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />

@@ -153,6 +153,19 @@ public sealed class PluginRelease
         ConcurrencyVersion = checked(ConcurrencyVersion + 1);
     }
 
+    public void QueueAutomatedReview()
+    {
+        if (Status != PluginReleaseStatus.Pending ||
+            AutomatedReviewState is not (AutomatedReviewStatus.ManualReview or AutomatedReviewStatus.Failed))
+            throw new InvalidOperationException("Only a pending manual or failed review may be retried.");
+        AutomatedReviewState = AutomatedReviewStatus.Queued;
+        AutomatedReviewTaskId = null;
+        AutomatedReviewSummary = null;
+        AutomatedReviewStartedAtUtc = null;
+        AutomatedReviewCompletedAtUtc = null;
+        ConcurrencyVersion = checked(ConcurrencyVersion + 1);
+    }
+
     public void RecordAutomatedReviewTask(string taskId)
     {
         if (AutomatedReviewState != AutomatedReviewStatus.Running)
