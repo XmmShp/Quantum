@@ -161,6 +161,8 @@ bash scripts/install-production-runner.sh
 unset RUNNER_TOKEN
 ```
 
+部署会先在旧服务仍运行时拉取目标镜像，随后才执行 Swarm 更新。验证步骤同时检查容器健康状态与目标提交的镜像，回滚后的旧镜像不会被误记为本次部署成功。
+
 部署密钥不存入仓库或 GitHub Actions。目标机必须存在以下权限为 `600` 的文件：
 
 - `~/.config/quantum-platform/production.env`：包含 `POSTGRES_PASSWORD`、`QUANTUM_PLATFORM_JWT_SIGNING_KEY` 和 `QUANTUM_PLATFORM_OIDC_SIGNING_KEY_ENCRYPTION_KEY`。

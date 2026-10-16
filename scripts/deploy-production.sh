@@ -10,6 +10,10 @@ readonly review_jwks_file="${config_dir}/quantum-platform-review.private.jwks.js
 : "${QUANTUM_PLATFORM_IMAGE:?set QUANTUM_PLATFORM_IMAGE}"
 : "${QUANTUM_PLATFORM_DEPLOYMENT_ID:?set QUANTUM_PLATFORM_DEPLOYMENT_ID}"
 
+# Download all image layers while the healthy service is still running. A slow
+# registry must not take down the existing stop-first deployment.
+docker pull "$QUANTUM_PLATFORM_IMAGE"
+
 for required_file in "$environment_file" "$email_file" "$review_jwks_file"; do
   if [[ ! -r "$required_file" ]]; then
     echo "Required production configuration is unavailable." >&2

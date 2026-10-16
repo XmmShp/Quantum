@@ -17,6 +17,13 @@ while (( SECONDS < deadline )); do
     if [[ "$replicas" == "1/1" ]] && [[ -n "$container_id" ]]; then
       health="$(docker inspect "$container_id" --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}missing{{end}}')"
       if [[ "$health" == "healthy" ]]; then
+        if [[ -n "${QUANTUM_PLATFORM_IMAGE:-}" ]]; then
+          actual_image="$(docker inspect "$container_id" --format '{{.Config.Image}}')"
+          if [[ "$actual_image" != "$QUANTUM_PLATFORM_IMAGE" && "$actual_image" != "$QUANTUM_PLATFORM_IMAGE@"* ]]; then
+            echo "Healthy service is running a different image than this deployment." >&2
+            exit 1
+          fi
+        fi
         echo "Production service is healthy."
         break
       fi

@@ -74,4 +74,6 @@ jobs:
           QUANTUM_PLATFORM_DEPLOYMENT_ID: ${{ github.run_id }}-${{ github.run_attempt }}
         run: bash scripts/deploy-production.sh
       - name: Verify
+        env:
+          QUANTUM_PLATFORM_IMAGE: ghcr.io/xmmshp/quantum-platform:${{ github.sha }}
         run: bash scripts/verify-production.sh
