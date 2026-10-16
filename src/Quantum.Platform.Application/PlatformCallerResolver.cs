@@ -11,7 +11,8 @@ public sealed class PlatformCallerResolver(
     public bool IsCredentialClient => callerContext.CredentialClientId is not null;
 
     public bool CanPublishPlugin(string pluginId)
-        => callerContext.HasPermission($"{QuantumPlatformPermissions.PluginPrefix}{pluginId}");
+        => callerContext.HasPermission(QuantumPlatformPermissions.PluginPublish) &&
+           callerContext.HasPermission($"{QuantumPlatformPermissions.PluginPrefix}{pluginId}");
 
     public async Task<PlatformCallerResolution> RequireAsync(
         PlatformUserRole requiredRoles,

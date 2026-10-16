@@ -37,7 +37,8 @@ public sealed class ListPluginReleases(
 
         var caller = await callerResolver.ResolveOptionalAsync(cancellationToken);
         var canSeeModerationState = caller is not null &&
-            (HandlerSupport.CanManage(listing, caller) || HandlerSupport.CanReview(caller));
+            (HandlerSupport.CanManage(listing, caller) || HandlerSupport.CanReview(caller)) &&
+            (!callerResolver.IsCredentialClient || callerResolver.CanPublishPlugin(listing.PluginId));
         IQueryable<PluginRelease> query = releases.AsNoTracking()
             .Where(release => release.ListingId == listing.Id);
         if (!canSeeModerationState)

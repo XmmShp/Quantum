@@ -182,7 +182,7 @@ public sealed class PasswordResetTests
         protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
             => targetMethod?.Name == "SaveChangesAsync" ? Task.FromResult(1) : throw new NotSupportedException();
     }
-    private sealed class MemoryRepository<T> : AsyncQueryable<T>, IRepository<T> where T : class
+    internal sealed class MemoryRepository<T> : AsyncQueryable<T>, IRepository<T> where T : class
     {
         private readonly List<T> items;
         public MemoryRepository() : this([]) { }

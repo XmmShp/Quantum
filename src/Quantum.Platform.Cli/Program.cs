@@ -123,6 +123,11 @@ internal static class QuantumCli
         var options = Parse(args);
         var source = Require(options, "source");
         var support = Require(options, "quantum-version-support");
+        var output = Get(options, "output") ?? "text";
+        if (output is not ("text" or "subprocess")) throw new CliException("--output must be 'text' or 'subprocess'.");
+        var waitText = Get(options, "wait-seconds") ?? "0";
+        if (!int.TryParse(waitText, out var waitSeconds) || waitSeconds is < 0 or > 3600)
+            throw new CliException("--wait-seconds must be an integer between 0 and 3600.");
         var baseUrl = Get(options, "base-url") ?? Environment.GetEnvironmentVariable("QUANTUM_PLATFORM_URL") ?? DefaultBaseUrl;
         var clientId = Get(options, "client-id") ?? Environment.GetEnvironmentVariable("QUANTUM_CLIENT_ID");
         if (string.IsNullOrWhiteSpace(clientId))
@@ -152,14 +157,18 @@ internal static class QuantumCli
             throw new CliException(token?.ErrorDescription ?? token?.Error ?? $"Token request failed with HTTP {(int)tokenResponse.StatusCode}.");
         }
 
-        using var rpc = new HttpRequestMessage(HttpMethod.Post, "rpc");
-        rpc.Headers.Authorization = new AuthenticationHeaderValue("Bearer", token.AccessToken);
-        rpc.Content = JsonContent.Create(new
+        var existing = await FindReleaseAsync(http, token.AccessToken, manifest);
+        JsonElement release;
+        if (existing is { } found)
         {
-            jsonrpc = "2.0",
-            id = Guid.NewGuid().ToString("N"),
-            method = "UploadPluginRelease",
-            @params = new
+            if (found.GetProperty("packageSha256").GetString() != sha256 ||
+                found.GetProperty("quantumVersionSupport").GetString() != support)
+                throw new CliException("This version already exists with a different package or compatibility range. Bump plugin.json version.");
+            release = found;
+        }
+        else
+        {
+            release = await SendRpcAsync(http, "UploadPluginRelease", new
             {
                 pluginId = manifest.Id,
                 version = manifest.Version,
@@ -167,35 +176,30 @@ internal static class QuantumCli
                 releaseNotes = Get(options, "release-notes") ?? string.Empty,
                 packageArchiveBase64 = Convert.ToBase64String(archive),
                 expectedSha256 = sha256
-            }
-        }, options: JsonOptions);
-        using var response = await http.SendAsync(rpc);
-        var responseText = await response.Content.ReadAsStringAsync();
-        if (!response.IsSuccessStatusCode)
-        {
-            throw new CliException($"Publish failed with HTTP {(int)response.StatusCode}.");
+            }, token.AccessToken);
         }
 
-        using var document = JsonDocument.Parse(responseText);
-        if (document.RootElement.TryGetProperty("error", out var rpcError))
+        var deadline = DateTimeOffset.UtcNow.AddSeconds(waitSeconds);
+        while (true)
         {
-            throw new CliException(rpcError.GetProperty("message").GetString() ?? "Publish failed.");
+            var state = ReleasePublication.Evaluate(release);
+            if (state == "Published" || waitSeconds == 0) break;
+            if (DateTimeOffset.UtcNow >= deadline)
+                throw new CliException($"Timed out waiting for {manifest.Id}@{manifest.Version} to publish. The release remains submitted; rerun to check it.");
+            Console.Error.WriteLine($"Waiting for automated review: {manifest.Id}@{manifest.Version} ({state}).");
+            await Task.Delay(TimeSpan.FromSeconds(Math.Clamp((deadline - DateTimeOffset.UtcNow).TotalSeconds, 0, 10)));
+            release = await FindReleaseAsync(http, token.AccessToken, manifest)
+                ?? throw new CliException("The submitted release is no longer visible to this client.");
         }
 
-        var result = document.RootElement.GetProperty("result");
-        if (result.TryGetProperty("isSuccess", out var success) && !success.GetBoolean())
-        {
-            throw new CliException(result.TryGetProperty("message", out var message) ? message.GetString() ?? "Publish failed." : "Publish failed.");
-        }
-
-        var output = Get(options, "output") ?? "text";
+        var status = ReleasePublication.Evaluate(release);
         if (output == "subprocess")
         {
-            Console.WriteLine(JsonSerializer.Serialize(new { ok = true, pluginId = manifest.Id, version = manifest.Version, sha256 }, JsonOptions));
+            Console.WriteLine(JsonSerializer.Serialize(new { ok = true, pluginId = manifest.Id, version = manifest.Version, sha256, status, releaseId = release.GetProperty("releaseId").GetString() }, JsonOptions));
         }
         else if (output == "text")
         {
-            Console.WriteLine($"Submitted {manifest.Id}@{manifest.Version} for automated review ({sha256}).");
+            Console.WriteLine($"{status}: {manifest.Id}@{manifest.Version} ({sha256}).");
         }
         else
         {
@@ -203,6 +207,14 @@ internal static class QuantumCli
         }
 
         return 0;
+    }
+
+    private static async Task<JsonElement?> FindReleaseAsync(HttpClient http, string token, PluginManifest manifest)
+    {
+        var releases = await SendRpcAsync(http, "ListPluginReleases", new { pluginId = manifest.Id }, token);
+        foreach (var release in releases.EnumerateArray())
+            if (release.GetProperty("version").GetString() == manifest.Version) return release.Clone();
+        return null;
     }
 
     private static Dictionary<string, string> Parse(string[] args)
@@ -315,6 +327,7 @@ internal static class QuantumCli
           --client-id <id>                 or QUANTUM_CLIENT_ID
           --client-private-jwks <file>      or QUANTUM_CLIENT_PRIVATE_JWKS
           --output text|subprocess
+          --wait-seconds <0-3600>           wait for Published; default 0 only submits
 
         Client setup prompts for the password without echoing it; QUANTUM_USER_TOKEN can be used instead.
         """);
@@ -324,5 +337,5 @@ internal static class QuantumCli
         [property: JsonPropertyName("access_token")] string? AccessToken,
         [property: JsonPropertyName("error")] string? Error,
         [property: JsonPropertyName("error_description")] string? ErrorDescription);
-    private sealed class CliException(string message) : Exception(message);
+    internal sealed class CliException(string message) : Exception(message);
 }

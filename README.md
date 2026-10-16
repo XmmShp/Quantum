@@ -178,10 +178,13 @@ export QUANTUM_CLIENT_PRIVATE_JWKS="$(<private.jwks.json)"
 quantum-cli plugins publish ./dist/plugin \
   --quantum-version-support ">=0.1.0" \
   --release-notes "CI release" \
+  --wait-seconds 900 \
   --output subprocess
 ```
 
 配套 Codex SKILL 发布在 `/skills/publish-quantum-plugin/manifest.json`。CLI 的 NuGet 包由 `cli-v*` tag 触发发布，使用 NuGet Trusted Publishing 从 GitHub OIDC 换取临时密钥；仓库只需配置 `NUGET_USER` variable，并在 NuGet.org 一次性建立匹配仓库、workflow 与 `nuget-production` environment 的 Trusted Publishing policy。
+
+CLI 0.1.1 支持 `--wait-seconds`（0–3600，默认 0）。指定等待时间后，只有平台状态达到 `Published` 才成功；拒绝、转人工、审核失败及超时均返回非零退出码。JSON 输出包含 `status`、`releaseId`、版本和 SHA-256。同版本重跑仅在包哈希与兼容范围相同的情况下复用现有发布。Credential Client 只能读取其 `plugin:publish` 与插件白名单共同授权的非公开审核状态。
 
 `POSTGRES_PASSWORD` 对应既有 `koala-pp-postgresql`
 实例中的独立 `quantum_platform` 用户和同名数据库。Compose 仅把宿主健康检查端口绑定到
