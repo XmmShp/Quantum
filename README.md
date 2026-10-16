@@ -25,3 +25,7 @@ git push origin calendar-v1.1.1
 Supported tag prefixes are `calendar-v` and `codex-v`. GitHub Actions verifies that the tag and manifest versions match, builds the selected plugin, and submits it to Quantum Platform. The platform then performs automated review.
 
 The repository requires Actions secrets `QUANTUM_CLIENT_ID` and `QUANTUM_CLIENT_PRIVATE_JWKS`. Generate them from the platform's plugin workspace and restrict the Credential Client to the two plugin IDs above.
+
+Before the first release, create the Calendar/Codex plugin listings in the platform workspace, then create the Credential Client for those listings. Store its private JWKS directly in GitHub Actions secrets; never commit it. The platform must have automated review enabled and a working review provider.
+
+Publishing uses `Quantum.Platform.Cli` 0.1.1 and waits up to 15 minutes for `Published`. Rejected, failed, manual-review and timeout outcomes fail the job. A successful run includes the plugin version and package SHA-256 in its summary and `publish-result` artifact. Re-running the same tag reuses an existing release only when its package hash and compatibility range match. If the payload changes, bump the manifest version and create a new tag.
