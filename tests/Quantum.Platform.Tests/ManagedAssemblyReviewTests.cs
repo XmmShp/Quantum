@@ -43,13 +43,26 @@ public sealed class ManagedAssemblyReviewTests
         Assert.Equal(64, item.GetProperty("sha256").GetString()!.Length);
     }
 
-    private static ZipArchive Workspace(AgentFnAutomatedReviewOptions options)
+    [Fact]
+    public void PackageCannotTriggerUnboundedAssemblyInspection()
+    {
+        using var zip = Workspace(new(), 34);
+        Assert.Equal(32, zip.Entries.Count(item => item.FullName.StartsWith("assembly-inspection/")));
+        using var inventory = JsonDocument.Parse(zip.GetEntry("package-inventory.json")!.Open());
+        Assert.Equal(34, inventory.RootElement.GetArrayLength());
+        Assert.Equal("binary_or_unsupported", inventory.RootElement[33].GetProperty("reason").GetString());
+    }
+
+    private static ZipArchive Workspace(AgentFnAutomatedReviewOptions options, int assemblies = 1)
     {
         using var source = new MemoryStream();
         using (var zip = new ZipArchive(source, ZipArchiveMode.Create, true))
         {
-            using var output = zip.CreateEntry("fixture.dll").Open();
-            output.Write(File.ReadAllBytes(typeof(ManagedReviewFixture.InspectionFixture).Assembly.Location));
+            for (var i = 0; i < assemblies; i++)
+            {
+                using var output = zip.CreateEntry(i == 0 ? "fixture.dll" : $"fixture-{i}.dll").Open();
+                output.Write(File.ReadAllBytes(typeof(ManagedReviewFixture.InspectionFixture).Assembly.Location));
+            }
         }
         var ids = new SnowflakeIdGenerator();
         var listing = PluginListing.Create("quantum.plugin.test", "Test", "Test", PlatformUserId.Of(1), [], ids);

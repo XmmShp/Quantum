@@ -124,19 +124,23 @@ public sealed class AgentFnPluginReleaseAutomatedReviewer(
             long includedBytes = 0;
             var inventory = new List<InventoryEntry>();
             var inspection = new List<object>();
+            using var inspectionBudget = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
+            inspectionBudget.CancelAfter(TimeSpan.FromSeconds(30));
+            var assemblyCount = 0;
             foreach (var entry in source.Entries.Where(static entry => !entry.FullName.EndsWith('/')))
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 var extension = Path.GetExtension(entry.FullName);
-                if (extension.Equals(".dll", StringComparison.OrdinalIgnoreCase) && entry.Length <= options.MaxReviewFileBytes)
+                if (extension.Equals(".dll", StringComparison.OrdinalIgnoreCase) && entry.Length <= options.MaxReviewFileBytes &&
+                    assemblyCount < 32 && !inspectionBudget.IsCancellationRequested && includedBytes < options.MaxReviewTextBytes)
                 {
+                    assemblyCount++;
                     var derivedPath = $"assembly-inspection/{entry.FullName}.cs";
                     try
                     {
-                        using var timeout = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken);
-                        timeout.CancelAfter(TimeSpan.FromSeconds(30));
                         using var assembly = new MemoryStream();
                         using (var sourceEntry = entry.Open()) sourceEntry.CopyTo(assembly);
-                        var code = ManagedAssemblyReview.Inspect(entry.FullName, assembly.ToArray(), timeout.Token);
+                        var code = ManagedAssemblyReview.Inspect(entry.FullName, assembly.ToArray(), inspectionBudget.Token);
                         var bytes = System.Text.Encoding.UTF8.GetBytes(code);
                         if (bytes.LongLength > options.MaxReviewFileBytes || includedBytes + bytes.LongLength > options.MaxReviewTextBytes)
                             throw new InvalidDataException("Decompiled evidence exceeds the review size limit.");

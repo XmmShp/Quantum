@@ -57,6 +57,7 @@ public static class ManagedAssemblyReview
             var values = resourceReader.GetEnumerator();
             while (values.MoveNext())
             {
+                cancellationToken.ThrowIfCancellationRequested();
                 // Access only keys/raw bytes, never ResourceReader.Value or a serializer.
                 var resourceKey = (string)values.Key;
                 resourceReader.GetResourceData(resourceKey, out var type, out var value);
