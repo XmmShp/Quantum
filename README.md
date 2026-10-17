@@ -36,7 +36,7 @@ samples/
 docs/                            架构与插件开发文档
 ```
 
-官方插件已迁移至独立仓库 [Quantum.OfficialPlugins](https://github.com/XmmShp/Quantum.OfficialPlugins)，并通过 Quantum Platform CI 发布。
+官方插件位于独立仓库 [Quantum.OfficialPlugins](https://github.com/XmmShp/Quantum.OfficialPlugins)，可在 Quantum 插件市场中获取。
 
 ## 本地开发
 
@@ -104,9 +104,9 @@ dotnet run --project quantum/src/Quantum/Quantum.csproj `
 
 ## 桌面发行与应用内更新
 
-桌面安装包与增量更新通过 GitHub Actions / Velopack 发布。推送 `desktop-vX.Y.Z` 标签可发布 Windows 安装器；配置 Apple 凭据并设置 `ENABLE_MACOS_RELEASE=true` 后同时发布 macOS arm64 / Intel 安装器。应用启动后检查更新，在设置页点击“一键更新并重启”即可下载安装，增量不可用时回退完整包。
+桌面安装包可从 [GitHub Releases](https://github.com/XmmShp/Quantum/releases) 获取。应用启动后检查更新，在设置页点击“一键更新并重启”即可下载安装，增量不可用时回退完整包。
 
-证书、GitHub Secrets / Variables 清单、试打包与发布验收步骤见 [桌面发行指南](docs/desktop-releases.md)。
+安装方式、更新行为与常见问题见 [桌面安装与更新](docs/desktop-releases.md)。
 
 ## 插件开发
 
