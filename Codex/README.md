@@ -24,14 +24,22 @@ tool effects.
 
 ## Runtime flow
 
-1. The user selects a model and connects from `/plugins/codex`; the plugin starts `codex app-server` over its default
-   stdio JSONL transport. GPT-5.6 Luna is selected by default.
+1. Since 0.1.3, the first interactive render of the global drawer or `/plugins/codex` automatically attempts a connection
+   using the current working directory and selected model (GPT-5.6 Luna initially). Both views share one attempt per
+   plugin runtime, so navigation does not launch another process or replace the conversation. Waiting until interactive
+   rendering ensures the host RPC catalog is available and avoids blocking plugin startup.
 2. The plugin initializes the App Server with `experimentalApi`, reads `quantum.rpc.catalog`, and creates one namespaced
    dynamic tool for each available RPC except the catalog and this plugin's own control RPCs. This prevents a model
    from recursively sending prompts to, replacing, or disconnecting the session executing its current turn.
 3. An `item/tool/call` request executes directly through `IRpcInvoker`; the serialized result is returned to Codex as
    tool content.
 4. Disconnecting, disabling, upgrading, or unloading the plugin terminates the child App Server process.
+
+Automatic connection has a 30-second deadline. Connection failures and timeout details appear in the page and drawer,
+with a **Retry connection** button and editable directory/model fields. It does not continually retry in the background.
+After a deliberate disconnect, opening another view does not reconnect; the user can connect explicitly. Unloading the
+plugin cancels an in-flight automatic attempt before disposing its process. Automatic connection creates a session and
+exposes the other Quantum plugins' tools, but sends no prompt and starts no model turn until the user sends a message.
 
 The plugin reuses the local Codex authentication state and does not store an OpenAI API key. Set
 `QUANTUM_CODEX_COMMAND` to the Codex executable path when `codex` is not available on `PATH`.

@@ -44,6 +44,9 @@ public interface ICodexIntegrationService
 
     CodexIntegrationSnapshot Snapshot { get; }
 
+    /// <summary>Attempts one automatic connection per plugin runtime; repeated views share the attempt.</summary>
+    Task EnsureAutoConnectedAsync();
+
     Task ConnectAsync(
         string workingDirectory,
         string model,

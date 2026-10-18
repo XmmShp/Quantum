@@ -80,6 +80,7 @@ public sealed class CodexRpcTests
     private sealed class FakeCodex : ICodexIntegrationService
     {
         public event Action? Changed { add { } remove { } }
+        public Task EnsureAutoConnectedAsync() => Task.CompletedTask;
         public bool FailConnect { get; init; }
         public string? LastPrompt { get; private set; }
         public List<string> Commands { get; } = [];

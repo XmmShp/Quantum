@@ -10,7 +10,8 @@ namespace Quantum.OfficialPlugins.Codex.Application;
 internal sealed class CodexIntegrationService(
     IRpcInvoker rpcInvoker,
     ILoggerFactory loggerFactory,
-    ILogger<CodexIntegrationService> logger) : ICodexIntegrationService, IAsyncDisposable
+    ILogger<CodexIntegrationService> logger,
+    TimeSpan? automaticConnectionTimeout = null) : ICodexIntegrationService, IAsyncDisposable
 {
     internal const string DefaultModel = "gpt-5.6-luna";
 
@@ -36,6 +37,64 @@ internal sealed class CodexIntegrationService(
     private string _workingDirectory = Environment.CurrentDirectory;
     private string? _errorMessage;
     private bool _disposed;
+    private readonly CancellationTokenSource _lifetime = new();
+    private CancellationTokenSource? _automaticConnection;
+    private Task? _automaticConnectionTask;
+    private bool _automaticConnectionSuppressed;
+
+    public Task EnsureAutoConnectedAsync()
+    {
+        lock (_sync)
+        {
+            ObjectDisposedException.ThrowIf(_disposed, this);
+            if (_automaticConnectionTask is not null) return _automaticConnectionTask;
+            if (_automaticConnectionSuppressed || _connectionState != CodexConnectionState.Disconnected)
+                return Task.CompletedTask;
+            _automaticConnectionTask = AutoConnectAsync();
+            return _automaticConnectionTask;
+        }
+    }
+
+    private async Task AutoConnectAsync()
+    {
+        // First interactive render runs after the host publishes the RPC registry.
+        // Yield before raising Changed so no UI callbacks execute under _sync.
+        await Task.Yield();
+        CancellationToken token;
+        lock (_sync)
+        {
+            if (_disposed || _automaticConnectionSuppressed || _connectionState != CodexConnectionState.Disconnected) return;
+            _automaticConnection = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+            _automaticConnection.CancelAfter(automaticConnectionTimeout ?? TimeSpan.FromSeconds(30));
+            token = _automaticConnection.Token;
+        }
+        try
+        {
+            var snapshot = Snapshot;
+            await ConnectAsync(snapshot.WorkingDirectory, snapshot.SelectedModel, token).ConfigureAwait(false);
+        }
+        catch (OperationCanceledException)
+        {
+            SetAutomaticFailure(
+                "Automatic connection timed out. Check the local Codex installation and sign-in, then retry.");
+        }
+        catch (Exception exception)
+        {
+            SetAutomaticFailure(exception.Message);
+        }
+    }
+
+    private void SetAutomaticFailure(string message)
+    {
+        lock (_sync)
+        {
+            if (_disposed || _automaticConnectionSuppressed
+                || _connectionState is CodexConnectionState.Connected or CodexConnectionState.Connecting) return;
+            _connectionState = CodexConnectionState.Failed;
+            _errorMessage = message;
+        }
+        NotifyChanged();
+    }
 
     public event Action? Changed;
 
@@ -265,6 +324,13 @@ internal sealed class CodexIntegrationService(
 
     public async Task DisconnectAsync(CancellationToken cancellationToken = default)
     {
+        CancellationTokenSource? automaticConnection;
+        lock (_sync)
+        {
+            _automaticConnectionSuppressed = true;
+            automaticConnection = _automaticConnection;
+        }
+        if (automaticConnection is not null) await automaticConnection.CancelAsync().ConfigureAwait(false);
         await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
@@ -297,13 +363,19 @@ internal sealed class CodexIntegrationService(
 
     public async ValueTask DisposeAsync()
     {
-        if (_disposed)
+        Task? automaticTask;
+        lock (_sync)
         {
-            return;
+            if (_disposed) return;
+            _disposed = true;
+            _automaticConnectionSuppressed = true;
+            automaticTask = _automaticConnectionTask;
         }
-
-        _disposed = true;
+        await _lifetime.CancelAsync().ConfigureAwait(false);
+        if (automaticTask is not null) await automaticTask.ConfigureAwait(false);
         await DisconnectAsync(CancellationToken.None).ConfigureAwait(false);
+        _automaticConnection?.Dispose();
+        _lifetime.Dispose();
         _operationGate.Dispose();
     }
 

@@ -28,4 +28,7 @@
   <data name="Ask Codex to inspect your calendar, create a task, or use RPCs published by other plugins." xml:space="preserve"><value>Ask Codex to inspect your calendar, create a task, or use RPCs published by other plugins.</value></data>
   <data name="Message Codex…" xml:space="preserve"><value>Message Codex…</value></data>
   <data name="Send" xml:space="preserve"><value>Send</value></data>
+  <data name="Automatically connects to local Codex. Connection errors appear here; you can retry." xml:space="preserve"><value>Automatically connects to local Codex. Connection errors appear here; you can retry.</value></data>
+  <data name="Retry connection" xml:space="preserve"><value>Retry connection</value></data>
+  <data name="Automatic connection timed out. Check the local Codex installation and sign-in, then retry." xml:space="preserve"><value>Automatic connection timed out. Check the local Codex installation and sign-in, then retry.</value></data>
 </root>

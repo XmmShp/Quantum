@@ -28,4 +28,7 @@
   <data name="Ask Codex to inspect your calendar, create a task, or use RPCs published by other plugins." xml:space="preserve"><value>你可以让 Codex 查询日历、创建待办，或调用其他插件公开的 RPC。</value></data>
   <data name="Message Codex…" xml:space="preserve"><value>输入消息…</value></data>
   <data name="Send" xml:space="preserve"><value>发送</value></data>
+  <data name="Automatically connects to local Codex. Connection errors appear here; you can retry." xml:space="preserve"><value>自动连接本机 Codex；连接失败会显示原因，可手动重试。</value></data>
+  <data name="Retry connection" xml:space="preserve"><value>重试连接</value></data>
+  <data name="Automatic connection timed out. Check the local Codex installation and sign-in, then retry." xml:space="preserve"><value>自动连接超时。请检查本机 Codex 安装和登录状态后重试。</value></data>
 </root>

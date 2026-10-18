@@ -35,7 +35,7 @@
                     @if (_snapshot.ErrorMessage is not null || _localError is not null)
                     {
                         <div class="drawer-error" role="alert">
-                            <span>@(_localError ?? _snapshot.ErrorMessage)</span>
+                            <span>@L[_localError ?? _snapshot.ErrorMessage!]</span>
                             <button type="button" aria-label="@L["Close"]" @onclick="() => _localError = null">×</button>
                         </div>
                     }
@@ -46,7 +46,7 @@
                             <div class="drawer-mark" aria-hidden="true">✦</div>
                             <div>
                                 <h1>@L["Connect local Codex"]</h1>
-                                <p>@L["The plugin starts codex app-server and reuses your existing local sign-in."]</p>
+                                <p>@L["Automatically connects to local Codex. Connection errors appear here; you can retry."]</p>
                             </div>
                             <label>
                                 <span>@L["Model"]</span>
@@ -62,7 +62,7 @@
                                 <input @bind="_workingDirectory" disabled="@IsConnecting" />
                             </label>
                             <button type="button" class="drawer-primary" disabled="@IsConnecting" @onclick="ConnectAsync">
-                                @(IsConnecting ? L["Connecting"] : L["Connect"])
+                                @(IsConnecting ? L["Connecting"] : L[_snapshot.ConnectionState == CodexConnectionState.Failed ? "Retry connection" : "Connect"])
                             </button>
                         </section>
                     }
@@ -155,6 +155,11 @@
     }
 
     private bool IsConnecting => _snapshot.ConnectionState == CodexConnectionState.Connecting;
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender) await RunAsync(CodexService.EnsureAutoConnectedAsync);
+    }
     private bool CanSend => !_snapshot.IsBusy && !string.IsNullOrWhiteSpace(_prompt);
 
     private void OpenDrawer() => _isOpen = true;
