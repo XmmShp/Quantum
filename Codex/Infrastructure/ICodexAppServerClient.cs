@@ -1,6 +1,6 @@
+using Quantum.OfficialPlugins.Codex.Application;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Quantum.OfficialPlugins.Codex.Application;
 
 namespace Quantum.OfficialPlugins.Codex.Infrastructure;
 

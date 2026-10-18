@@ -16,7 +16,7 @@
     <ProjectReference Include="../../Ledger/Quantum.LedgerPlugin.csproj" />
     <ProjectReference Include="../../Calendar/Quantum.CalendarPlugin.csproj" />
     <ProjectReference Include="../../Codex/Quantum.CodexPlugin.csproj" />
-    <None Include="../../Ledger/migrations/001_init.sql" Link="001_init.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../Ledger/migrations/*.sql" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../Calendar/migrations/*.sql" Link="calendar-migrations/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>

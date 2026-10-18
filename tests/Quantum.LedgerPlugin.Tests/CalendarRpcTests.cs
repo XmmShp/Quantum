@@ -21,15 +21,19 @@ public sealed class CalendarRpcTests
         await connection.OpenAsync();
         foreach (var file in Directory.GetFiles(Path.Combine(AppContext.BaseDirectory, "calendar-migrations"), "*.sql").Order(StringComparer.Ordinal))
         {
-            await using var migration = connection.CreateCommand(); migration.CommandText = await File.ReadAllTextAsync(file);
+            await using var migration = connection.CreateCommand();
+            migration.CommandText = await File.ReadAllTextAsync(file);
             await migration.ExecuteNonQueryAsync();
         }
         var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings());
-        builder.Services.Clear(); builder.Services.AddNOFApplication(); builder.AddNOFEntityFrameworkCore();
+        builder.Services.Clear();
+        builder.Services.AddNOFApplication();
+        builder.AddNOFEntityFrameworkCore();
         builder.UseDbContext<LedgerTestDb>().WithTenantMode(TenantMode.SharedDatabase).WithConnectionString(connection.ConnectionString)
             .WithOptions((options, cs) => options.UseSqlite(cs).EnableServiceProviderCaching(false));
         CalendarPluginInitializer.Initialize(builder.Services);
-        builder.Services.AddLogging(); builder.Services.AddSingleton(TimeProvider.System);
+        builder.Services.AddLogging();
+        builder.Services.AddSingleton(TimeProvider.System);
         await using var host = new OfficialRpcHarness(builder.Services, "quantum.plugin.calendar", typeof(ICalendarRpcService).Assembly);
         await host.AssertCatalog("quantum.plugin.calendar", "calendar", ["list", "list-tasks", "get", "create", "update", "set-completed", "delete"]);
         var request = new SaveCalendarEntryRequest("RPC task", "note", CalendarEntryKind.Task, new(2026, 10, 19), new(12, 0), null, "green");
@@ -38,7 +42,10 @@ public sealed class CalendarRpcTests
         var range = new ListCalendarEntriesRequest(new(2026, 10, 1), new(2026, 10, 31));
         Assert.Equal(1, OfficialRpcHarness.Value(await host.Call("calendar.list", range)).GetArrayLength());
         Assert.Equal(1, OfficialRpcHarness.Value(await host.Call("calendar.list-tasks", new ListCalendarTasksRequest(false))).GetArrayLength());
-        OfficialRpcHarness.Value(await host.Call("calendar.update", new UpdateCalendarEntryRequest(id, request with { Title = "Updated" })));
+        OfficialRpcHarness.Value(await host.Call("calendar.update", new UpdateCalendarEntryRequest(id, request with
+        {
+            Title = "Updated"
+        })));
         var read = OfficialRpcHarness.Value(await host.Call("calendar.get", new CalendarEntryRequest(id)));
         Assert.Equal("Updated", read.GetProperty("entry").GetProperty("title").GetString());
         OfficialRpcHarness.Value(await host.Call("calendar.set-completed", new SetCalendarEntryCompletedRequest(id, true)));
@@ -46,11 +53,34 @@ public sealed class CalendarRpcTests
         Assert.True((await host.Call("calendar.delete", new CalendarEntryRequest(id), false)).GetProperty("isSuccess").GetBoolean());
         var missing = OfficialRpcHarness.Value(await host.Call("calendar.get", new CalendarEntryRequest(id)));
         Assert.Equal(System.Text.Json.JsonValueKind.Null, missing.GetProperty("entry").ValueKind);
-        var invalid = await host.Call("calendar.create", request with { Title = " " });
+        var invalid = await host.Call("calendar.create", request with
+        {
+            Title = " "
+        });
         Assert.Equal("calendar_invalid_request", invalid.GetProperty("errorCode").GetString());
         var notFound = await host.Call("calendar.update", new UpdateCalendarEntryRequest(id, request));
         Assert.Equal("calendar_entry_not_found", notFound.GetProperty("errorCode").GetString());
-        using var cancelled = new CancellationTokenSource(); cancelled.Cancel();
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => host.Call("calendar.list", range, cancellationToken: cancelled.Token));
+        await host.UseClient<ICalendarRpcServiceClient>(async client =>
+        {
+            var context = NOF.Contract.Context.Empty;
+            var local = await client.CreateEntryAsync(request, context);
+            Assert.True(local.IsSuccess, local.Message);
+            var localId = local.Value!.Id;
+            var invalidUpdate = await client.UpdateEntryAsync(new(localId, request with
+            {
+                Title = " "
+            }), context);
+            Assert.False(invalidUpdate.IsSuccess);
+            Assert.Equal(request.Title, (await client.GetEntryAsync(new(localId), context)).Value!.Entry!.Title);
+            Assert.True((await client.SetCompletedAsync(new(localId, true), context)).IsSuccess);
+            Assert.Empty((await client.ListTasksAsync(new(false), context)).Value!);
+            Assert.True((await client.GetEntryAsync(new(localId), context)).Value!.Entry!.IsCompleted);
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => client.DeleteEntryAsync(new(localId), context, cancelled.Token));
+            Assert.True((await client.DeleteEntryAsync(new(localId), context)).IsSuccess);
+            Assert.Null((await client.GetEntryAsync(new(localId), context)).Value!.Entry);
+        });
     }
 }

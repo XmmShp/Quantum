@@ -12,7 +12,7 @@ Official plugins maintained for Quantum. Each plugin is independently versioned 
 
 Before developing a plugin, read [the NOF RPC requirements](docs/plugin-development.md). Business capabilities that Quantum or AI tools should discover and call must have a NOF RPC contract, generated server metadata, registered handlers, and host discovery/invocation tests; a working UI and application-service DI registration alone are insufficient.
 
-The [official plugin RPC audit](docs/official-plugin-rpc-audit.md) records coverage for Calendar (7 methods), Codex (6 methods since 0.1.2), and Ledger (8 methods since 0.1.1).
+Plugin pages use generated RPC clients and share the same handlers as external callers. Each plugin's README documents its public operations.
 
 ```sh
 dotnet build Quantum.OfficialPlugins.slnx -c Release

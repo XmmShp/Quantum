@@ -11,7 +11,8 @@ public sealed class CalendarPluginInitializer : IAssemblyInitializer
     public static void Initialize(IServiceCollection services)
     {
         services.AddSingleton<IDbContextModelCreatingContributor, CalendarDbContextModelCreatingContributor>();
-        services.AddScoped<ICalendarApplicationService, CalendarApplicationService>();
+        services.AddPluginRpcServer<CalendarRpcService>();
+        services.AddScoped<ICalendarRpcServiceClient, LocalCalendarRpcServiceClient>();
         services.AddTransient<CalendarRpcService.ListEntries, ListCalendarEntries>();
         services.AddTransient<CalendarRpcService.ListTasks, ListCalendarTasks>();
         services.AddTransient<CalendarRpcService.GetEntry, GetCalendarEntry>();

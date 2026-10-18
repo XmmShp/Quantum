@@ -225,4 +225,19 @@
   <data name="An imported ID conflicts with an existing record." xml:space="preserve">
     <value>导入编号与已有记录冲突，未导入任何记录。</value>
   </data>
+  <data name="Related entries" xml:space="preserve"><value>关联明细</value></data>
+  <data name="No relation" xml:space="preserve"><value>无关联</value></data>
+  <data name="Expense month" xml:space="preserve"><value>原支出月份</value></data>
+  <data name="Original expense" xml:space="preserve"><value>原支出</value></data>
+  <data name="Relations do not change monthly income or expense totals." xml:space="preserve"><value>关联不改变月度收支统计，已回款与净支出包含跨月关联收入。</value></data>
+  <data name="Recovered" xml:space="preserve"><value>已回款</value></data>
+  <data name="Net expense" xml:space="preserve"><value>净支出</value></data>
+  <data name="No related entries." xml:space="preserve"><value>暂无关联明细。</value></data>
+  <data name="Close" xml:space="preserve"><value>关闭</value></data>
+  <data name="Only an income can link to another expense." xml:space="preserve"><value>仅收入可以关联到另一笔支出。</value></data>
+  <data name="Unlink repayments before changing this expense to income." xml:space="preserve"><value>请先解除所有回款关联，再将这笔支出改为收入。</value></data>
+  <data name="Unlink repayments before deleting this expense." xml:space="preserve"><value>请先解除所有回款关联，再删除这笔支出。</value></data>
+  <data name="Related expense does not exist." xml:space="preserve"><value>关联的原支出不存在。</value></data>
+  <data name="The linked record must be an expense." xml:space="preserve"><value>关联的原明细必须是支出。</value></data>
+  <data name="Record no longer exists. Refresh and try again." xml:space="preserve"><value>记录已不存在，请刷新后重试。</value></data>
 </root>

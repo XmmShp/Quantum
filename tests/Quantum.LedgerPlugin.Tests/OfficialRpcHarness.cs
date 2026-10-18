@@ -1,8 +1,9 @@
-using System.Reflection;
-using System.Text.Json;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
+using NOF.Application;
 using Quantum.Plugins;
+using System.Reflection;
+using System.Text.Json;
 using Xunit;
 
 namespace Quantum.LedgerPlugin.Tests;
@@ -34,7 +35,9 @@ internal sealed class OfficialRpcHarness : IAsyncDisposable
 
     public async Task AssertCatalog(string pluginId, string serviceName, string[] expectedMethods)
     {
-        var result = await Call("quantum.rpc.catalog", new { });
+        var result = await Call("quantum.rpc.catalog", new
+        {
+        });
         var service = Assert.Single(result.GetProperty("value").GetProperty("services").EnumerateArray(),
             item => item.GetProperty("pluginId").GetString() == pluginId);
         Assert.Equal(serviceName, service.GetProperty("serviceName").GetString());
@@ -47,6 +50,13 @@ internal sealed class OfficialRpcHarness : IAsyncDisposable
             Assert.False(string.IsNullOrWhiteSpace(method.GetProperty("description").GetString()));
             Assert.Equal("object", method.GetProperty("inputSchema").GetProperty("type").GetString());
         }
+    }
+
+    public async Task UseClient<TClient>(Func<TClient, Task> action) where TClient : notnull
+    {
+        await using var scope = _provider.CreateAsyncScope();
+        scope.ServiceProvider.ResolveDaemonServices();
+        await action(scope.ServiceProvider.GetRequiredService<TClient>());
     }
 
     public static JsonElement Value(JsonElement result)

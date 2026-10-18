@@ -24,7 +24,7 @@ tool effects.
 
 ## Runtime flow
 
-1. Since 0.1.3, the first interactive render of the global drawer or `/plugins/codex` automatically attempts a connection
+1. The first interactive render of the global drawer or `/plugins/codex` automatically attempts a connection
    using the current working directory and selected model (GPT-5.6 Luna initially). Both views share one attempt per
    plugin runtime, so navigation does not launch another process or replace the conversation. Waiting until interactive
    rendering ensures the host RPC catalog is available and avoids blocking plugin startup.
@@ -45,14 +45,14 @@ The plugin reuses the local Codex authentication state and does not store an Ope
 `QUANTUM_CODEX_COMMAND` to the Codex executable path when `codex` is not available on `PATH`.
 
 The App Server dynamic tool surface is experimental and therefore tied to the locally installed Codex version.
-Available models are refreshed from App Server's `model/list` response after connecting. Since 0.1.4, changing the model preserves the thread ID, messages and tool context. Each `turn/start` explicitly
+Available models are refreshed from App Server's `model/list` response after connecting. Changing the model preserves the thread ID, messages and tool context. Each `turn/start` explicitly
 passes the selected `model` for the existing `threadId`; changing models sends no prompt. Only **New conversation**
 creates a fresh thread and clears history. Model changes are rejected while a turn is running. See the
 [official App Server turn documentation](https://developers.openai.com/codex/app-server#turns).
 If a selected model requires a newer App Server, update the CLI with
 `npm install -g @openai/codex@latest`, then disconnect and reconnect the plugin.
 
-## Quantum RPC (since 0.1.2)
+## Quantum RPC
 
 The `ICodexRpcService` NOF contract exposes these operations through `quantum.rpc.catalog`. Prefix each name below with
 `quantum.plugin.codex.` for a fully qualified name. External Quantum callers can discover and invoke them; they are
@@ -60,6 +60,7 @@ intentionally excluded from the dynamic tools injected into this same Codex sess
 
 | Method | Request | Result |
 | --- | --- | --- |
+| `codex.ensure-auto-connected` | `{}` | Once per runtime automatic connection attempt; respects manual disconnect suppression; returns snapshot including any connection failure |
 | `codex.snapshot` | `{}` | Connection, current thread, running state, models and messages; no process starts |
 | `codex.models` | `{}` | Cached model options; initial options before connection, App Server options after connection |
 | `codex.connect` | `{ "workingDirectory": "C:/work", "model": "gpt-5.6-luna" }` | Starts the local App Server and creates a session; returns its snapshot |
@@ -75,4 +76,13 @@ Connection failures that the UI records in its snapshot are explicitly returned 
 Connect and send only with the user's authorization: these operations may expose other Quantum plugin tools to Codex,
 consume model usage and cause tool effects. Snapshot includes local session messages. No authentication files or tokens
 are returned. Tests cover the actual production snapshot/disconnect/error paths without launching Codex, plus dispatch
-of all commands through a controlled application-service substitute so automated tests never consume model usage.
+of all commands through a controlled runtime substitute so automated tests never consume model usage.
+
+## Internal architecture
+
+Both the page and global drawer constructor-inject generated `ICodexRpcServiceClient`, backed by
+`LocalCodexRpcServiceClient`. Business calls, including snapshot reads and automatic connection, enter the same
+handlers as host RPC. `Infrastructure/CodexRuntime` remains a singleton process/connection/streaming adapter;
+it is not a parallel application-service facade. The UI subscribes only to `ICodexRuntimeEvents.Changed` and
+refreshes snapshots through RPC. Local dispatch creates a fresh server scope while preserving the shared runtime.
+See [the official plugin development guide](../docs/plugin-development.md).

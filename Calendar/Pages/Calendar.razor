@@ -1,3 +1,4 @@
+@using NOF.Contract
 @namespace Quantum.OfficialPlugins.Calendar.Pages
 @using System.Globalization
 @using Microsoft.AspNetCore.Components.Web
@@ -12,14 +13,11 @@
 <section class="calendar-shell">
     <header class="page-header">
         <div>
-            <p class="eyebrow">@L["Calendar section"]</p>
-            <h1>@MonthTitle</h1>
+            <h1>@L["Calendar"]</h1>
             <p>@L["Keep events and tasks on one timeline."]</p>
         </div>
         <div class="toolbar" aria-label="@L["Month navigation"]">
-            <button type="button" class="icon-button" aria-label="@L["Previous month"]" disabled="@_isBusy" @onclick="() => ChangeMonthAsync(-1)">←</button>
             <button type="button" disabled="@_isBusy" @onclick="ShowTodayAsync">@L["Today"]</button>
-            <button type="button" class="icon-button" aria-label="@L["Next month"]" disabled="@_isBusy" @onclick="() => ChangeMonthAsync(1)">→</button>
             <button type="button" class="primary-button" disabled="@_isBusy" @onclick="BeginCreate">＋ @L["New"]</button>
         </div>
     </header>
@@ -34,6 +32,11 @@
 
     <div class="calendar-layout" aria-busy="@_isBusy">
         <div class="calendar-board">
+            <header class="month-navigation" aria-label="@L["Month navigation"]">
+                <button type="button" class="icon-button" aria-label="@L["Previous month"]" disabled="@_isBusy" @onclick="() => ChangeMonthAsync(-1)">‹</button>
+                <h2>@MonthTitle</h2>
+                <button type="button" class="icon-button" aria-label="@L["Next month"]" disabled="@_isBusy" @onclick="() => ChangeMonthAsync(1)">›</button>
+            </header>
             <div class="weekday-row" aria-hidden="true">
                 @foreach (var weekday in Weekdays)
                 {
@@ -51,487 +54,197 @@
                             @onclick="() => SelectDateAsync(day.Date)">
                         <time datetime="@day.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">@day.Date.Day</time>
                         <div class="day-entries">
-                            @foreach (var item in day.Items.Take(2))
+                            @foreach (var item in day.Items.Take(3))
                             {
                                 <span class="entry-chip @item.Style @(item.IsCompleted ? "completed" : null)">
                                     <span aria-hidden="true">@(item.Kind == CalendarEntryKind.Task ? "✓" : "●")</span>
                                     @item.Title
                                 </span>
                             }
-                            @if (day.Items.Count > 2)
+                            @if (day.Items.Count > 3)
                             {
-                                <span class="more-entries">+@(day.Items.Count - 2)</span>
+                                <span class="more-entries">+@(day.Items.Count - 3)</span>
                             }
                         </div>
                     </button>
                 }
             </div>
-        </div>
-
-        <aside class="agenda-card" aria-live="polite">
-            <div class="agenda-heading">
-                <div>
-                    <p class="eyebrow">@L["SELECTED DAY"]</p>
-                    <div class="selected-date">
-                        <strong>@_selectedDate.Day</strong>
-                        <span>@SelectedDateTitle</span>
-                    </div>
-                </div>
-                <button type="button" class="round-add" aria-label="@L["New"]" disabled="@_isBusy" @onclick="BeginCreate">＋</button>
-            </div>
-
-            @if (_isEditorOpen)
-            {
-                <section class="entry-editor" aria-label="@EditorTitle">
-                    <div class="editor-title">
-                        <h2>@EditorTitle</h2>
-                        <button type="button" aria-label="@L["Close editor"]" @onclick="CancelEdit">×</button>
-                    </div>
-                    <div class="kind-switch" role="group" aria-label="@L["Item type"]">
-                        <button type="button" class="@(_draft.Kind == CalendarEntryKind.Event ? "active" : null)" @onclick="() => SetDraftKind(CalendarEntryKind.Event)">@L["Event"]</button>
-                        <button type="button" class="@(_draft.Kind == CalendarEntryKind.Task ? "active" : null)" @onclick="() => SetDraftKind(CalendarEntryKind.Task)">@L["Task"]</button>
-                    </div>
-                    <label>
-                        <span>@L["Title"]</span>
-                        <input maxlength="120" placeholder="@L["What needs to be done?"]" @bind="_draft.Title" />
-                    </label>
-                    <div class="form-row">
-                        <label>
-                            <span>@L["Date"]</span>
-                            <input type="date" @bind="_draft.Date" />
-                        </label>
-                        <label>
-                            <span>@(_draft.Kind == CalendarEntryKind.Task ? L["Due time"] : L["Start time"])</span>
-                            <input type="time" @bind="_draft.StartTime" />
-                        </label>
-                    </div>
-                    @if (_draft.Kind == CalendarEntryKind.Event)
-                    {
-                        <label>
-                            <span>@L["End time (optional)"]</span>
-                            <input type="time" @bind="_draft.EndTime" />
-                        </label>
-                    }
-                    <label>
-                        <span>@L["Notes"]</span>
-                        <textarea maxlength="1000" rows="3" placeholder="@L["Add some details…"]" @bind="_draft.Notes"></textarea>
-                    </label>
-                    <fieldset class="color-picker">
-                        <legend>@L["Color"]</legend>
-                        @foreach (var style in Styles)
-                        {
-                            <button type="button"
-                                    class="swatch @style @(_draft.Style == style ? "selected" : null)"
-                                    aria-label="@style"
-                                    aria-pressed="@(_draft.Style == style)"
-                                    @onclick="() => _draft.Style = style"></button>
-                        }
-                    </fieldset>
-                    <div class="editor-actions">
-                        <button type="button" disabled="@_isBusy" @onclick="CancelEdit">@L["Cancel"]</button>
-                        <button type="button" class="primary-button" disabled="@(_isBusy || string.IsNullOrWhiteSpace(_draft.Title))" @onclick="SaveAsync">
-                            @(_editingId is null ? L["Add"] : L["Save"])
-                        </button>
-                    </div>
-                </section>
-            }
-            else if (SelectedItems.Count > 0)
-            {
-                <div class="agenda-list">
-                    @foreach (var item in SelectedItems)
-                    {
-                        <article @key="item.Id" class="agenda-entry @item.Style @(item.IsCompleted ? "completed" : null)">
-                            <div class="entry-meta">
-                                <span>@(item.Kind == CalendarEntryKind.Task ? L["Task"] : L["Event"])</span>
-                                <time>@FormatTime(item)</time>
-                            </div>
-                            <h2>@item.Title</h2>
-                            @if (!string.IsNullOrWhiteSpace(item.Notes))
-                            {
-                                <p>@item.Notes</p>
-                            }
-                            <div class="entry-actions">
-                                @if (item.Kind == CalendarEntryKind.Task)
-                                {
-                                    <button type="button" disabled="@_isBusy" @onclick="() => ToggleCompletedAsync(item)">
-                                        @(item.IsCompleted ? L["Restore"] : L["Complete"])
-                                    </button>
-                                }
-                                <button type="button" disabled="@_isBusy" @onclick="() => BeginEdit(item)">@L["Edit"]</button>
-                                <button type="button" class="danger" disabled="@_isBusy" @onclick="() => DeleteAsync(item.Id)">@L["Delete"]</button>
-                            </div>
-                        </article>
-                    }
-                </div>
-            }
-            else
-            {
-                <div class="empty-state">
-                    <span aria-hidden="true">○</span>
-                    <h2>@L["This day is wide open"]</h2>
-                    <p>@L["Add an event or task to turn the day into a plan."]</p>
-                </div>
-            }
-
             <footer class="month-stats">
                 <div><strong>@EventCount</strong><span>@L["Events"]</span></div>
                 <div><strong>@OpenTaskCount</strong><span>@L["Open tasks"]</span></div>
                 <div><strong>@FreeDayCount</strong><span>@L["Free days"]</span></div>
             </footer>
-        </aside>
-    </div>
-
-    <section class="task-board" aria-busy="@_isBusy">
-        <header class="task-board-header">
-            <div>
-                <p class="eyebrow">@L["Tasks section"]</p>
-                <h2>@L["Tasks"]</h2>
-                <p>@L["Make the next step clear, then finish one thing at a time."]</p>
-            </div>
-            <button type="button" class="task-create-button" disabled="@_isBusy" @onclick="BeginCreateTaskAsync">＋ @L["New task"]</button>
-        </header>
-
-        <div class="task-list-toolbar">
-            <div class="task-filters" role="group" aria-label="@L["Filter tasks"]">
-                @foreach (var filter in Enum.GetValues<TaskFilter>())
-                {
-                    <button type="button" class="@(_taskFilter == filter ? "active" : null)" @onclick="() => _taskFilter = filter">@FilterLabel(filter)</button>
-                }
-            </div>
-            <span>@L["{0} open", AllOpenTaskCount]</span>
         </div>
 
-        @if (FilteredTasks.Count > 0)
-        {
-            <div class="task-list">
-                @foreach (var task in FilteredTasks)
+        <div class="calendar-sidebar">
+            <aside class="agenda-card" aria-live="polite">
+                <div class="agenda-heading">
+                    <div>
+                        <div class="selected-date">
+                            <strong>@_selectedDate.Day</strong>
+                            <span>@SelectedDateTitle</span>
+                        </div>
+                    </div>
+                    <button type="button" class="round-add" aria-label="@L["New"]" disabled="@_isBusy" @onclick="BeginCreate">＋</button>
+                </div>
+
+                @if (_isEditorOpen)
                 {
-                    <article @key="task.Id" class="task-item @task.Style @(task.IsCompleted ? "completed" : null)">
-                        <button type="button"
-                                class="completion-toggle"
-                                aria-label="@(task.IsCompleted ? L["Mark as open"] : L["Mark as complete"])"
-                                aria-pressed="@task.IsCompleted"
-                                disabled="@_isBusy"
-                                @onclick="() => ToggleCompletedAsync(task)">
-                            @(task.IsCompleted ? "✓" : null)
-                        </button>
-                        <div class="task-content">
-                            <h3>@task.Title</h3>
-                            <div class="task-date @(IsOverdue(task) ? "overdue" : null)">
-                                <time datetime="@task.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">@FormatDeadline(task)</time>
-                                @if (IsOverdue(task))
-                                {
-                                    <span>@L["Overdue"]</span>
-                                }
-                            </div>
-                            @if (!string.IsNullOrWhiteSpace(task.Notes))
+                    <section class="entry-editor" aria-label="@EditorTitle">
+                        <div class="editor-title">
+                            <h2>@EditorTitle</h2>
+                            <button type="button" aria-label="@L["Close editor"]" @onclick="CancelEdit">×</button>
+                        </div>
+                        <div class="kind-switch" role="group" aria-label="@L["Item type"]">
+                            <button type="button" class="@(_draft.Kind == CalendarEntryKind.Event ? "active" : null)" @onclick="() => SetDraftKind(CalendarEntryKind.Event)">@L["Event"]</button>
+                            <button type="button" class="@(_draft.Kind == CalendarEntryKind.Task ? "active" : null)" @onclick="() => SetDraftKind(CalendarEntryKind.Task)">@L["Task"]</button>
+                        </div>
+                        <label>
+                            <span>@L["Title"]</span>
+                            <input maxlength="120" placeholder="@L["What needs to be done?"]" @bind="_draft.Title" />
+                        </label>
+                        <div class="form-row">
+                            <label>
+                                <span>@L["Date"]</span>
+                                <input type="date" @bind="_draft.Date" />
+                            </label>
+                            <label>
+                                <span>@(_draft.Kind == CalendarEntryKind.Task ? L["Due time"] : L["Start time"])</span>
+                                <input type="time" @bind="_draft.StartTime" />
+                            </label>
+                        </div>
+                        @if (_draft.Kind == CalendarEntryKind.Event)
+                        {
+                            <label>
+                                <span>@L["End time (optional)"]</span>
+                                <input type="time" @bind="_draft.EndTime" />
+                            </label>
+                        }
+                        <label>
+                            <span>@L["Notes"]</span>
+                            <textarea maxlength="1000" rows="3" placeholder="@L["Add some details…"]" @bind="_draft.Notes"></textarea>
+                        </label>
+                        <fieldset class="color-picker">
+                            <legend>@L["Color"]</legend>
+                            @foreach (var style in Styles)
                             {
-                                <p>@task.Notes</p>
+                                <button type="button"
+                                        class="swatch @style @(_draft.Style == style ? "selected" : null)"
+                                        aria-label="@style"
+                                        aria-pressed="@(_draft.Style == style)"
+                                        @onclick="() => _draft.Style = style"></button>
                             }
+                        </fieldset>
+                        <div class="editor-actions">
+                            <button type="button" disabled="@_isBusy" @onclick="CancelEdit">@L["Cancel"]</button>
+                            <button type="button" class="primary-button" disabled="@(_isBusy || string.IsNullOrWhiteSpace(_draft.Title))" @onclick="SaveAsync">
+                                @(_editingId is null ? L["Add"] : L["Save"])
+                            </button>
                         </div>
-                        <div class="task-actions">
-                            <button type="button" disabled="@_isBusy" @onclick="() => EditTaskAsync(task)">@L["Edit"]</button>
-                            <button type="button" class="danger" disabled="@_isBusy" @onclick="() => DeleteAsync(task.Id)">@L["Delete"]</button>
-                        </div>
-                    </article>
+                    </section>
                 }
-            </div>
-        }
-        else
-        {
-            <div class="empty-tasks">
-                <span aria-hidden="true">✓</span>
-                <h3>@L["All clear here"]</h3>
-                <p>@L["No tasks match this filter."]</p>
-            </div>
-        }
-    </section>
+                else if (SelectedItems.Count > 0)
+                {
+                    <div class="agenda-list">
+                        @foreach (var item in SelectedItems)
+                        {
+                            <article @key="item.Id" class="agenda-entry @item.Style @(item.IsCompleted ? "completed" : null)">
+                                <div class="entry-meta">
+                                    <span>@(item.Kind == CalendarEntryKind.Task ? L["Task"] : L["Event"])</span>
+                                    <time>@FormatTime(item)</time>
+                                </div>
+                                <h2>@item.Title</h2>
+                                @if (!string.IsNullOrWhiteSpace(item.Notes))
+                                {
+                                    <p>@item.Notes</p>
+                                }
+                                <div class="entry-actions">
+                                    @if (item.Kind == CalendarEntryKind.Task)
+                                    {
+                                        <button type="button" disabled="@_isBusy" @onclick="() => ToggleCompletedAsync(item)">
+                                            @(item.IsCompleted ? L["Restore"] : L["Complete"])
+                                        </button>
+                                    }
+                                    <button type="button" disabled="@_isBusy" @onclick="() => BeginEdit(item)">@L["Edit"]</button>
+                                    <button type="button" class="danger" disabled="@_isBusy" @onclick="() => DeleteAsync(item.Id)">@L["Delete"]</button>
+                                </div>
+                            </article>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-state">
+                        <span aria-hidden="true">○</span>
+                        <h2>@L["This day is wide open"]</h2>
+                        <p>@L["Add an event or task to turn the day into a plan."]</p>
+                    </div>
+                }
+            </aside>
+
+            <section class="task-board" aria-busy="@_isBusy">
+                <header class="task-board-header">
+                    <div>
+                        <h2>@L["Tasks"]</h2>
+                    </div>
+                    <button type="button" class="task-create-button" disabled="@_isBusy" @onclick="BeginCreateTaskAsync">＋ @L["New task"]</button>
+                </header>
+
+                <div class="task-list-toolbar">
+                    <div class="task-filters" role="group" aria-label="@L["Filter tasks"]">
+                        @foreach (var filter in Enum.GetValues<TaskFilter>())
+                        {
+                            <button type="button" class="@(_taskFilter == filter ? "active" : null)" @onclick="() => _taskFilter = filter">@FilterLabel(filter)</button>
+                        }
+                    </div>
+                    <span>@L["{0} open", AllOpenTaskCount]</span>
+                </div>
+
+                @if (FilteredTasks.Count > 0)
+                {
+                    <div class="task-list">
+                        @foreach (var task in FilteredTasks)
+                        {
+                            <article @key="task.Id" class="task-item @task.Style @(task.IsCompleted ? "completed" : null)">
+                                <button type="button"
+                                        class="completion-toggle"
+                                        aria-label="@(task.IsCompleted ? L["Mark as open"] : L["Mark as complete"])"
+                                        aria-pressed="@task.IsCompleted"
+                                        disabled="@_isBusy"
+                                        @onclick="() => ToggleCompletedAsync(task)">
+                                    @(task.IsCompleted ? "✓" : null)
+                                </button>
+                                <div class="task-content">
+                                    <h3>@task.Title</h3>
+                                    <div class="task-date @(IsOverdue(task) ? "overdue" : null)">
+                                        <time datetime="@task.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">@FormatDeadline(task)</time>
+                                        @if (IsOverdue(task))
+                                        {
+                                            <span>@L["Overdue"]</span>
+                                        }
+                                    </div>
+                                    @if (!string.IsNullOrWhiteSpace(task.Notes))
+                                    {
+                                        <p>@task.Notes</p>
+                                    }
+                                </div>
+                                <div class="task-actions">
+                                    <button type="button" disabled="@_isBusy" @onclick="() => EditTaskAsync(task)">@L["Edit"]</button>
+                                    <button type="button" class="danger" disabled="@_isBusy" @onclick="() => DeleteAsync(task.Id)">@L["Delete"]</button>
+                                </div>
+                            </article>
+                        }
+                    </div>
+                }
+                else
+                {
+                    <div class="empty-tasks">
+                        <span aria-hidden="true">✓</span>
+                        <h3>@L["All clear here"]</h3>
+                        <p>@L["No tasks match this filter."]</p>
+                    </div>
+                }
+            </section>
+        </div>
+    </div>
 </section>
-
-@code {
-    private readonly ICalendarApplicationService CalendarService;
-    private static readonly string[] Styles = ["violet", "blue", "coral", "green"];
-
-    public Calendar(ICalendarApplicationService calendarService)
-    {
-        CalendarService = calendarService;
-    }
-
-    private static IReadOnlyList<string> Weekdays
-    {
-        get
-        {
-            var names = CultureInfo.CurrentCulture.DateTimeFormat.AbbreviatedDayNames;
-            return [.. names.Skip(1), names[0]];
-        }
-    }
-
-    private readonly DateOnly _today = DateOnly.FromDateTime(DateTime.Today);
-    private IReadOnlyList<CalendarEntryDetails> _items = [];
-    private IReadOnlyList<CalendarEntryDetails> _tasks = [];
-    private DateOnly _visibleMonth = new(DateTime.Today.Year, DateTime.Today.Month, 1);
-    private DateOnly _selectedDate = DateOnly.FromDateTime(DateTime.Today);
-    private EntryDraft _draft = EntryDraft.Create(DateOnly.FromDateTime(DateTime.Today));
-    private TaskFilter _taskFilter = TaskFilter.Open;
-    private Guid? _editingId;
-    private bool _isEditorOpen;
-    private bool _isBusy;
-    private string? _errorMessage;
-
-    private string MonthTitle => _visibleMonth.ToDateTime(TimeOnly.MinValue).ToString("Y", CultureInfo.CurrentCulture);
-    private string SelectedDateTitle => _selectedDate.ToDateTime(TimeOnly.MinValue).ToString("MMMM dddd", CultureInfo.CurrentCulture);
-    private string EditorTitle => _editingId is null ? L["New item"] : L["Edit item"];
-    private IReadOnlyList<CalendarEntryDetails> SelectedItems => [.. _items.Where(item => item.Date == _selectedDate)];
-    private int EventCount => _items.Count(item => item.Kind == CalendarEntryKind.Event);
-    private int OpenTaskCount => _items.Count(item => item.Kind == CalendarEntryKind.Task && !item.IsCompleted);
-    private int AllOpenTaskCount => _tasks.Count(task => !task.IsCompleted);
-    private int FreeDayCount => DateTime.DaysInMonth(_visibleMonth.Year, _visibleMonth.Month) - _items.Select(item => item.Date).Distinct().Count();
-    private IReadOnlyList<CalendarEntryDetails> FilteredTasks =>
-        [.. _tasks.Where(task => _taskFilter switch
-        {
-            TaskFilter.Open => !task.IsCompleted,
-            TaskFilter.Completed => task.IsCompleted,
-            _ => true
-        })];
-
-    private IReadOnlyList<CalendarDay> CalendarDays
-    {
-        get
-        {
-            var firstDay = new DateOnly(_visibleMonth.Year, _visibleMonth.Month, 1);
-            var mondayOffset = ((int)firstDay.DayOfWeek + 6) % 7;
-            var gridStart = firstDay.AddDays(-mondayOffset);
-            return [.. Enumerable.Range(0, 42).Select(offset =>
-            {
-                var date = gridStart.AddDays(offset);
-                return new CalendarDay(
-                    date,
-                    date.Month == _visibleMonth.Month && date.Year == _visibleMonth.Year,
-                    date == _today,
-                    [.. _items.Where(item => item.Date == date)]);
-            })];
-        }
-    }
-
-    protected override Task OnInitializedAsync() => ExecuteAsync(LoadAllCoreAsync);
-
-    private async Task ChangeMonthAsync(int offset)
-    {
-        _visibleMonth = _visibleMonth.AddMonths(offset);
-        _selectedDate = new DateOnly(_visibleMonth.Year, _visibleMonth.Month, Math.Min(_selectedDate.Day, DateTime.DaysInMonth(_visibleMonth.Year, _visibleMonth.Month)));
-        CancelEdit();
-        await LoadMonthAsync();
-    }
-
-    private async Task ShowTodayAsync()
-    {
-        _visibleMonth = new DateOnly(_today.Year, _today.Month, 1);
-        _selectedDate = _today;
-        CancelEdit();
-        await LoadMonthAsync();
-    }
-
-    private async Task SelectDateAsync(DateOnly date)
-    {
-        _selectedDate = date;
-        CancelEdit();
-        if (date.Month != _visibleMonth.Month || date.Year != _visibleMonth.Year)
-        {
-            _visibleMonth = new DateOnly(date.Year, date.Month, 1);
-            await LoadMonthAsync();
-        }
-    }
-
-    private void BeginCreate()
-    {
-        _editingId = null;
-        _draft = EntryDraft.Create(_selectedDate);
-        _isEditorOpen = true;
-        _errorMessage = null;
-    }
-
-    private async Task BeginCreateTaskAsync()
-    {
-        _selectedDate = _today;
-        _visibleMonth = new DateOnly(_today.Year, _today.Month, 1);
-        await ExecuteAsync(LoadMonthCoreAsync);
-        BeginCreate();
-        SetDraftKind(CalendarEntryKind.Task);
-    }
-
-    private void BeginEdit(CalendarEntryDetails item)
-    {
-        _editingId = item.Id;
-        _draft = EntryDraft.From(item);
-        _isEditorOpen = true;
-        _errorMessage = null;
-    }
-
-    private async Task EditTaskAsync(CalendarEntryDetails task)
-    {
-        _selectedDate = task.Date;
-        _visibleMonth = new DateOnly(task.Date.Year, task.Date.Month, 1);
-        await ExecuteAsync(LoadMonthCoreAsync);
-        BeginEdit(task);
-    }
-
-    private void SetDraftKind(CalendarEntryKind kind)
-    {
-        _draft.Kind = kind;
-        if (kind == CalendarEntryKind.Task)
-        {
-            _draft.EndTime = null;
-        }
-    }
-
-    private void CancelEdit()
-    {
-        _editingId = null;
-        _isEditorOpen = false;
-    }
-
-    private async Task SaveAsync()
-    {
-        if (string.IsNullOrWhiteSpace(_draft.Title))
-        {
-            return;
-        }
-
-        await ExecuteAsync(async () =>
-        {
-            var request = _draft.ToRequest();
-            if (_editingId is { } id)
-            {
-                await CalendarService.UpdateAsync(id, request);
-            }
-            else
-            {
-                await CalendarService.CreateAsync(request);
-            }
-
-            _selectedDate = _draft.Date;
-            _visibleMonth = new DateOnly(_draft.Date.Year, _draft.Date.Month, 1);
-            CancelEdit();
-            await LoadAllCoreAsync();
-        });
-    }
-
-    private Task ToggleCompletedAsync(CalendarEntryDetails item)
-        => ExecuteAsync(async () =>
-        {
-            await CalendarService.SetCompletedAsync(item.Id, !item.IsCompleted);
-            await LoadAllCoreAsync();
-        });
-
-    private Task DeleteAsync(Guid id)
-        => ExecuteAsync(async () =>
-        {
-            await CalendarService.DeleteAsync(id);
-            if (_editingId == id)
-            {
-                CancelEdit();
-            }
-
-            await LoadAllCoreAsync();
-        });
-
-    private Task LoadMonthAsync() => ExecuteAsync(LoadMonthCoreAsync);
-
-    private async Task LoadMonthCoreAsync()
-    {
-        var firstDay = new DateOnly(_visibleMonth.Year, _visibleMonth.Month, 1);
-        _items = await CalendarService.ListAsync(firstDay, firstDay.AddMonths(1).AddDays(-1));
-    }
-
-    private async Task LoadAllCoreAsync()
-    {
-        await LoadMonthCoreAsync();
-        _tasks = await CalendarService.ListTasksAsync();
-    }
-
-    private bool IsOverdue(CalendarEntryDetails task)
-        => !task.IsCompleted && (task.Date < _today || (task.Date == _today && task.StartTime < TimeOnly.FromDateTime(DateTime.Now)));
-
-    private static string FormatDeadline(CalendarEntryDetails task)
-        => $"{task.Date.ToDateTime(task.StartTime):D} · {task.StartTime:HH:mm}";
-
-    private string FilterLabel(TaskFilter filter) => filter switch
-    {
-        TaskFilter.Open => L["Open"],
-        TaskFilter.Completed => L["Completed"],
-        _ => L["All"]
-    };
-
-    private async Task ExecuteAsync(Func<Task> action)
-    {
-        _isBusy = true;
-        _errorMessage = null;
-        try
-        {
-            await action();
-        }
-        catch (Exception exception)
-        {
-            _errorMessage = exception.Message;
-        }
-        finally
-        {
-            _isBusy = false;
-        }
-    }
-
-    private string GetDayClass(CalendarDay day)
-        => string.Join(" ", new[]
-        {
-            "day-cell",
-            day.IsVisibleMonth ? null : "outside-month",
-            day.IsToday ? "today" : null,
-            day.Date == _selectedDate ? "selected" : null
-        }.Where(value => value is not null));
-
-    private string GetDayAriaLabel(CalendarDay day)
-    {
-        var date = day.Date.ToDateTime(TimeOnly.MinValue).ToString("D", CultureInfo.CurrentCulture);
-        return L["{0}, {1} items", date, day.Items.Count];
-    }
-
-    private static string FormatTime(CalendarEntryDetails item)
-        => item.EndTime is { } end
-            ? $"{item.StartTime:HH:mm}–{end:HH:mm}"
-            : item.StartTime.ToString("HH:mm", CultureInfo.InvariantCulture);
-
-    private sealed record CalendarDay(DateOnly Date, bool IsVisibleMonth, bool IsToday, IReadOnlyList<CalendarEntryDetails> Items);
-
-    private enum TaskFilter
-    {
-        Open,
-        Completed,
-        All
-    }
-
-    private sealed class EntryDraft
-    {
-        public string Title { get; set; } = string.Empty;
-        public string Notes { get; set; } = string.Empty;
-        public CalendarEntryKind Kind { get; set; }
-        public DateOnly Date { get; set; }
-        public TimeOnly StartTime { get; set; }
-        public TimeOnly? EndTime { get; set; }
-        public string Style { get; set; } = "violet";
-
-        public SaveCalendarEntryRequest ToRequest() => new(Title, Notes, Kind, Date, StartTime, EndTime, Style);
-
-        public static EntryDraft Create(DateOnly date) => new() { Date = date, StartTime = new TimeOnly(9, 0) };
-
-        public static EntryDraft From(CalendarEntryDetails item) => new()
-        {
-            Title = item.Title,
-            Notes = item.Notes,
-            Kind = item.Kind,
-            Date = item.Date,
-            StartTime = item.StartTime,
-            EndTime = item.EndTime,
-            Style = item.Style
-        };
-    }
-}

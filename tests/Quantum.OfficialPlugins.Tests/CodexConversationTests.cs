@@ -1,25 +1,25 @@
-using Xunit;
-using System.Text.Json;
-using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging.Abstractions;
 using NOF.Contract;
 using Quantum.OfficialPlugins.Codex.Application;
 using Quantum.OfficialPlugins.Codex.Infrastructure;
 using Quantum.Plugin.Abstraction;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Xunit;
 
 namespace Quantum.Tests;
 
 public sealed class CodexConversationTests
 {
-    private static CodexIntegrationService Service(FakeClient client) => new(new CatalogInvoker(),
-        NullLoggerFactory.Instance, NullLogger<CodexIntegrationService>.Instance, clientFactory: () => client);
+    private static CodexRuntime Service(FakeClient client) => new(new CatalogInvoker(),
+        NullLoggerFactory.Instance, NullLogger<CodexRuntime>.Instance, clientFactory: () => client);
 
     [Fact]
     public async Task ModelChangesPreserveThreadHistoryAndToolsAndApplyToEverySubsequentTurn()
     {
         var client = new FakeClient();
         await using var service = Service(client);
-        await service.ConnectAsync(Environment.CurrentDirectory, CodexIntegrationService.DefaultModel);
+        await service.ConnectAsync(Environment.CurrentDirectory, CodexRuntime.DefaultModel);
         await service.SendAsync("Remember this conversation");
         await client.CompleteTurn();
         var before = service.Snapshot;
@@ -35,7 +35,7 @@ public sealed class CodexConversationTests
         await client.CompleteTurn();
         await service.SendAsync("Continue again");
         Assert.All(client.Turns, turn => Assert.Equal(before.ThreadId, turn.ThreadId));
-        Assert.Equal(new[] { CodexIntegrationService.DefaultModel, "gpt-5.6-sol", "gpt-5.6-sol" }, client.Turns.Select(turn => turn.Model));
+        Assert.Equal(new[] { CodexRuntime.DefaultModel, "gpt-5.6-sol", "gpt-5.6-sol" }, client.Turns.Select(turn => turn.Model));
         Assert.Contains(service.Snapshot.Messages, message => message.Text == "Remember this conversation");
     }
 
@@ -44,7 +44,7 @@ public sealed class CodexConversationTests
     {
         var client = new FakeClient();
         await using var service = Service(client);
-        await service.ConnectAsync(Environment.CurrentDirectory, CodexIntegrationService.DefaultModel);
+        await service.ConnectAsync(Environment.CurrentDirectory, CodexRuntime.DefaultModel);
         await service.SendAsync("Old message");
         await client.CompleteTurn();
         await service.ChangeModelAsync("gpt-5.6-sol");
@@ -62,7 +62,7 @@ public sealed class CodexConversationTests
         var client = new FakeClient();
         await using var service = Service(client);
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.ChangeModelAsync("gpt-5.6-sol"));
-        await service.ConnectAsync(Environment.CurrentDirectory, CodexIntegrationService.DefaultModel);
+        await service.ConnectAsync(Environment.CurrentDirectory, CodexRuntime.DefaultModel);
         var before = service.Snapshot;
         await Assert.ThrowsAsync<InvalidOperationException>(() => service.ChangeModelAsync("unknown-model"));
         await Assert.ThrowsAsync<ArgumentException>(() => service.ChangeModelAsync(" "));
@@ -90,7 +90,10 @@ public sealed class CodexConversationTests
     private sealed class CatalogInvoker : IRpcInvoker
     {
         public Task<Result<T>> InvokeAsync<T>(string rpcName, object payload, Context context, CancellationToken cancellationToken = default)
-            => Task.FromResult<Result<T>>((T)(object)JsonSerializer.SerializeToElement(new { services = new[] { new { methods = new[] { new { qualifiedName = "quantum.plugin.calendar.calendar.list", description = "Read calendar", returnsValue = true, inputSchema = new { type = "object" } } } } } }));
+            => Task.FromResult<Result<T>>((T)(object)JsonSerializer.SerializeToElement(new
+            {
+                services = new[] { new { methods = new[] { new { qualifiedName = "quantum.plugin.calendar.calendar.list", description = "Read calendar", returnsValue = true, inputSchema = new { type = "object" } } } } }
+            }));
         public Task<Result> InvokeAsync(string rpcName, object payload, Context context, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
     }
@@ -100,17 +103,22 @@ public sealed class CodexConversationTests
         public event Func<string, JsonElement, Task>? NotificationReceived;
         public event Action<Exception?>? ConnectionClosed { add { } remove { } }
         public event Func<CodexDynamicToolCall, CancellationToken, Task<CodexDynamicToolResult>>? DynamicToolCallReceived { add { } remove { } }
-        public int ThreadStarts { get; private set; }
+        public int ThreadStarts
+        {
+            get; private set;
+        }
         public List<(string ThreadId, string Model)> Turns { get; } = [];
         public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         public Task<IReadOnlyList<CodexModelOption>> ListModelsAsync(CancellationToken cancellationToken)
-            => Task.FromResult(CodexIntegrationService.InitialModels);
+            => Task.FromResult(CodexRuntime.InitialModels);
         public Task<string> StartThreadAsync(string workingDirectory, string model, JsonArray dynamicTools, CancellationToken cancellationToken)
             => Task.FromResult($"thread-{++ThreadStarts}");
         public Task<JsonElement> StartTurnAsync(string threadId, string prompt, string model, CancellationToken cancellationToken)
         {
             Turns.Add((threadId, model));
-            return Task.FromResult(JsonSerializer.SerializeToElement(new { }));
+            return Task.FromResult(JsonSerializer.SerializeToElement(new
+            {
+            }));
         }
         public Task CompleteTurn() => NotificationReceived!("turn/completed", JsonSerializer.SerializeToElement(new { turn = new { status = "completed" } }));
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;

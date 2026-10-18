@@ -1,10 +1,10 @@
+using Microsoft.Extensions.Logging;
+using Quantum.OfficialPlugins.Codex.Application;
 using System.Collections.Concurrent;
 using System.Diagnostics;
 using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using Microsoft.Extensions.Logging;
-using Quantum.OfficialPlugins.Codex.Application;
 
 namespace Quantum.OfficialPlugins.Codex.Infrastructure;
 
@@ -54,10 +54,15 @@ internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger)
                     title = "Quantum Codex Plugin",
                     version = "0.1.0"
                 },
-                capabilities = new { experimentalApi = true }
+                capabilities = new
+                {
+                    experimentalApi = true
+                }
             },
             cancellationToken).ConfigureAwait(false);
-        await SendNotificationAsync("initialized", new { }, cancellationToken).ConfigureAwait(false);
+        await SendNotificationAsync("initialized", new
+        {
+        }, cancellationToken).ConfigureAwait(false);
     }
 
     public async Task<string> StartThreadAsync(
@@ -87,7 +92,11 @@ internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger)
     {
         var response = await SendRequestAsync(
             "model/list",
-            new { limit = 100, includeHidden = false },
+            new
+            {
+                limit = 100,
+                includeHidden = false
+            },
             cancellationToken).ConfigureAwait(false);
         if (!response.TryGetProperty("data", out var data)
             || data.ValueKind != JsonValueKind.Array)
@@ -127,7 +136,12 @@ internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger)
             cancellationToken);
 
     internal static object CreateTurnParameters(string threadId, string prompt, string model)
-        => new { threadId, model, input = new[] { new { type = "text", text = prompt } } };
+        => new
+        {
+            threadId,
+            model,
+            input = new[] { new { type = "text", text = prompt } }
+        };
 
     public async ValueTask DisposeAsync()
     {
@@ -179,7 +193,12 @@ internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger)
 
         try
         {
-            await WriteAsync(new { id = long.Parse(id), method, @params = parameters }, cancellationToken)
+            await WriteAsync(new
+            {
+                id = long.Parse(id),
+                method,
+                @params = parameters
+            }, cancellationToken)
                 .ConfigureAwait(false);
             return await completion.Task.WaitAsync(cancellationToken).ConfigureAwait(false);
         }
@@ -190,7 +209,11 @@ internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger)
     }
 
     private Task SendNotificationAsync(string method, object parameters, CancellationToken cancellationToken)
-        => WriteAsync(new { method, @params = parameters }, cancellationToken);
+        => WriteAsync(new
+        {
+            method,
+            @params = parameters
+        }, cancellationToken);
 
     private async Task WriteAsync(object message, CancellationToken cancellationToken)
     {
@@ -301,7 +324,11 @@ internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger)
                 await WriteAsync(new
                 {
                     id,
-                    error = new { code = -32601, message = $"Unsupported Codex request '{method}'." }
+                    error = new
+                    {
+                        code = -32601,
+                        message = $"Unsupported Codex request '{method}'."
+                    }
                 }, cancellationToken).ConfigureAwait(false);
                 return;
             }
@@ -330,7 +357,11 @@ internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger)
             await WriteAsync(new
             {
                 id,
-                error = new { code = -32000, message = exception.Message }
+                error = new
+                {
+                    code = -32000,
+                    message = exception.Message
+                }
             }, CancellationToken.None).ConfigureAwait(false);
         }
     }

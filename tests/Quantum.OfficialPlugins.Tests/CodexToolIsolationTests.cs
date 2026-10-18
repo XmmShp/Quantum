@@ -1,5 +1,5 @@
-using System.Text.Json;
 using Quantum.OfficialPlugins.Codex.Application;
+using System.Text.Json;
 using Xunit;
 
 namespace Quantum.Tests;
@@ -34,7 +34,15 @@ public sealed class CodexToolIsolationTests
 
     private static object Method(string name) => new
     {
-        qualifiedName = name, description = name, returnsValue = true,
-        inputSchema = JsonSerializer.SerializeToElement(new { type = "object", properties = new { } })
+        qualifiedName = name,
+        description = name,
+        returnsValue = true,
+        inputSchema = JsonSerializer.SerializeToElement(new
+        {
+            type = "object",
+            properties = new
+            {
+            }
+        })
     };
 }
