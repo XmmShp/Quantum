@@ -17,6 +17,7 @@
 
   <ItemGroup>
     <Content Update="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="README.md;THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 
   <Target Name="CopyCodexScopedCssBundle"

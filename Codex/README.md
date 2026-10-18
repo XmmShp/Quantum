@@ -1,7 +1,26 @@
 # Quantum Codex Plugin
 
-Official Quantum plugin that embeds the locally installed Codex through `codex app-server` and exposes the current
+Quantum-maintained integration that connects to the locally installed Codex through `codex app-server` and exposes the current
 Quantum RPC catalog as Codex dynamic tools.
+
+## Requirements and attribution
+
+Install and sign in to Codex CLI separately before connecting this plugin. The plugin package does not include,
+download, or install Codex CLI, and does not read or copy its authentication files. The CLI uses its own authentication
+state when started by the plugin.
+
+Codex CLI is an OpenAI project licensed under [Apache-2.0](https://github.com/openai/codex/blob/main/LICENSE).
+See [third-party notices](THIRD-PARTY-NOTICES.md) for upstream attribution. This is an official Quantum plugin,
+not an OpenAI product or an OpenAI-endorsed integration. Access to hosted models is subject to the user's own
+account, service terms, and usage limits; the CLI's software license does not grant model-service access.
+
+## Tool access
+
+Connecting exposes the available Quantum RPC methods as tools. A model may invoke those methods to read or change
+data managed by installed plugins, including creating or deleting calendar items. Tool calls run with the user's
+Quantum permissions without an additional per-call confirmation in this plugin. Connect only when you intend to
+grant this access, and disconnect to stop the App Server session. Codex's file sandbox does not restrict Quantum RPC
+tool effects.
 
 ## Runtime flow
 
