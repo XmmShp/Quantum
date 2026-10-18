@@ -90,6 +90,9 @@ metadata，以及 System.Text.Json 用于动态 DTO 的 member-accessor 缓存�
 宿主把用户选择归一化为受支持的 BCP-47 culture，并同时更新 `CurrentCulture`、`CurrentUICulture` 和页面
 `lang/dir`。路由标题按 manifest 的 `titles` 完整 culture、语言、默认 `title` 顺序回退。.NET 插件与宿主共享
 进程 culture，使用标准 `.resx` / `IStringLocalizer<T>`，其卫星程序集由插件 ALC 从 culture 子目录加载。
+宿主页面以 `AppStrings.resx` 的 en-US 文本为基线，资源 Key 使用英文标识；简体中文译文存放在
+`AppStrings.zh-CN.resx`。新增页面文案时应同时补齐两份资源。
+仓库中的 .NET 示例插件页面也采用英文中性资源、英文 Key 和 `zh-CN` 译文。
 
 Web iframe 不继承 .NET 线程 culture，因此 TypeScript adapter 在每次 `mount` 的
 `QuantumPluginViewContext.locale` 中显式传递等价的 culture、语言和文字方向；语言变化会重挂载当前 view。这是两个

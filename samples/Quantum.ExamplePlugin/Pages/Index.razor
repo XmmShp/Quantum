@@ -5,43 +5,29 @@
 @using Quantum.ExamplePlugin.Localization
 @inject IStringLocalizer<PluginStrings> L
 
-<PageTitle>@L["示例插件"] · Quantum</PageTitle>
+<PageTitle>@L["ExamplePlugin"] · Quantum</PageTitle>
 
 <section class="example-plugin">
-    <p class="example-kicker">@L["FIRST-CLASS PLUGIN"]</p>
-    <h1>@L["页面来自独立 DLL。"]</h1>
-    <p class="example-lead">
-        @L["这个组件、服务、样式和脚本都由"] <code>quantum.plugin.example</code> @L["提供，宿主只负责组合与受控加载。"]
-    </p>
+    <p class="example-kicker">@L["ExampleEyebrow"]</p>
+    <h1>@L["ExamplePlugin"]</h1>
+    <p class="example-lead">@L["ExampleLead"]</p>
 
     <div class="example-grid">
         <article>
-            <span>@L["PLUGIN CONTAINER"]</span>
-            <strong>DI</strong>
-            <p>@L["业务状态是普通 Singleton 服务，不存放在 IQuantumPlugin bootstrap 中。"]</p>
+            <span>@L["StartedAt"]</span>
+            <strong>@(State.StartedAt?.ToString("T") ?? L["Waiting"].Value)</strong>
         </article>
         <article>
-            <span>@L["LOAD CONTEXT"]</span>
-            <strong>ALC</strong>
-            <p>@L["第三方依赖在插件自己的可回收上下文中解析。"]</p>
+            <span>@L["WebPlugin"]</span>
+            <strong>@(State.WebPluginAvailable ? L["Available"] : L["NotInstalled"])</strong>
         </article>
         <article>
-            <span>@L["STARTED AT"]</span>
-            <strong>@(State.StartedAt?.ToString("T") ?? L["等待中"].Value)</strong>
-            <p>@L["静态 bootstrap 使用插件运行期 scope 编排普通服务。"]</p>
-        </article>
-        <article>
-            <span>@L["WEB PLUGIN"]</span>
-            <strong>@(State.WebPluginAvailable ? L["LOADED"] : L["STANDALONE"])</strong>
-            <p>@L["直接从运行环境发现 TypeScript 示例，不要求声明 integration。"]</p>
-        </article>
-        <article>
-            <span>@L["JS → .NET RPC"]</span>
+            <span>@L["Connections"]</span>
             <strong>@State.WebHandshakeCount</strong>
             <p>
                 @(State.LastWebPluginId is null
-                    ? L["等待 TypeScript 插件发起名称路由 RPC。"]
-                    : L["最近调用方：{0}", State.LastWebPluginId])
+                    ? L["WaitingForWebPlugin"]
+                    : L["LastConnectionArg", State.LastWebPluginId])
             </p>
         </article>
     </div>

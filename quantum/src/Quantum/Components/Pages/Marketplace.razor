@@ -2,40 +2,38 @@
 @implements IAsyncDisposable
 @inject IQuantumMarketplaceClient MarketplaceClient
 @inject MarketplacePluginInstaller MarketplaceInstaller
-@inject QuantumMarketplaceOptions MarketplaceOptions
 @inject PluginCatalog PluginCatalog
 @inject IStringLocalizer<AppStrings> L
 
-<PageTitle>@L["插件市场"] · Quantum</PageTitle>
+<PageTitle>@L["PluginMarketplace"] · Quantum</PageTitle>
 
 <section class="marketplace-page">
     <header class="marketplace-hero">
         <div>
             <p class="eyebrow">@L["MARKETPLACE"]</p>
-            <h1>@L["插件市场"]</h1>
-            <p>@L["发现经过审核的插件，并在安装前由本机再次完成兼容性预检。"]</p>
+            <h1>@L["PluginMarketplace"]</h1>
+            <p>@L["FindPluginsForQuantum"]</p>
         </div>
         <div class="platform-status @(_platformReachable ? "connected" : "unavailable")">
             <span aria-hidden="true">●</span>
             <div>
-                <strong>@L["Quantum Platform"]</strong>
-                <small>@MarketplaceClient.BaseAddress.Authority · Quantum @MarketplaceOptions.QuantumVersion</small>
+                <strong>@L["QuantumPlatform"]</strong>
             </div>
         </div>
     </header>
 
-    <nav class="marketplace-sections" aria-label="@L["插件市场视图"]">
+    <nav class="marketplace-sections" aria-label="@L["MarketplaceViews"]">
         <button type="button"
                 class="@(_activeArea == MarketplaceArea.Discover ? "active" : null)"
                 @onclick="() => SwitchArea(MarketplaceArea.Discover)">
             <span aria-hidden="true">▦</span>
-            <strong>@L["发现插件"]</strong>
+            <strong>@L["Discover"]</strong>
         </button>
         <button type="button"
                 class="@(_activeArea == MarketplaceArea.DeveloperTesting ? "active" : null)"
                 @onclick="() => SwitchArea(MarketplaceArea.DeveloperTesting)">
             <span aria-hidden="true">⌘</span>
-            <strong>@L["我的测试版本"]</strong>
+            <strong>@L["MyTestReleases"]</strong>
         </button>
     </nav>
 
@@ -48,14 +46,14 @@
         <div class="search-panel">
         <label>
             <span class="search-icon" aria-hidden="true">⌕</span>
-            <input placeholder="@L["搜索名称、标识或简介"]"
+            <input placeholder="@L["SearchNamesIdsOrDescriptions"]"
                    maxlength="200"
                    disabled="@_isBusy"
                    @bind="_search"
                    @bind:event="oninput"
                    @onkeydown="HandleSearchKeyDown" />
         </label>
-        <button type="button" class="primary-button" disabled="@_isBusy" @onclick="LoadPluginsAsync">@L["搜索"]</button>
+        <button type="button" class="primary-button" disabled="@_isBusy" @onclick="LoadPluginsAsync">@L["Search"]</button>
         @if (_selectedTag is not null)
         {
             <button type="button" class="tag-filter" disabled="@_isBusy" @onclick="ClearTagAsync">#@_selectedTag ×</button>
@@ -66,7 +64,7 @@
     {
         <div class="market-message @(_messageIsError ? "error" : "success")" role="status">
             <span>@_message</span>
-            <button type="button" aria-label="@L["关闭消息"]" @onclick="() => _message = null">×</button>
+            <button type="button" aria-label="@L["DismissMessage"]" @onclick="() => _message = null">×</button>
         </div>
     }
 
@@ -74,26 +72,26 @@
     {
         <div class="market-state" aria-live="polite">
             <span class="spinner" aria-hidden="true"></span>
-            <strong>@L["正在连接插件市场…"]</strong>
+            <strong>@L["ConnectingToTheMarketplace"]</strong>
         </div>
     }
     else if (_plugins.Count == 0)
     {
         <div class="market-state">
             <span class="empty-icon" aria-hidden="true">◇</span>
-            <strong>@L["没有找到插件"]</strong>
-            <p>@L["尝试更换关键词、清除标签筛选，或检查平台地址。"]</p>
-            <button type="button" class="secondary-button" disabled="@_isBusy" @onclick="LoadPluginsAsync">@L["重新加载"]</button>
+            <strong>@L["NoMarketplacePluginsFound"]</strong>
+            <p>@L["TryAnotherSearchClearTheTagFilterOr"]</p>
+            <button type="button" class="secondary-button" disabled="@_isBusy" @onclick="LoadPluginsAsync">@L["Reload2"]</button>
         </div>
     }
     else
     {
         <div class="result-heading">
             <div>
-                <p class="eyebrow">@L["DISCOVER"]</p>
-                <h2>@L["{0} 个可用插件", _plugins.Count]</h2>
+                <p class="eyebrow">@L["DiscoverEyebrow"]</p>
+                <h2>@L["ArgAvailablePlugins", _plugins.Count]</h2>
             </div>
-            <button type="button" class="refresh-button" disabled="@_isBusy" @onclick="LoadPluginsAsync">↻ @L["刷新"]</button>
+            <button type="button" class="refresh-button" disabled="@_isBusy" @onclick="LoadPluginsAsync">↻ @L["Refresh"]</button>
         </div>
 
         <div class="plugin-grid">
@@ -105,14 +103,14 @@
                         <span class="plugin-mark">@plugin.Name[0].ToString().ToUpperInvariant()</span>
                         @if (installedVersion is not null)
                         {
-                            <span class="installed-badge">✓ @L["已安装"] v@(installedVersion)</span>
+                            <span class="installed-badge">✓ @L["Installed"] v@(installedVersion)</span>
                         }
                     </div>
                     <div>
                         <h3>@plugin.Name</h3>
                         <p class="plugin-id">@plugin.PluginId</p>
                     </div>
-                    <p class="plugin-description">@(string.IsNullOrWhiteSpace(plugin.Description) ? L["暂无简介"] : plugin.Description)</p>
+                    <p class="plugin-description">@(string.IsNullOrWhiteSpace(plugin.Description) ? L["NoDescription"] : plugin.Description)</p>
                     @if (plugin.Tags.Length > 0)
                     {
                         <div class="tag-list">
@@ -123,19 +121,19 @@
                         </div>
                     }
                     <div class="release-line">
-                        <span>@L["作者"] · @plugin.AuthorName</span>
+                        <span>@L["By"] · @plugin.AuthorName</span>
                         @if (plugin.LatestRelease is { } release)
                         {
                             <span>v@(release.Version) · @FormatSize(release.PackageSizeBytes)</span>
                         }
                     </div>
                     <div class="card-actions">
-                        <button type="button" class="secondary-button" disabled="@_isBusy" @onclick="() => ShowDetailsAsync(plugin.PluginId)">@L["详情"]</button>
+                        <button type="button" class="secondary-button" disabled="@_isBusy" @onclick="() => ShowDetailsAsync(plugin.PluginId)">@L["Details"]</button>
                         @if (plugin.LatestRelease is not null)
                         {
                             <button type="button" class="primary-button" disabled="@_isBusy" @onclick="() => PrepareMarketplaceInstallAsync(plugin)">
                                 <span aria-hidden="true">↓</span>
-                                @(_installingPluginId == plugin.PluginId ? L["正在安装…"] : installedVersion is null ? L["下载并安装"] : L["检查更新"])
+                                @(_installingPluginId == plugin.PluginId ? L["InstallingPlugin"] : installedVersion is null ? L["DownloadAndInstall"] : L["CheckForUpdate"])
                             </button>
                         }
                     </div>
@@ -150,18 +148,18 @@
 {
     <div class="dialog-backdrop">
         <section class="market-dialog details-dialog" role="dialog" aria-modal="true" aria-labelledby="market-details-title">
-            <button type="button" class="dialog-close" aria-label="@L["关闭"]" @onclick="CloseDetails">×</button>
-            <p class="eyebrow">@L["PLUGIN DETAILS"]</p>
+            <button type="button" class="dialog-close" aria-label="@L["Close"]" @onclick="CloseDetails">×</button>
+            <p class="eyebrow">@L["PluginDetailsEyebrow"]</p>
             <h2 id="market-details-title">@details.Plugin.Name</h2>
             <p class="plugin-id">@details.Plugin.PluginId · @details.Plugin.AuthorName</p>
-            <p class="details-description">@(string.IsNullOrWhiteSpace(details.Plugin.Description) ? L["暂无简介"] : details.Plugin.Description)</p>
-            <h3>@L["已发布版本"]</h3>
+            <p class="details-description">@(string.IsNullOrWhiteSpace(details.Plugin.Description) ? L["NoDescription"] : details.Plugin.Description)</p>
+            <h3>@L["PublishedVersions"]</h3>
             <div class="release-list">
                 @foreach (var release in details.Releases)
                 {
                     <article>
-                        <div><strong>v@(release.Version)</strong><span>@FormatSize(release.PackageSizeBytes) · @release.DownloadCount @L["次下载"]</span></div>
-                        <p>@L["支持 Quantum {0}", release.QuantumVersionSupport]</p>
+                        <div><strong>v@(release.Version)</strong><span>@FormatSize(release.PackageSizeBytes) · @release.DownloadCount @L["Downloads"]</span></div>
+                        <p>@L["SupportsQuantumArg", release.QuantumVersionSupport]</p>
                         @if (!string.IsNullOrWhiteSpace(release.ReleaseNotes))
                         {
                             <p>@release.ReleaseNotes</p>
@@ -220,7 +218,7 @@
         {
             _plugins = [];
             _platformReachable = false;
-            ShowError(L["无法连接插件市场：{0}", exception.Message]);
+            ShowError(L["CouldNotConnectToTheMarketplaceArg", exception.Message]);
         }
         finally
         {

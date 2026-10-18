@@ -45,11 +45,9 @@ export default definePlugin({
         <h1>${text.heading}</h1>
         <p>${text.currentView}: ${escapeHtml(context.route.view)}</p>
         <p data-environment-status>${text.readingEnvironment}</p>
-        <p data-host-status>${text.rpcDescription}</p>
         <div class="interop">
           <strong>${text.interopHeading}</strong>
           <p data-handshake-status>${text.waitingForEnvironment}</p>
-          <small data-handshake-meta></small>
         </div>
         <div class="actions">
           <button type="button" data-action="handshake">${text.handshakeAgain}</button>
@@ -60,7 +58,6 @@ export default definePlugin({
     `;
 
     const status = context.element.querySelector<HTMLElement>("[data-handshake-status]");
-    const metadata = context.element.querySelector<HTMLElement>("[data-handshake-meta]");
     const environmentStatus = context.element.querySelector<HTMLElement>("[data-environment-status]");
     const handshakeButton = context.element.querySelector<HTMLButtonElement>("[data-action=handshake]");
     let dotNetPluginAvailable: boolean | null = null;
@@ -80,9 +77,6 @@ export default definePlugin({
         if (status) {
           status.textContent = text.connecting;
         }
-        if (metadata) {
-          metadata.textContent = "";
-        }
         const result = await context.rpc.invoke<ExamplePluginHandshake>(
           "sample.handshake",
           {},
@@ -94,14 +88,6 @@ export default definePlugin({
         const handshake = result.value;
         if (status) {
           status.textContent = handshake.message;
-        }
-        if (metadata) {
-          const startedAt = new Date(handshake.dotNetStartedAt)
-            .toLocaleTimeString(context.locale.cultureName);
-          metadata.textContent = text.handshakeMetadata(
-            handshake.sequence,
-            startedAt,
-            handshake.webPluginAvailable);
         }
       } catch (error) {
         if (!context.signal.aborted && status) {
@@ -168,14 +154,12 @@ interface ExampleMessages {
   readonly interopHeading: string;
   readonly currentView: string;
   readonly readingEnvironment: string;
-  readonly rpcDescription: string;
   readonly waitingForEnvironment: string;
   readonly handshakeAgain: string;
   readonly openDotNet: string;
   readonly backHome: string;
   readonly dotNetUnavailable: string;
   readonly connecting: string;
-  handshakeMetadata(sequence: number, startedAt: string, available: boolean): string;
   handshakeFailed(message: string): string;
   environmentLoaded(count: number, available: boolean): string;
   environmentFailed(message: string): string;
@@ -184,45 +168,39 @@ interface ExampleMessages {
 function createMessages(languageName: string): ExampleMessages {
   if (languageName.toLowerCase() === "zh") {
     return {
-      tag: "ISOLATED TYPESCRIPT PLUGIN",
-      heading: "Quantum Web Runtime",
-      interopHeading: "TypeScript → Quantum RPC → .NET Handler",
+      tag: "WEB 示例",
+      heading: "Web 插件示例",
+      interopHeading: "与示例插件连接",
       currentView: "当前视图",
-      readingEnvironment: "正在读取 Quantum 插件环境…",
-      rpcDescription: "调用只携带 RPC 名称与 JSON Payload，不依赖任何 CLR 类型。",
-      waitingForEnvironment: "等待环境查询完成…",
-      handshakeAgain: "再次握手",
+      readingEnvironment: "正在检查已安装插件…",
+      waitingForEnvironment: "等待连接…",
+      handshakeAgain: "重新连接",
       openDotNet: "打开 .NET 示例",
       backHome: "返回概览",
-      dotNetUnavailable: ".NET 示例未安装，Web 插件继续独立运行。",
-      connecting: "正在连接 quantum.plugin.example…",
-      handshakeMetadata: (sequence, startedAt, available) =>
-        `调用序号 ${sequence} · .NET runtime 启动于 ${startedAt} · Web 插件 ${available ? "LOADED" : "STANDALONE"}`,
-      handshakeFailed: message => `握手失败：${message}`,
+      dotNetUnavailable: "示例插件未安装。",
+      connecting: "正在连接示例插件…",
+      handshakeFailed: message => `连接失败：${message}`,
       environmentLoaded: (count, available) =>
-        `已加载 ${count} 个插件；.NET 示例：${available ? "LOADED" : "NOT LOADED"}。`,
-      environmentFailed: message => `环境查询失败：${message}`
+        `已安装 ${count} 个插件；示例插件${available ? "可用" : "未安装"}。`,
+      environmentFailed: message => `检查插件失败：${message}`
     };
   }
 
   return {
-    tag: "ISOLATED TYPESCRIPT PLUGIN",
-    heading: "Quantum Web Runtime",
-    interopHeading: "TypeScript → Quantum RPC → .NET Handler",
+    tag: "WEB EXAMPLE",
+    heading: "Web plugin example",
+    interopHeading: "Connect to the example plugin",
     currentView: "Current view",
-    readingEnvironment: "Reading the Quantum plugin environment…",
-    rpcDescription: "Calls carry only an RPC name and JSON payload, with no dependency on CLR types.",
-    waitingForEnvironment: "Waiting for the environment query…",
-    handshakeAgain: "Handshake again",
+    readingEnvironment: "Checking installed plugins…",
+    waitingForEnvironment: "Waiting to connect…",
+    handshakeAgain: "Connect again",
     openDotNet: "Open .NET example",
     backHome: "Back to overview",
-    dotNetUnavailable: "The .NET example is not installed; the Web plugin will continue standalone.",
-    connecting: "Connecting to quantum.plugin.example…",
-    handshakeMetadata: (sequence, startedAt, available) =>
-      `Call ${sequence} · .NET runtime started at ${startedAt} · Web plugin ${available ? "LOADED" : "STANDALONE"}`,
-    handshakeFailed: message => `Handshake failed: ${message}`,
+    dotNetUnavailable: "The example plugin is not installed.",
+    connecting: "Connecting to the example plugin…",
+    handshakeFailed: message => `Connection failed: ${message}`,
       environmentLoaded: (count, available) =>
-        `${count} ${count === 1 ? "plugin" : "plugins"} loaded; .NET example: ${available ? "LOADED" : "NOT LOADED"}.`,
-    environmentFailed: message => `Environment query failed: ${message}`
+        `${count} ${count === 1 ? "plugin" : "plugins"} installed; example plugin ${available ? "available" : "not installed"}.`,
+    environmentFailed: message => `Could not check plugins: ${message}`
   };
 }

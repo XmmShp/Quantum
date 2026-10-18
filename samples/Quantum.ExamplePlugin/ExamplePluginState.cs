@@ -76,8 +76,8 @@ public sealed class ExamplePluginState
         var sequence = Interlocked.Increment(ref _webHandshakeCount);
         Volatile.Write(ref _lastWebPluginId, normalizedPluginId);
         var message = IsChinese
-            ? $"来自 .NET 插件的第 {sequence} 次握手：你好，{normalizedPluginId}！"
-            : $"Handshake {sequence} from the .NET plugin: hello, {normalizedPluginId}!";
+            ? $"已连接到 {normalizedPluginId}。"
+            : $"Connected to {normalizedPluginId}.";
         return Task.FromResult(new ExamplePluginHandshake(
             message,
             sequence,

@@ -303,11 +303,9 @@ var index_default = definePlugin({
         <h1>${text.heading}</h1>
         <p>${text.currentView}: ${escapeHtml(context.route.view)}</p>
         <p data-environment-status>${text.readingEnvironment}</p>
-        <p data-host-status>${text.rpcDescription}</p>
         <div class="interop">
           <strong>${text.interopHeading}</strong>
           <p data-handshake-status>${text.waitingForEnvironment}</p>
-          <small data-handshake-meta></small>
         </div>
         <div class="actions">
           <button type="button" data-action="handshake">${text.handshakeAgain}</button>
@@ -317,7 +315,6 @@ var index_default = definePlugin({
       </section>
     `;
     const status = context.element.querySelector("[data-handshake-status]");
-    const metadata = context.element.querySelector("[data-handshake-meta]");
     const environmentStatus = context.element.querySelector("[data-environment-status]");
     const handshakeButton = context.element.querySelector("[data-action=handshake]");
     let dotNetPluginAvailable = null;
@@ -335,9 +332,6 @@ var index_default = definePlugin({
         if (status) {
           status.textContent = text.connecting;
         }
-        if (metadata) {
-          metadata.textContent = "";
-        }
         const result = await context.rpc.invoke(
           "sample.handshake",
           {},
@@ -350,14 +344,6 @@ var index_default = definePlugin({
         const handshake = result.value;
         if (status) {
           status.textContent = handshake.message;
-        }
-        if (metadata) {
-          const startedAt = new Date(handshake.dotNetStartedAt).toLocaleTimeString(context.locale.cultureName);
-          metadata.textContent = text.handshakeMetadata(
-            handshake.sequence,
-            startedAt,
-            handshake.webPluginAvailable
-          );
         }
       } catch (error) {
         if (!context.signal.aborted && status) {
@@ -416,41 +402,37 @@ function errorMessage(error) {
 function createMessages(languageName) {
   if (languageName.toLowerCase() === "zh") {
     return {
-      tag: "ISOLATED TYPESCRIPT PLUGIN",
-      heading: "Quantum Web Runtime",
-      interopHeading: "TypeScript \u2192 Quantum RPC \u2192 .NET Handler",
+      tag: "WEB \u793A\u4F8B",
+      heading: "Web \u63D2\u4EF6\u793A\u4F8B",
+      interopHeading: "\u4E0E\u793A\u4F8B\u63D2\u4EF6\u8FDE\u63A5",
       currentView: "\u5F53\u524D\u89C6\u56FE",
-      readingEnvironment: "\u6B63\u5728\u8BFB\u53D6 Quantum \u63D2\u4EF6\u73AF\u5883\u2026",
-      rpcDescription: "\u8C03\u7528\u53EA\u643A\u5E26 RPC \u540D\u79F0\u4E0E JSON Payload\uFF0C\u4E0D\u4F9D\u8D56\u4EFB\u4F55 CLR \u7C7B\u578B\u3002",
-      waitingForEnvironment: "\u7B49\u5F85\u73AF\u5883\u67E5\u8BE2\u5B8C\u6210\u2026",
-      handshakeAgain: "\u518D\u6B21\u63E1\u624B",
+      readingEnvironment: "\u6B63\u5728\u68C0\u67E5\u5DF2\u5B89\u88C5\u63D2\u4EF6\u2026",
+      waitingForEnvironment: "\u7B49\u5F85\u8FDE\u63A5\u2026",
+      handshakeAgain: "\u91CD\u65B0\u8FDE\u63A5",
       openDotNet: "\u6253\u5F00 .NET \u793A\u4F8B",
       backHome: "\u8FD4\u56DE\u6982\u89C8",
-      dotNetUnavailable: ".NET \u793A\u4F8B\u672A\u5B89\u88C5\uFF0CWeb \u63D2\u4EF6\u7EE7\u7EED\u72EC\u7ACB\u8FD0\u884C\u3002",
-      connecting: "\u6B63\u5728\u8FDE\u63A5 quantum.plugin.example\u2026",
-      handshakeMetadata: (sequence, startedAt, available) => `\u8C03\u7528\u5E8F\u53F7 ${sequence} \xB7 .NET runtime \u542F\u52A8\u4E8E ${startedAt} \xB7 Web \u63D2\u4EF6 ${available ? "LOADED" : "STANDALONE"}`,
-      handshakeFailed: (message) => `\u63E1\u624B\u5931\u8D25\uFF1A${message}`,
-      environmentLoaded: (count, available) => `\u5DF2\u52A0\u8F7D ${count} \u4E2A\u63D2\u4EF6\uFF1B.NET \u793A\u4F8B\uFF1A${available ? "LOADED" : "NOT LOADED"}\u3002`,
-      environmentFailed: (message) => `\u73AF\u5883\u67E5\u8BE2\u5931\u8D25\uFF1A${message}`
+      dotNetUnavailable: "\u793A\u4F8B\u63D2\u4EF6\u672A\u5B89\u88C5\u3002",
+      connecting: "\u6B63\u5728\u8FDE\u63A5\u793A\u4F8B\u63D2\u4EF6\u2026",
+      handshakeFailed: (message) => `\u8FDE\u63A5\u5931\u8D25\uFF1A${message}`,
+      environmentLoaded: (count, available) => `\u5DF2\u5B89\u88C5 ${count} \u4E2A\u63D2\u4EF6\uFF1B\u793A\u4F8B\u63D2\u4EF6${available ? "\u53EF\u7528" : "\u672A\u5B89\u88C5"}\u3002`,
+      environmentFailed: (message) => `\u68C0\u67E5\u63D2\u4EF6\u5931\u8D25\uFF1A${message}`
     };
   }
   return {
-    tag: "ISOLATED TYPESCRIPT PLUGIN",
-    heading: "Quantum Web Runtime",
-    interopHeading: "TypeScript \u2192 Quantum RPC \u2192 .NET Handler",
+    tag: "WEB EXAMPLE",
+    heading: "Web plugin example",
+    interopHeading: "Connect to the example plugin",
     currentView: "Current view",
-    readingEnvironment: "Reading the Quantum plugin environment\u2026",
-    rpcDescription: "Calls carry only an RPC name and JSON payload, with no dependency on CLR types.",
-    waitingForEnvironment: "Waiting for the environment query\u2026",
-    handshakeAgain: "Handshake again",
+    readingEnvironment: "Checking installed plugins\u2026",
+    waitingForEnvironment: "Waiting to connect\u2026",
+    handshakeAgain: "Connect again",
     openDotNet: "Open .NET example",
     backHome: "Back to overview",
-    dotNetUnavailable: "The .NET example is not installed; the Web plugin will continue standalone.",
-    connecting: "Connecting to quantum.plugin.example\u2026",
-    handshakeMetadata: (sequence, startedAt, available) => `Call ${sequence} \xB7 .NET runtime started at ${startedAt} \xB7 Web plugin ${available ? "LOADED" : "STANDALONE"}`,
-    handshakeFailed: (message) => `Handshake failed: ${message}`,
-    environmentLoaded: (count, available) => `${count} ${count === 1 ? "plugin" : "plugins"} loaded; .NET example: ${available ? "LOADED" : "NOT LOADED"}.`,
-    environmentFailed: (message) => `Environment query failed: ${message}`
+    dotNetUnavailable: "The example plugin is not installed.",
+    connecting: "Connecting to the example plugin\u2026",
+    handshakeFailed: (message) => `Connection failed: ${message}`,
+    environmentLoaded: (count, available) => `${count} ${count === 1 ? "plugin" : "plugins"} installed; example plugin ${available ? "available" : "not installed"}.`,
+    environmentFailed: (message) => `Could not check plugins: ${message}`
   };
 }
 export {

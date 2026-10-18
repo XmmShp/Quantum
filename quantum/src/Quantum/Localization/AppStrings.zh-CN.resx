@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="LanguageEyebrow" xml:space="preserve"><value>语言</value></data>
+  <data name="QuantumHome" xml:space="preserve"><value>Quantum 首页</value></data>
+  <data name="PluginPageCountPlural" xml:space="preserve"><value>v{0} · {1} 个页面</value></data>
+  <data name="ThesePluginsWillAlsoBeUninstalled" xml:space="preserve"><value>以下插件也会被卸载：</value></data>
+  <data name="ThesePluginsWillAlsoBeDisabled" xml:space="preserve"><value>以下插件也会被禁用：</value></data>
+  <data name="KeepVArgPackageContainsVArg" xml:space="preserve"><value>保留 v{0}（包内 v{1}）</value></data>
+  <data name="Close" xml:space="preserve"><value>关闭</value></data>
+  <data name="DismissMessage" xml:space="preserve"><value>关闭消息</value></data>
+  <data name="CompatibilityCheckFailed" xml:space="preserve"><value>兼容性检查未通过</value></data>
+  <data name="Upgrade" xml:space="preserve"><value>升级</value></data>
+  <data name="UpTo512MiB256PluginsPerPackage" xml:space="preserve"><value>单包最多 512 MiB · 256 个插件</value></data>
+  <data name="ReadyToInstallPluginsPlural" xml:space="preserve"><value>即将安装 {0} 个插件</value></data>
+  <data name="Uninstall" xml:space="preserve"><value>卸载</value></data>
+  <data name="Cancel" xml:space="preserve"><value>取消</value></data>
+  <data name="InstallAPluginBundle" xml:space="preserve"><value>安装插件整合包</value></data>
+  <data name="InstallFromThisDevice" xml:space="preserve"><value>从本地安装插件</value></data>
+  <data name="SelectAQuantumPluginZIP" xml:space="preserve"><value>选择 Quantum 插件 ZIP</value></data>
+  <data name="ChooseAZIPFileOrDragItOnto" xml:space="preserve"><value>选择 ZIP 文件，或将其拖到窗口中。</value></data>
+  <data name="ChooseZIP" xml:space="preserve"><value>选择压缩包</value></data>
+  <data name="DragAZIPAnywhereOntoThisWindow" xml:space="preserve"><value>将 ZIP 拖到窗口中的任意位置</value></data>
+  <data name="InstallAPluginZIPToGetStarted" xml:space="preserve"><value>安装插件 ZIP，开始使用。</value></data>
+  <data name="NoInstalledPluginsFound" xml:space="preserve"><value>尚未发现插件</value></data>
+  <data name="Disabled" xml:space="preserve"><value>已禁用</value></data>
+  <data name="DisabledPlugins" xml:space="preserve"><value>已禁用插件</value></data>
+  <data name="OpenSettings" xml:space="preserve"><value>打开设置</value></data>
+  <data name="PluginInstallationFailedArg" xml:space="preserve"><value>插件安装失败：{0}</value></data>
+  <data name="PluginNavigation" xml:space="preserve"><value>插件导航</value></data>
+  <data name="PluginOperationFailedArg" xml:space="preserve"><value>插件操作失败：{0}</value></data>
+  <data name="YouCanEnableThisPluginAgainLater" xml:space="preserve"><value>稍后可以重新启用此插件。</value></data>
+  <data name="PluginRuntimeStatus" xml:space="preserve"><value>已安装插件</value></data>
+  <data name="PluginPageNotFound" xml:space="preserve"><value>插件页面不存在</value></data>
+  <data name="CouldNotStartPluginPage" xml:space="preserve"><value>插件页面启动失败</value></data>
+  <data name="InstallNewPlugin" xml:space="preserve"><value>新安装</value></data>
+  <data name="CouldNotPrepareUninstallArg" xml:space="preserve"><value>无法准备卸载：{0}</value></data>
+  <data name="CouldNotPrepareDisableArg" xml:space="preserve"><value>无法准备禁用：{0}</value></data>
+  <data name="CouldNotReadPluginZIPArg" xml:space="preserve"><value>无法读取插件 ZIP：{0}</value></data>
+  <data name="DisplayLanguage" xml:space="preserve"><value>显示语言</value></data>
+  <data name="PluginsNotLoaded" xml:space="preserve"><value>未加载的插件</value></data>
+  <data name="UnknownPlugin" xml:space="preserve"><value>未知插件</value></data>
+  <data name="DropToInstallThePluginBundle" xml:space="preserve"><value>拖入插件 ZIP</value></data>
+  <data name="DropToScanThePluginBundle" xml:space="preserve"><value>松开以预览插件</value></data>
+  <data name="ProcessingPluginPackage" xml:space="preserve"><value>正在处理插件包</value></data>
+  <data name="Installing" xml:space="preserve"><value>正在安装…</value></data>
+  <data name="ThisPermanentlyRemovesThePluginAndItsFiles" xml:space="preserve"><value>此操作会永久删除插件及其文件。</value></data>
+  <data name="PermanentlyUninstallArg" xml:space="preserve"><value>永久卸载 {0}？</value></data>
+  <data name="UninstallPermanently" xml:space="preserve"><value>永久卸载</value></data>
+  <data name="NoDisabledPlugins" xml:space="preserve"><value>没有已禁用插件</value></data>
+  <data name="NoPluginRegisteredAPageFor" xml:space="preserve"><value>没有插件为</value></data>
+  <data name="RegisteredPageSentenceEnd" xml:space="preserve"><value>注册页面。</value></data>
+  <data name="Reload" xml:space="preserve"><value>重新加载</value></data>
+  <data name="YourCurrentPluginsWillBeKeptIfInstallation" xml:space="preserve"><value>如果安装失败，现有插件会保留。</value></data>
+  <data name="ConfirmInstall" xml:space="preserve"><value>确认安装</value></data>
+  <data name="DisableArg" xml:space="preserve"><value>确认禁用 {0}？</value></data>
+  <data name="ConfirmDisable" xml:space="preserve"><value>确认禁用</value></data>
+  <data name="Disable" xml:space="preserve"><value>禁用</value></data>
+  <data name="DisabledPluginsCanBeEnabledAgainHereAt" xml:space="preserve"><value>禁用插件后可随时在这里重新启用。</value></data>
+  <data name="ManageYourPlugins" xml:space="preserve"><value>管理你的插件。</value></data>
+  <data name="Settings" xml:space="preserve"><value>设置</value></data>
+  <data name="ThisAddressBelongsToNeitherQuantumNorA" xml:space="preserve"><value>请检查地址后重试。</value></data>
+  <data name="NoOtherPluginsWillBeAffected" xml:space="preserve"><value>不会影响其他插件。</value></data>
+  <data name="LanguageAndRegion" xml:space="preserve"><value>语言与区域</value></data>
+  <data name="Skip" xml:space="preserve"><value>跳过</value></data>
+  <data name="Running" xml:space="preserve"><value>运行中</value></data>
+  <data name="ThisPluginPackageCannotBeInstalled" xml:space="preserve"><value>这个插件包无法安装</value></data>
+  <data name="NothingHereYet" xml:space="preserve"><value>这里还没有内容</value></data>
+  <data name="EnableAgain" xml:space="preserve"><value>重新启用</value></data>
+  <data name="RefreshPlugins" xml:space="preserve"><value>刷新插件</value></data>
+  <data name="CouldNotUpdatePluginWebContributionsArg" xml:space="preserve"><value>插件 Web 扩展更新失败：{0}</value></data>
+  <data name="PluginArgIsNotLoadedTryRescanning" xml:space="preserve"><value>插件 '{0}' 当前未加载，请使用重新扫描。</value></data>
+  <data name="TheOnDiskVersionOfPluginArgIs" xml:space="preserve"><value>插件 '{0}' 的磁盘版本无效或已不存在，当前版本继续运行。</value></data>
+  <data name="TheNewSnapshotWouldInvalidateLoadedPluginsSo" xml:space="preserve"><value>更新会导致其他插件无法运行，操作已取消：{0}。</value></data>
+  <data name="PluginArgWasHotSwappedFromArgTo" xml:space="preserve"><value>插件 '{0}' 已从 {1} 更新到 {2}。</value></data>
+  <data name="PluginArgWasHotSwappedFromArgTo2" xml:space="preserve"><value>插件 '{0}' 已从 {1} 更新到 {2}。相关插件已重新启动：{3}。</value></data>
+  <data name="PluginArgIsNotLoaded" xml:space="preserve"><value>插件 '{0}' 当前未加载。</value></data>
+  <data name="ThePluginCatalogChangedConfirmDisablingPluginArg" xml:space="preserve"><value>插件列表已变化，请重新查看并确认禁用 '{0}'。</value></data>
+  <data name="ArgAlreadyExistsInTheDisabledDirectoryNo" xml:space="preserve"><value>禁用目录中已存在 '{0}'，未修改任何插件。</value></data>
+  <data name="TheNewSnapshotWouldInvalidateOtherLoadedPlugins" xml:space="preserve"><value>禁用会导致其他插件无法运行，操作已取消：{0}。</value></data>
+  <data name="PluginArgWasDisabledAndMovedToModules" xml:space="preserve"><value>插件 '{0}' 已禁用。</value></data>
+  <data name="PluginArgAndItsStronglyDependentDownstreamPlugins" xml:space="preserve"><value>插件 '{0}' 和以下相关插件已禁用：{1}。</value></data>
+  <data name="CouldNotDisablePluginArgDirectoriesWereRolled" xml:space="preserve"><value>禁用插件 '{0}' 失败，目录已回滚：{1}</value></data>
+  <data name="PluginArgWasNotFoundInTheDisabled" xml:space="preserve"><value>禁用目录中没有插件 '{0}'。</value></data>
+  <data name="MultipleCopiesOfPluginArgExistInThe" xml:space="preserve"><value>禁用目录中有多个插件 '{0}'，无法确定启用哪一个。</value></data>
+  <data name="DirectoryArgAlreadyExistsInModulesSoPlugin" xml:space="preserve"><value>Modules 中已存在目录 '{0}'，无法启用插件 '{1}'。</value></data>
+  <data name="DependencyOrCompatibilityChecksFailed" xml:space="preserve"><value>依赖或兼容性检查未通过。</value></data>
+  <data name="PluginArgCannotBeEnabledArg" xml:space="preserve"><value>插件 '{0}' 无法启用：{1}</value></data>
+  <data name="EnablingWouldInvalidateLoadedPluginsSoTheOperation" xml:space="preserve"><value>启用会使已加载插件失效，操作已取消：{0}。</value></data>
+  <data name="PluginArgWasEnabledAndMovedBackTo" xml:space="preserve"><value>插件 '{0}' 已启用。</value></data>
+  <data name="CouldNotEnablePluginArgDirectoriesWereRolled" xml:space="preserve"><value>启用插件 '{0}' 失败，目录已回滚：{1}</value></data>
+  <data name="ThePluginCatalogChangedConfirmUninstallingPluginArg" xml:space="preserve"><value>插件列表已变化，请重新查看并确认卸载 '{0}'。</value></data>
+  <data name="PluginArgIsNotInstalled" xml:space="preserve"><value>插件 '{0}' 当前未安装。</value></data>
+  <data name="MultipleCopiesOfPluginArgExistInThe2" xml:space="preserve"><value>禁用目录中有多个插件 '{0}'，无法确定卸载哪一个。</value></data>
+  <data name="CouldNotDeleteThePhysicalFilesForPlugin" xml:space="preserve"><value>插件 '{0}' 的物理文件删除失败：'{1}'。</value></data>
+  <data name="DisabledPluginArgWasPermanentlyUninstalledAndIts" xml:space="preserve"><value>已禁用插件 '{0}' 已永久卸载。</value></data>
+  <data name="TheNewSnapshotWouldInvalidateOtherLoadedPlugins2" xml:space="preserve"><value>卸载会导致其他插件无法运行，操作已取消：{0}。</value></data>
+  <data name="ThePluginStoppedButItsPhysicalFilesCould" xml:space="preserve"><value>插件已停止运行，但物理文件删除失败：'{0}'。请关闭占用文件的程序后清理该目录。</value></data>
+  <data name="PluginArgWasPermanentlyUninstalledAndItsPhysical" xml:space="preserve"><value>插件 '{0}' 已永久卸载。</value></data>
+  <data name="PluginArgAndItsStronglyDependentDownstreamPlugins2" xml:space="preserve"><value>插件 '{0}' 和以下相关插件已永久卸载：{1}。</value></data>
+  <data name="CouldNotUninstallPluginArgDirectoriesWereRolled" xml:space="preserve"><value>卸载插件 '{0}' 失败，目录已回滚：{1}</value></data>
+  <data name="ModulesWasRescannedAndThePluginRuntimeSnapshot" xml:space="preserve"><value>插件已刷新。</value></data>
+  <data name="OnlyZIPPluginPackagesAreSupported" xml:space="preserve"><value>仅支持 ZIP 格式的插件包。</value></data>
+  <data name="TheInstallationPreviewExpiredDropTheZIPPackage" xml:space="preserve"><value>安装预览已失效，请重新拖入 ZIP 包。</value></data>
+  <data name="ThePluginCatalogChangedBeforeConfirmationDropThe" xml:space="preserve"><value>插件清单在确认前已变化，请重新拖入 ZIP 包并确认最新清单。</value></data>
+  <data name="PluginFilesOrDependencyStateChangedBeforeConfirmation" xml:space="preserve"><value>插件文件或依赖状态在确认前已变化，请重新拖入 ZIP 包。</value></data>
+  <data name="TheResultingPluginCatalogIsIncompatibleNoPlugins" xml:space="preserve"><value>安装后的插件清单不兼容，未安装任何插件：{0}</value></data>
+  <data name="TheSelectedInstallationVersionForPluginArgChanged" xml:space="preserve"><value>插件 '{0}' 的安装版本清单发生变化，未安装任何插件。</value></data>
+  <data name="InstallationWouldInvalidateLoadedPluginsNoPluginsWere" xml:space="preserve"><value>安装会使已加载插件失效，未安装任何插件：{0}。</value></data>
+  <data name="ArgModulesFilesWereRestored" xml:space="preserve"><value>已恢复 {0} 个插件文件。</value></data>
+  <data name="InstalledPluginsPlural" xml:space="preserve"><value>已安装 {0} 个插件：{1}。</value></data>
+  <data name="PluginInstallationWasCancelledButModulesFilesWere" xml:space="preserve"><value>安装已取消，但部分插件文件未能恢复。</value></data>
+  <data name="PluginInstallationFailedAndFileRestorationDidNot" xml:space="preserve"><value>插件安装失败且文件恢复未完成，请检查 Modules：{0}；恢复错误：{1}</value></data>
+  <data name="PluginInstallationFailedNoPluginsWereInstalledArg" xml:space="preserve"><value>插件安装失败，未安装任何插件：{0}</value></data>
+  <data name="TheNewPluginSnapshotCouldNotBeLoaded" xml:space="preserve"><value>更新后的插件无法加载，现有版本仍可使用：{0}</value></data>
+  <data name="AnExistingPluginLifecycleCouldNotStopSo" xml:space="preserve"><value>旧插件生命周期停止失败，热切换已取消：{0}</value></data>
+  <data name="TheNewPluginLifecycleFailedToStartAnd" xml:space="preserve"><value>新插件生命周期启动失败，已回滚到当前版本：{0}</value></data>
+  <data name="ThePluginRuntimeSnapshotWasUpdated" xml:space="preserve"><value>插件已更新。</value></data>
+  <data name="MultipleModulesDirectoriesDeclareTheSamePluginId" xml:space="preserve"><value>Modules 中有多个目录声明了同一个插件 id，无法生成唯一版本清单。</value></data>
+  <data name="TheZIPContainsMultipleCopiesOfVersionArg" xml:space="preserve"><value>ZIP 中有多个 {0} 版本，无法确定应安装的目录。</value></data>
+  <data name="ThisPluginIsDisabledEnableItAgainOr" xml:space="preserve"><value>该插件当前已禁用，请先重新启用或清理禁用版本后再安装。</value></data>
+  <data name="TargetDirectoryArgExistsButIsNotA" xml:space="preserve"><value>目标目录 '{0}' 已存在但不是有效的已安装插件。</value></data>
+  <data name="TheNewPluginVersionCatalogWouldInvalidateA" xml:space="preserve"><value>新的插件版本清单会使当前已加载插件失效。</value></data>
+  <data name="TheZIPContainsNoPluginNewerThanThe" xml:space="preserve"><value>ZIP 中没有比当前已安装版本更新的插件。</value></data>
+  <data name="ThePluginZIPIsEmptyOrContainsToo" xml:space="preserve"><value>插件 ZIP 为空或文件数量超过限制。</value></data>
+  <data name="ThePluginZIPContainsDuplicatePathArg" xml:space="preserve"><value>插件 ZIP 包含重复路径 '{0}'。</value></data>
+  <data name="ThePluginZIPCannotContainSymbolicLinkArg" xml:space="preserve"><value>插件 ZIP 不能包含符号链接 '{0}'。</value></data>
+  <data name="TheExpandedPluginZIPExceedsTheSizeLimit" xml:space="preserve"><value>插件 ZIP 解压后的大小超过限制。</value></data>
+  <data name="ThePluginZIPContainsUnsafePathArg" xml:space="preserve"><value>插件 ZIP 包含不安全路径 '{0}'。</value></data>
+  <data name="NoPluginDirectoryWasFoundInTheZIP" xml:space="preserve"><value>ZIP 中未找到插件目录；每个插件文件夹的根目录必须包含 plugin.json。</value></data>
+  <data name="TheZIPContainsTooManyPlugins" xml:space="preserve"><value>ZIP 中的插件数量超过限制。</value></data>
+  <data name="PluginDirectoriesInTheZIPCannotBeNested" xml:space="preserve"><value>ZIP 中的插件目录不能互相嵌套。</value></data>
+  <data name="ThePluginZIPExceedsTheSizeLimit" xml:space="preserve"><value>插件 ZIP 大小超过限制。</value></data>
+  <data name="ThePluginZIPIsEmpty" xml:space="preserve"><value>插件 ZIP 为空。</value></data>
+  <data name="ExpandedZIPEntryArgExceedsItsDeclaredLength" xml:space="preserve"><value>插件 ZIP 条目 '{0}' 解压长度超过声明值。</value></data>
+  <data name="ExpandedZIPEntryArgDoesNotMatchIts" xml:space="preserve"><value>插件 ZIP 条目 '{0}' 解压长度不一致。</value></data>
+  <data name="PluginInstallationTargetArgIsOutsideTheModules" xml:space="preserve"><value>插件安装目标 '{0}' 不在 Modules 根目录中。</value></data>
+  <data name="DisabledPluginDirectoryArgIsOutsideModulesDisabled" xml:space="preserve"><value>禁用插件目录 '{0}' 不在 Modules/disabled 中。</value></data>
+  <data name="PluginDirectoryDoesNotExistArg" xml:space="preserve"><value>插件目录不存在：'{0}'。</value></data>
+  <data name="TheTargetPluginDirectoryAlreadyExistsArg" xml:space="preserve"><value>目标插件目录已存在：'{0}'。</value></data>
+  <data name="PluginPageCountSingular" xml:space="preserve"><value>v{0} · {1} 个页面</value></data>
+  <data name="ReadyToInstallPluginSingular" xml:space="preserve"><value>即将安装 {0} 个插件</value></data>
+  <data name="InstalledPluginSingular" xml:space="preserve"><value>已安装 {0} 个插件：{1}。</value></data>
+  <data name="SettingsEyebrow" xml:space="preserve"><value>SETTINGS</value></data>
+  <data name="InstallEyebrow" xml:space="preserve"><value>INSTALL</value></data>
+  <data name="RuntimeEyebrow" xml:space="preserve"><value>已安装</value></data>
+  <data name="DisabledEyebrow" xml:space="preserve"><value>DISABLED</value></data>
+  <data name="DISABLEPLUGIN" xml:space="preserve"><value>DISABLE PLUGIN</value></data>
+  <data name="UNINSTALLPLUGIN" xml:space="preserve"><value>UNINSTALL PLUGIN</value></data>
+  <data name="ATTENTION" xml:space="preserve"><value>ATTENTION</value></data>
+  <data name="INSTALLPLUGINS" xml:space="preserve"><value>INSTALL PLUGINS</value></data>
+  <data name="WEBPLUGINERROR" xml:space="preserve"><value>WEB PLUGIN ERROR</value></data>
+  <data name="PLUGINROUTE" xml:space="preserve"><value>PLUGIN ROUTE</value></data>
+  <data name="MARKETPLACE" xml:space="preserve"><value>MARKETPLACE</value></data>
+  <data name="DiscoverEyebrow" xml:space="preserve"><value>DISCOVER</value></data>
+  <data name="PluginDetailsEyebrow" xml:space="preserve"><value>PLUGIN DETAILS</value></data>
+  <data name="INSTALLPLUGIN" xml:space="preserve"><value>INSTALL PLUGIN</value></data>
+  <data name="PluginMarketplace" xml:space="preserve"><value>插件市场</value></data>
+  <data name="FindPluginsForQuantum" xml:space="preserve"><value>发现适用于 Quantum 的插件。</value></data>
+  <data name="QuantumPlatform" xml:space="preserve"><value>Quantum Platform</value></data>
+  <data name="SearchNamesIdsOrDescriptions" xml:space="preserve"><value>搜索名称、标识或简介</value></data>
+  <data name="Search" xml:space="preserve"><value>搜索</value></data>
+  <data name="ConnectingToTheMarketplace" xml:space="preserve"><value>正在连接插件市场…</value></data>
+  <data name="NoMarketplacePluginsFound" xml:space="preserve"><value>没有找到插件</value></data>
+  <data name="TryAnotherSearchClearTheTagFilterOr" xml:space="preserve"><value>尝试更换关键词、清除标签筛选，或检查平台地址。</value></data>
+  <data name="Reload2" xml:space="preserve"><value>重新加载</value></data>
+  <data name="ArgAvailablePlugins" xml:space="preserve"><value>{0} 个可用插件</value></data>
+  <data name="Refresh" xml:space="preserve"><value>刷新</value></data>
+  <data name="Installed" xml:space="preserve"><value>已安装</value></data>
+  <data name="NoDescription" xml:space="preserve"><value>暂无简介</value></data>
+  <data name="By" xml:space="preserve"><value>作者</value></data>
+  <data name="Details" xml:space="preserve"><value>详情</value></data>
+  <data name="Get" xml:space="preserve"><value>获取</value></data>
+  <data name="CheckForUpdate" xml:space="preserve"><value>检查更新</value></data>
+  <data name="PublishedVersions" xml:space="preserve"><value>已发布版本</value></data>
+  <data name="Downloads" xml:space="preserve"><value>次下载</value></data>
+  <data name="SupportsQuantumArg" xml:space="preserve"><value>支持 Quantum {0}</value></data>
+  <data name="ReadyToInstallArg" xml:space="preserve"><value>准备安装 {0}</value></data>
+  <data name="CannotInstallArg" xml:space="preserve"><value>无法安装 {0}</value></data>
+  <data name="LocalPreflightFailed" xml:space="preserve"><value>本机预检未通过</value></data>
+  <data name="ThePackageIsReadyToInstall" xml:space="preserve"><value>插件包已准备好，可以安装。</value></data>
+  <data name="CouldNotConnectToTheMarketplaceArg" xml:space="preserve"><value>无法连接插件市场：{0}</value></data>
+  <data name="ArgIsIncompatibleWithQuantumArgRequiresArg" xml:space="preserve"><value>{0} 与当前 Quantum {1} 不兼容（要求 {2}）。</value></data>
+  <data name="UnknownVersion" xml:space="preserve"><value>未知版本</value></data>
+  <data name="TheDownloadedPackageExceedsTheLocalInstallationSize" xml:space="preserve"><value>下载的插件包超过本机安装大小限制。</value></data>
+  <data name="DEVELOPERCONSOLE" xml:space="preserve"><value>DEVELOPER CONSOLE</value></data>
+  <data name="PUBLISHONQUANTUM" xml:space="preserve"><value>PUBLISH ON QUANTUM</value></data>
+  <data name="MyPluginsEyebrow" xml:space="preserve"><value>MY PLUGINS</value></data>
+  <data name="PLUGINSETTINGS" xml:space="preserve"><value>PLUGIN SETTINGS</value></data>
+  <data name="NewPluginEyebrow" xml:space="preserve"><value>NEW PLUGIN</value></data>
+  <data name="ReleasesEyebrow" xml:space="preserve"><value>RELEASES</value></data>
+  <data name="REVIEWQUEUE" xml:space="preserve"><value>REVIEW QUEUE</value></data>
+  <data name="DeletePluginEyebrow" xml:space="preserve"><value>DELETE PLUGIN</value></data>
+  <data name="DeveloperCenter" xml:space="preserve"><value>开发者中心</value></data>
+  <data name="PublishPluginsManageReleasesAndReviewSubmissions" xml:space="preserve"><value>发布插件、管理版本，并完成平台审核。</value></data>
+  <data name="SignOut" xml:space="preserve"><value>退出</value></data>
+  <data name="SigningYouIn" xml:space="preserve"><value>正在登录…</value></data>
+  <data name="BringYourPluginToEveryQuantum" xml:space="preserve"><value>让插件抵达每一台 Quantum</value></data>
+  <data name="DeveloperAccountsUseEmailAndPasswordUploadedPackages" xml:space="preserve"><value>开发者账号使用邮箱和密码登录。插件包上传后进入审核，审核结果会通过邮件通知。</value></data>
+  <data name="CreateAPluginListing" xml:space="preserve"><value>创建插件条目</value></data>
+  <data name="UploadAVersionedZIP" xml:space="preserve"><value>上传带版本号的 ZIP</value></data>
+  <data name="EnterTheMarketplaceAfterReview" xml:space="preserve"><value>通过审核后进入市场</value></data>
+  <data name="SignIn" xml:space="preserve"><value>登录</value></data>
+  <data name="Register" xml:space="preserve"><value>注册</value></data>
+  <data name="DeveloperName" xml:space="preserve"><value>开发者名称</value></data>
+  <data name="Email" xml:space="preserve"><value>邮箱</value></data>
+  <data name="Password" xml:space="preserve"><value>密码</value></data>
+  <data name="PasswordsMustContainAtLeast12Characters" xml:space="preserve"><value>密码至少包含 12 个字符。</value></data>
+  <data name="SignInWithEmail" xml:space="preserve"><value>使用邮箱登录</value></data>
+  <data name="CreateDeveloperAccount" xml:space="preserve"><value>创建开发者账号</value></data>
+  <data name="Publishing" xml:space="preserve"><value>发布管理</value></data>
+  <data name="ReviewConsole" xml:space="preserve"><value>审核工作台</value></data>
+  <data name="MyPlugins" xml:space="preserve"><value>我的插件</value></data>
+  <data name="NewPlugin" xml:space="preserve"><value>新建插件</value></data>
+  <data name="NoPluginsYetCreateAListingToBegin" xml:space="preserve"><value>还没有插件，先创建一个条目。</value></data>
+  <data name="NoReleases" xml:space="preserve"><value>无版本</value></data>
+  <data name="PluginDetails" xml:space="preserve"><value>插件信息</value></data>
+  <data name="DeletePlugin" xml:space="preserve"><value>删除插件</value></data>
+  <data name="CreatePlugin" xml:space="preserve"><value>创建插件</value></data>
+  <data name="PluginID" xml:space="preserve"><value>插件 ID</value></data>
+  <data name="Name" xml:space="preserve"><value>名称</value></data>
+  <data name="Description" xml:space="preserve"><value>简介</value></data>
+  <data name="Tags" xml:space="preserve"><value>标签</value></data>
+  <data name="CommaSeparatedUpTo20Tags" xml:space="preserve"><value>使用逗号分隔，最多 20 个标签。</value></data>
+  <data name="ClearSelection" xml:space="preserve"><value>取消选择</value></data>
+  <data name="SavePluginDetails" xml:space="preserve"><value>保存插件信息</value></data>
+  <data name="ReleaseManagement" xml:space="preserve"><value>版本管理</value></data>
+  <data name="ArgReleases" xml:space="preserve"><value>{0} 个版本</value></data>
+  <data name="Version" xml:space="preserve"><value>版本</value></data>
+  <data name="QuantumVersionRange" xml:space="preserve"><value>Quantum 版本范围</value></data>
+  <data name="ReleaseNotes" xml:space="preserve"><value>发布说明</value></data>
+  <data name="PluginZIP" xml:space="preserve"><value>插件 ZIP</value></data>
+  <data name="ChooseAFile" xml:space="preserve"><value>选择文件</value></data>
+  <data name="UploadForReview" xml:space="preserve"><value>上传并提交审核</value></data>
+  <data name="Pending" xml:space="preserve"><value>待审核</value></data>
+  <data name="Published" xml:space="preserve"><value>已发布</value></data>
+  <data name="Rejected" xml:space="preserve"><value>已拒绝</value></data>
+  <data name="PendingReleases" xml:space="preserve"><value>待审核版本</value></data>
+  <data name="TheReviewQueueIsClear" xml:space="preserve"><value>审核队列已清空</value></data>
+  <data name="ReviewNotesOptional" xml:space="preserve"><value>审核意见（可选）</value></data>
+  <data name="Reject" xml:space="preserve"><value>拒绝</value></data>
+  <data name="ApproveAndPublish" xml:space="preserve"><value>通过并发布</value></data>
+  <data name="PermanentlyDeleteArg" xml:space="preserve"><value>永久删除 {0}？</value></data>
+  <data name="EveryReleaseAndServerSidePackageForThis" xml:space="preserve"><value>该插件的所有版本和服务器包文件都会被永久删除。</value></data>
+  <data name="DeletePermanently" xml:space="preserve"><value>永久删除</value></data>
+  <data name="SignedIn" xml:space="preserve"><value>登录成功。</value></data>
+  <data name="PluginDetailsSaved" xml:space="preserve"><value>插件信息已保存。</value></data>
+  <data name="PluginDeleted" xml:space="preserve"><value>插件已删除。</value></data>
+  <data name="TheReleaseWasSubmittedForReview" xml:space="preserve"><value>版本已提交审核。</value></data>
+  <data name="TheReleaseWasPublished" xml:space="preserve"><value>版本已发布。</value></data>
+  <data name="TheReleaseWasRejected" xml:space="preserve"><value>版本已拒绝。</value></data>
+  <data name="TESTCHANNEL" xml:space="preserve"><value>TEST CHANNEL</value></data>
+  <data name="CLIENTSCOPE" xml:space="preserve"><value>开始使用</value></data>
+  <data name="DEVELOPERSIGNIN" xml:space="preserve"><value>DEVELOPER SIGN IN</value></data>
+  <data name="TESTRELEASES" xml:space="preserve"><value>TEST RELEASES</value></data>
+  <data name="LOCALINSTALLCHECK" xml:space="preserve"><value>安装预览</value></data>
+  <data name="DeveloperTesting" xml:space="preserve"><value>开发者测试</value></data>
+  <data name="DownloadAndTestYourPendingReleases" xml:space="preserve"><value>下载并测试你的待审核版本。</value></data>
+  <data name="OpenPublishingPortal" xml:space="preserve"><value>打开网页发布台</value></data>
+  <data name="DownloadAndInstallYourReleases" xml:space="preserve"><value>下载并安装你的版本</value></data>
+  <data name="CreateAndPublishPluginsInTheWebPortal" xml:space="preserve"><value>在网页发布台创建和发布插件。在此登录以测试你的版本。</value></data>
+  <data name="EmailSignIn" xml:space="preserve"><value>邮箱登录</value></data>
+  <data name="ViewOwnedReleases" xml:space="preserve"><value>查看自有版本</value></data>
+  <data name="DownloadAndPreflightLocally" xml:space="preserve"><value>下载并确认</value></data>
+  <data name="SignInToYourDeveloperAccount" xml:space="preserve"><value>登录开发者账号</value></data>
+  <data name="SigningIn" xml:space="preserve"><value>登录中…</value></data>
+  <data name="NeedAnAccountRegisterInTheWebPublishing" xml:space="preserve"><value>还没有账号？请在网页发布台注册。</value></data>
+  <data name="NoPluginsYet" xml:space="preserve"><value>还没有插件</value></data>
+  <data name="CreateAPluginAndUploadAReleaseIn" xml:space="preserve"><value>请先前往网页发布台创建并上传版本。</value></data>
+  <data name="SelectAPluginToViewTestReleases" xml:space="preserve"><value>选择一个插件查看测试版本</value></data>
+  <data name="OnlyPendingReleasesYouOwnReceiveTestDownload" xml:space="preserve"><value>只有你拥有的待审核版本会获得测试下载权限。</value></data>
+  <data name="Releases" xml:space="preserve"><value>个版本</value></data>
+  <data name="DownloadableOnlyByYouAndReviewers" xml:space="preserve"><value>仅你与审核人员可下载</value></data>
+  <data name="PublicMarketplaceRelease" xml:space="preserve"><value>市场公开版本</value></data>
+  <data name="DownloadAndInstall" xml:space="preserve"><value>下载并安装</value></data>
+  <data name="RejectedReleasesCannotBeDownloadedUploadANew" xml:space="preserve"><value>被拒绝的版本不可下载，请在网页端上传新版本。</value></data>
+  <data name="SelectAPluginFirst" xml:space="preserve"><value>请先选择插件。</value></data>
+  <data name="MarketplaceViews" xml:space="preserve"><value>插件市场视图</value></data>
+  <data name="Discover" xml:space="preserve"><value>发现插件</value></data>
+  <data name="MyTestReleases" xml:space="preserve"><value>我的测试版本</value></data>
+  <data name="AppUpdates" xml:space="preserve"><value>Quantum 更新</value></data>
+  <data name="InstalledAppVersion" xml:space="preserve"><value>当前版本：{0}</value></data>
+  <data name="AvailableAppVersion" xml:space="preserve"><value>可用新版本：{0}</value></data>
+  <data name="CheckForAppUpdates" xml:space="preserve"><value>检查更新</value></data>
+  <data name="UpdateAppAndRestart" xml:space="preserve"><value>一键更新并重启</value></data>
+  <data name="AppUpdateRestartNotice" xml:space="preserve"><value>请先保存工作。Quantum 将下载更新并自动重启；优先使用增量包，必要时回退到完整包。</value></data>
+  <data name="AppUpdateUnavailable" xml:space="preserve"><value>请使用官方桌面安装包安装 Quantum 以启用更新；开发构建不支持更新。</value></data>
+  <data name="AppUpdateIdle" xml:space="preserve"><value>应用启动时会自动检查更新。</value></data>
+  <data name="AppUpdateChecking" xml:space="preserve"><value>正在检查更新…</value></data>
+  <data name="AppUpdateCurrent" xml:space="preserve"><value>Quantum 已是最新版本。</value></data>
+  <data name="AppUpdateAvailable" xml:space="preserve"><value>发现 Quantum 新版本，可以开始更新。</value></data>
+  <data name="AppUpdateDownloading" xml:space="preserve"><value>正在下载并校验更新…</value></data>
+  <data name="AppUpdateReady" xml:space="preserve"><value>更新已下载，重启后即可安装。</value></data>
+  <data name="AppUpdateApplying" xml:space="preserve"><value>正在安装更新并重启 Quantum…</value></data>
+  <data name="AppUpdateFailed" xml:space="preserve"><value>更新未完成，请检查网络后重试。当前已安装的版本仍可继续使用。</value></data>
+  <data name="InstallingPlugin" xml:space="preserve"><value>正在安装…</value></data>
+  <data name="MarketplacePluginIncompatible" xml:space="preserve"><value>{0} 与 Quantum {1} 不兼容。</value></data>
+  <data name="MarketplacePackageIdentityMismatch" xml:space="preserve"><value>安装包与所选插件或版本不一致，未执行安装。</value></data>
+</root>

@@ -11,11 +11,11 @@
     <GlobalPluginInstaller>
         <div class="app-shell">
         <aside class="sidebar">
-            <a class="brand" href="/" aria-label="@L["Quantum 首页"]" title="Quantum">
+            <a class="brand" href="/" aria-label="@L["QuantumHome"]" title="Quantum">
                 <span class="brand-mark" aria-hidden="true">Q</span>
             </a>
 
-            <nav aria-label="@L["插件导航"]">
+            <nav aria-label="@L["PluginNavigation"]">
                 @if (PluginCatalog.NavigationRoutes.Count > 0)
                 {
                     @foreach (var route in PluginCatalog.NavigationRoutes)
@@ -34,15 +34,15 @@
 
             <NavLink href="/marketplace"
                      class="nav-item marketplace-nav-item"
-                     aria-label="@L["插件市场"]"
-                     title="@L["插件市场"]">
+                     aria-label="@L["PluginMarketplace"]"
+                     title="@L["PluginMarketplace"]">
                 <span class="nav-icon" aria-hidden="true">▦</span>
             </NavLink>
 
             <NavLink href="/settings"
                      class="nav-item settings-nav-item"
-                     aria-label="@L["设置"]"
-                     title="@L["设置"]">
+                     aria-label="@L["Settings"]"
+                     title="@L["Settings"]">
                 <span class="nav-icon settings-gear" aria-hidden="true">⚙</span>
             </NavLink>
         </aside>

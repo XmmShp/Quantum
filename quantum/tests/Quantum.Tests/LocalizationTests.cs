@@ -1,3 +1,4 @@
+using System.Collections;
 using System.Globalization;
 using System.Resources;
 using Microsoft.Extensions.Localization;
@@ -32,15 +33,36 @@ public sealed class LocalizationTests
     }
 
     [Fact]
-    public void ApplicationResources_ProvideEnglishTranslation()
+    public void ApplicationResources_UseEnglishBaselineAndChineseTranslation()
     {
         var resources = new ResourceManager(
             "Quantum.Localization.AppStrings",
             typeof(AppStrings).Assembly);
 
-        var value = resources.GetString("设置", CultureInfo.GetCultureInfo("en-US"));
+        Assert.Equal("Settings", resources.GetString("Settings", CultureInfo.InvariantCulture));
+        Assert.Equal("Settings", resources.GetString("Settings", CultureInfo.GetCultureInfo("en-US")));
+        Assert.Equal("设置", resources.GetString("Settings", CultureInfo.GetCultureInfo("zh-CN")));
+    }
 
-        Assert.Equal("Settings", value);
+    [Fact]
+    public void ApplicationResources_UseEnglishKeysInBothCultures()
+    {
+        var resources = new ResourceManager(
+            "Quantum.Localization.AppStrings",
+            typeof(AppStrings).Assembly);
+        var english = resources.GetResourceSet(CultureInfo.InvariantCulture, true, false);
+        var chinese = resources.GetResourceSet(CultureInfo.GetCultureInfo("zh-CN"), true, false);
+
+        Assert.NotNull(english);
+        Assert.NotNull(chinese);
+        var englishKeys = english.Cast<DictionaryEntry>().Select(entry => (string)entry.Key)
+            .OrderBy(key => key, StringComparer.Ordinal).ToArray();
+        var chineseKeys = chinese.Cast<DictionaryEntry>().Select(entry => (string)entry.Key)
+            .OrderBy(key => key, StringComparer.Ordinal).ToArray();
+
+        Assert.Equal(englishKeys, chineseKeys);
+        Assert.All(englishKeys, key =>
+            Assert.Matches("^[A-Za-z][A-Za-z0-9]*$", key));
     }
 
     [Fact]
@@ -108,13 +130,13 @@ public sealed class LocalizationTests
             CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(CultureService.ChineseCultureName);
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(CultureService.ChineseCultureName);
 
-            Assert.Equal("Settings", localizer["设置"].Value);
+            Assert.Equal("Settings", localizer["Settings"].Value);
 
             service.SetCulture(CultureService.ChineseCultureName);
             CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo(CultureService.EnglishCultureName);
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo(CultureService.EnglishCultureName);
 
-            Assert.Equal("设置", localizer["设置"].Value);
+            Assert.Equal("设置", localizer["Settings"].Value);
         }
         finally
         {

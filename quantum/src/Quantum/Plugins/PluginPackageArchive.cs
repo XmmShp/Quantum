@@ -37,7 +37,7 @@ internal static class PluginPackageArchive
         using var archive = new ZipArchive(File.OpenRead(archivePath), ZipArchiveMode.Read);
         if (archive.Entries.Count == 0 || archive.Entries.Count > PluginPackageLimits.MaximumEntries)
         {
-            throw new InvalidDataException(AppText.Get("插件 ZIP 为空或文件数量超过限制。"));
+            throw new InvalidDataException(AppText.Get("ThePluginZIPIsEmptyOrContainsToo"));
         }
 
         long expandedBytes = 0;
@@ -49,21 +49,21 @@ internal static class PluginPackageArchive
             if (!paths.Add(normalizedPath.TrimEnd('/')))
             {
                 throw new InvalidDataException(AppText.Get(
-                    "插件 ZIP 包含重复路径 '{0}'。",
+                    "ThePluginZIPContainsDuplicatePathArg",
                     normalizedPath));
             }
 
             if (IsSymbolicLink(entry))
             {
                 throw new InvalidDataException(AppText.Get(
-                    "插件 ZIP 不能包含符号链接 '{0}'。",
+                    "ThePluginZIPCannotContainSymbolicLinkArg",
                     normalizedPath));
             }
 
             expandedBytes = checked(expandedBytes + entry.Length);
             if (expandedBytes > PluginPackageLimits.MaximumExpandedBytes)
             {
-                throw new InvalidDataException(AppText.Get("插件 ZIP 解压后的大小超过限制。"));
+                throw new InvalidDataException(AppText.Get("TheExpandedPluginZIPExceedsTheSizeLimit"));
             }
 
             var destinationPath = Path.GetFullPath(Path.Combine(
@@ -72,7 +72,7 @@ internal static class PluginPackageArchive
             if (!destinationPath.StartsWith(contentsRootPrefix, StringComparison.Ordinal))
             {
                 throw new InvalidDataException(AppText.Get(
-                    "插件 ZIP 包含不安全路径 '{0}'。",
+                    "ThePluginZIPContainsUnsafePathArg",
                     normalizedPath));
             }
 
@@ -117,12 +117,12 @@ internal static class PluginPackageArchive
         if (manifestPaths.Length == 0)
         {
             throw new InvalidDataException(AppText.Get(
-                "ZIP 中未找到插件目录；每个插件文件夹的根目录必须包含 plugin.json。"));
+                "NoPluginDirectoryWasFoundInTheZIP"));
         }
 
         if (manifestPaths.Length > PluginPackageLimits.MaximumPlugins)
         {
-            throw new InvalidDataException(AppText.Get("ZIP 中的插件数量超过限制。"));
+            throw new InvalidDataException(AppText.Get("TheZIPContainsTooManyPlugins"));
         }
 
         var pluginRoots = manifestPaths
@@ -136,7 +136,7 @@ internal static class PluginPackageArchive
             if (pluginRoots.Any(other => !string.Equals(other, root, StringComparison.Ordinal)
                 && Path.GetFullPath(other).StartsWith(rootPrefix, StringComparison.Ordinal)))
             {
-                throw new InvalidDataException(AppText.Get("ZIP 中的插件目录不能互相嵌套。"));
+                throw new InvalidDataException(AppText.Get("PluginDirectoriesInTheZIPCannotBeNested"));
             }
         }
 
@@ -168,7 +168,7 @@ internal static class PluginPackageArchive
             copied = checked(copied + read);
             if (copied > PluginPackageLimits.MaximumArchiveBytes)
             {
-                throw new InvalidDataException(AppText.Get("插件 ZIP 大小超过限制。"));
+                throw new InvalidDataException(AppText.Get("ThePluginZIPExceedsTheSizeLimit"));
             }
 
             await destination.WriteAsync(buffer.AsMemory(0, read), cancellationToken).ConfigureAwait(false);
@@ -176,7 +176,7 @@ internal static class PluginPackageArchive
 
         if (copied == 0)
         {
-            throw new InvalidDataException(AppText.Get("插件 ZIP 为空。"));
+            throw new InvalidDataException(AppText.Get("ThePluginZIPIsEmpty"));
         }
     }
 
@@ -201,7 +201,7 @@ internal static class PluginPackageArchive
             if (copied > expectedLength)
             {
                 throw new InvalidDataException(AppText.Get(
-                    "插件 ZIP 条目 '{0}' 解压长度超过声明值。",
+                    "ExpandedZIPEntryArgExceedsItsDeclaredLength",
                     entryPath));
             }
 
@@ -211,7 +211,7 @@ internal static class PluginPackageArchive
         if (copied != expectedLength)
         {
             throw new InvalidDataException(AppText.Get(
-                "插件 ZIP 条目 '{0}' 解压长度不一致。",
+                "ExpandedZIPEntryArgDoesNotMatchIts",
                 entryPath));
         }
     }
@@ -223,7 +223,7 @@ internal static class PluginPackageArchive
             || path.Contains(':', StringComparison.Ordinal)
             || path.StartsWith("/", StringComparison.Ordinal))
         {
-            throw new InvalidDataException(AppText.Get("插件 ZIP 包含不安全路径 '{0}'。", path));
+            throw new InvalidDataException(AppText.Get("ThePluginZIPContainsUnsafePathArg", path));
         }
 
         var isDirectory = path.EndsWith("/", StringComparison.Ordinal);
@@ -231,7 +231,7 @@ internal static class PluginPackageArchive
         if (string.IsNullOrWhiteSpace(comparablePath)
             || comparablePath.Split('/').Any(static segment => segment.Length == 0 || segment is "." or ".."))
         {
-            throw new InvalidDataException(AppText.Get("插件 ZIP 包含不安全路径 '{0}'。", path));
+            throw new InvalidDataException(AppText.Get("ThePluginZIPContainsUnsafePathArg", path));
         }
 
         return isDirectory ? comparablePath + "/" : comparablePath;

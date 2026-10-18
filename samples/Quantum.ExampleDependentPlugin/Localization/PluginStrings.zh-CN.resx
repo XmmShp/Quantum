@@ -1,0 +1,17 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="CompanionPlugin" xml:space="preserve"><value>配套插件</value></data>
+  <data name="CompanionEyebrow" xml:space="preserve"><value>配套示例</value></data>
+  <data name="CompanionLead" xml:space="preserve"><value>此插件与示例插件一起工作。</value></data>
+  <data name="PluginStatus" xml:space="preserve"><value>插件状态</value></data>
+  <data name="ExamplePlugin" xml:space="preserve"><value>示例插件</value></data>
+  <data name="Waiting" xml:space="preserve"><value>等待中</value></data>
+  <data name="VersionArg" xml:space="preserve"><value>版本 {0}</value></data>
+  <data name="StartedAtArg" xml:space="preserve"><value>启动时间 {0}</value></data>
+  <data name="LatestGreeting" xml:space="preserve"><value>最近的问候</value></data>
+  <data name="WaitingForGreeting" xml:space="preserve"><value>等待问候</value></data>
+</root>
