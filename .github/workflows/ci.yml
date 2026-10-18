@@ -79,12 +79,19 @@ jobs:
           echo "directory=$directory" >> "$GITHUB_OUTPUT"
           echo "version=$manifest_version" >> "$GITHUB_OUTPUT"
           echo "id=$expected_id" >> "$GITHUB_OUTPUT"
+          if [[ "$directory" == Codex ]]; then
+            echo "client_id_secret=QUANTUM_CODEX_CLIENT_ID" >> "$GITHUB_OUTPUT"
+            echo "client_jwks_secret=QUANTUM_CODEX_CLIENT_PRIVATE_JWKS" >> "$GITHUB_OUTPUT"
+          else
+            echo "client_id_secret=QUANTUM_CLIENT_ID" >> "$GITHUB_OUTPUT"
+            echo "client_jwks_secret=QUANTUM_CLIENT_PRIVATE_JWKS" >> "$GITHUB_OUTPUT"
+          fi
       - name: Build release payload
         run: dotnet build "${{ steps.plugin.outputs.directory }}/Quantum.${{ steps.plugin.outputs.directory }}Plugin.csproj" -c Release --verbosity minimal
       - name: Check publishing credentials
         env:
-          QUANTUM_CLIENT_ID: ${{ secrets.QUANTUM_CLIENT_ID }}
-          QUANTUM_CLIENT_PRIVATE_JWKS: ${{ secrets.QUANTUM_CLIENT_PRIVATE_JWKS }}
+          QUANTUM_CLIENT_ID: ${{ secrets[steps.plugin.outputs.client_id_secret] }}
+          QUANTUM_CLIENT_PRIVATE_JWKS: ${{ secrets[steps.plugin.outputs.client_jwks_secret] }}
         run: |
           test -n "$QUANTUM_CLIENT_ID" || { echo "::error::Missing QUANTUM_CLIENT_ID Actions secret"; exit 1; }
           test -n "$QUANTUM_CLIENT_PRIVATE_JWKS" || { echo "::error::Missing QUANTUM_CLIENT_PRIVATE_JWKS Actions secret"; exit 1; }
@@ -97,8 +104,8 @@ jobs:
       - name: Recover and verify original submission
         if: inputs.resume_sha256 != ''
         env:
-          QUANTUM_CLIENT_ID: ${{ secrets.QUANTUM_CLIENT_ID }}
-          QUANTUM_CLIENT_PRIVATE_JWKS: ${{ secrets.QUANTUM_CLIENT_PRIVATE_JWKS }}
+          QUANTUM_CLIENT_ID: ${{ secrets[steps.plugin.outputs.client_id_secret] }}
+          QUANTUM_CLIENT_PRIVATE_JWKS: ${{ secrets[steps.plugin.outputs.client_jwks_secret] }}
           EXPECTED_SHA256: ${{ inputs.resume_sha256 }}
           PLUGIN_ID: ${{ steps.plugin.outputs.id }}
           PLUGIN_VERSION: ${{ steps.plugin.outputs.version }}
@@ -107,8 +114,8 @@ jobs:
           python scripts/download-release.py --plugin-id "$PLUGIN_ID" --version "$PLUGIN_VERSION" --sha256 "$EXPECTED_SHA256" --output .publish/original.zip
       - name: Publish and wait for automated review
         env:
-          QUANTUM_CLIENT_ID: ${{ secrets.QUANTUM_CLIENT_ID }}
-          QUANTUM_CLIENT_PRIVATE_JWKS: ${{ secrets.QUANTUM_CLIENT_PRIVATE_JWKS }}
+          QUANTUM_CLIENT_ID: ${{ secrets[steps.plugin.outputs.client_id_secret] }}
+          QUANTUM_CLIENT_PRIVATE_JWKS: ${{ secrets[steps.plugin.outputs.client_jwks_secret] }}
           RESUME_SHA256: ${{ inputs.resume_sha256 }}
         run: |
           set -euo pipefail
