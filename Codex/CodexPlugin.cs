@@ -13,6 +13,7 @@ public sealed class CodexPlugin : IQuantumPlugin
         services.AddTransient<CodexRpcService.ListModels, ListCodexModels>();
         services.AddTransient<CodexRpcService.Connect, ConnectCodex>();
         services.AddTransient<CodexRpcService.StartNewThread, StartCodexThread>();
+        services.AddTransient<CodexRpcService.ChangeModel, ChangeCodexModel>();
         services.AddTransient<CodexRpcService.Send, SendCodexPrompt>();
         services.AddTransient<CodexRpcService.Disconnect, DisconnectCodex>();
     }

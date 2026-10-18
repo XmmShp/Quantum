@@ -35,3 +35,10 @@ dotnet test tests/Quantum.OfficialPlugins.Tests/Quantum.OfficialPlugins.Tests.cs
 首个测试项目目前同时覆盖三种官方插件的宿主 RPC 集成测试。Windows 本机按 `AGENTS.md` 要求使用管理员进程运行 `dotnet`。
 
 后续新增业务能力时，继续按 [开发指南](plugin-development.md) 同时补齐 NOF 合约、生成元数据、处理器注册、Schema 描述和宿主调用测试。
+
+## Codex 0.1.4：切换模型不新建会话
+
+- 新增 `quantum.plugin.codex.codex.change-model`，使用同一应用服务，仅更新后续轮次使用的模型，保留会话 ID、历史消息和工具上下文；不启动推理。
+- 页面和悬浮面板的模型选择均调用该操作。`turn/start` 显式携带当前 `threadId` 与所选 `model`，只有用户主动新建会话才调用 `thread/start`。
+- 宿主目录现在包含 7 个 Codex 方法。JSON 边界测试覆盖新方法发现、参数、共享会话状态、空请求、未连接与取消。
+- 应用层回归覆盖多次切换及后续发送保留同一会话、无效模型/运行中/取消不改变状态、显式新建会话才清空历史，以及实际轮次参数包含模型。

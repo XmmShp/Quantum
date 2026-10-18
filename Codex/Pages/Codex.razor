@@ -9,15 +9,15 @@
 <PageTitle>Codex · Quantum</PageTitle>
 
 <section class="codex-shell">
-    <header class="hero">
-        <div class="hero-copy">
-            <p class="eyebrow">CODEX × QUANTUM</p>
-            <h1>@L["Your local intelligence hub"]</h1>
-            <p>@L["Let local Codex understand and invoke capabilities from every Quantum plugin."]</p>
+    <header class="page-header">
+        <div class="page-identity">
+            <span class="identity-mark" aria-hidden="true">✦</span>
+            <h1>Codex</h1>
+            <span class="header-divider" aria-hidden="true"></span>
+            <span class="page-subtitle">@L["Your Quantum assistant"]</span>
         </div>
-        <div class="connection-pill @StateClass">
-            <span></span>
-            @StateLabel
+        <div class="connection-pill @StateClass" role="status">
+            <span aria-hidden="true"></span>@StateLabel
         </div>
     </header>
 
@@ -25,7 +25,7 @@
     {
         <div class="error-banner" role="alert">
             <span>@L[_localError ?? _snapshot.ErrorMessage!]</span>
-            <button type="button" @onclick="() => _localError = null">×</button>
+            <button type="button" aria-label="@L["Dismiss error"]" @onclick="() => _localError = null">×</button>
         </div>
     }
 
@@ -72,7 +72,7 @@
                         }
                     </select>
                 </label>
-                <code title="@_snapshot.ThreadId">@ShortThreadId</code>
+                <span class="session-label" title="@_snapshot.ThreadId">@L["Current conversation"]</span>
                 <div class="toolbar-actions">
                     <button type="button" disabled="@_snapshot.IsBusy" @onclick="NewThreadAsync">＋ @L["New conversation"]</button>
                     <button type="button" @onclick="DisconnectAsync">@L["Disconnect"]</button>
@@ -80,7 +80,7 @@
             </header>
 
             <div class="conversation" aria-live="polite" aria-busy="@_snapshot.IsBusy">
-                @if (_snapshot.Messages.Count == 0)
+                @if (!_snapshot.Messages.Any(message => message.Role != CodexMessageRole.System))
                 {
                     <div class="empty-state">
                         <span aria-hidden="true">✦</span>
@@ -93,7 +93,7 @@
                     @foreach (var message in _snapshot.Messages)
                     {
                         <article @key="message.Id" class="message @message.Role.ToString().ToLowerInvariant()">
-                            <div class="message-role">@message.Role</div>
+                            <div class="message-role">@L[message.Role.ToString()]</div>
                             <div class="message-text">
                                 @message.Text
                                 @if (message.IsStreaming)
@@ -107,7 +107,8 @@
             </div>
 
             <footer class="composer">
-                <textarea rows="3"
+                <textarea rows="2"
+                          aria-label="@L["Message Codex…"]"
                           placeholder="@L["Message Codex…"]"
                           disabled="@_snapshot.IsBusy"
                           @bind="_prompt"
@@ -158,10 +159,6 @@
         _ => L["Disconnected"]
     };
 
-    private string ShortThreadId => _snapshot.ThreadId is { Length: > 12 } threadId
-        ? threadId[..12]
-        : _snapshot.ThreadId ?? string.Empty;
-
     private async Task ConnectAsync()
         => await RunAsync(() => CodexService.ConnectAsync(_workingDirectory, _selectedModel));
 
@@ -179,7 +176,7 @@
         }
 
         _selectedModel = model;
-        await RunAsync(() => CodexService.StartNewThreadAsync(model));
+        await RunAsync(() => CodexService.ChangeModelAsync(model));
     }
 
     private async Task SendAsync()

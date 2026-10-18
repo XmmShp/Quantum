@@ -8,7 +8,7 @@ using Quantum.OfficialPlugins.Codex.Application;
 
 namespace Quantum.OfficialPlugins.Codex.Infrastructure;
 
-internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger) : IAsyncDisposable
+internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger) : ICodexAppServerClient
 {
     private readonly ConcurrentDictionary<string, TaskCompletionSource<JsonElement>> _pending = new();
     private readonly SemaphoreSlim _writeGate = new(1, 1);
@@ -119,15 +119,15 @@ internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger)
     public Task<JsonElement> StartTurnAsync(
         string threadId,
         string prompt,
+        string model,
         CancellationToken cancellationToken)
         => SendRequestAsync(
             "turn/start",
-            new
-            {
-                threadId,
-                input = new[] { new { type = "text", text = prompt } }
-            },
+            CreateTurnParameters(threadId, prompt, model),
             cancellationToken);
+
+    internal static object CreateTurnParameters(string threadId, string prompt, string model)
+        => new { threadId, model, input = new[] { new { type = "text", text = prompt } } };
 
     public async ValueTask DisposeAsync()
     {

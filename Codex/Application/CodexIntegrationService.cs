@@ -11,7 +11,8 @@ internal sealed class CodexIntegrationService(
     IRpcInvoker rpcInvoker,
     ILoggerFactory loggerFactory,
     ILogger<CodexIntegrationService> logger,
-    TimeSpan? automaticConnectionTimeout = null) : ICodexIntegrationService, IAsyncDisposable
+    TimeSpan? automaticConnectionTimeout = null,
+    Func<ICodexAppServerClient>? clientFactory = null) : ICodexIntegrationService, IAsyncDisposable
 {
     internal const string DefaultModel = "gpt-5.6-luna";
 
@@ -30,7 +31,7 @@ internal sealed class CodexIntegrationService(
     private IReadOnlyList<QuantumRpcTool> _tools = [];
     private IReadOnlyList<CodexModelOption> _models = InitialModels;
     private string _selectedModel = DefaultModel;
-    private CodexAppServerClient? _client;
+    private ICodexAppServerClient? _client;
     private CodexConnectionState _connectionState;
     private string? _threadId;
     private bool _isBusy;
@@ -127,7 +128,7 @@ internal sealed class CodexIntegrationService(
         await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            CodexAppServerClient? staleClient = null;
+            ICodexAppServerClient? staleClient = null;
             lock (_sync)
             {
                 if (_client is not null && _connectionState is CodexConnectionState.Connected
@@ -174,7 +175,8 @@ internal sealed class CodexIntegrationService(
 
             var tools = QuantumRpcToolCatalog.Parse(catalogResult.Value);
             var selectedModel = ResolveModel(model, InitialModels);
-            var client = new CodexAppServerClient(loggerFactory.CreateLogger<CodexAppServerClient>());
+            var client = clientFactory?.Invoke()
+                ?? new CodexAppServerClient(loggerFactory.CreateLogger<CodexAppServerClient>());
             client.NotificationReceived += HandleNotificationAsync;
             client.DynamicToolCallReceived += HandleDynamicToolCallAsync;
             client.ConnectionClosed += HandleConnectionClosed;
@@ -241,7 +243,7 @@ internal sealed class CodexIntegrationService(
         await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            CodexAppServerClient client;
+            ICodexAppServerClient client;
             IReadOnlyList<QuantumRpcTool> tools;
             string workingDirectory;
             string selectedModel;
@@ -280,12 +282,33 @@ internal sealed class CodexIntegrationService(
         }
     }
 
+    public async Task ChangeModelAsync(string model, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            lock (_sync)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (_connectionState != CodexConnectionState.Connected || _threadId is null)
+                    throw new InvalidOperationException("Codex is not connected.");
+                if (_isBusy)
+                    throw new InvalidOperationException("Wait for the current Codex turn to finish.");
+                _selectedModel = ResolveModel(model, _models);
+            }
+            NotifyChanged();
+        }
+        finally { _operationGate.Release(); }
+    }
+
     public async Task SendAsync(string prompt, CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(prompt);
-        CodexAppServerClient client;
+        ICodexAppServerClient client;
         string threadId;
+        string selectedModel;
         lock (_sync)
         {
             client = _client ?? throw new InvalidOperationException("Codex is not connected.");
@@ -295,6 +318,7 @@ internal sealed class CodexIntegrationService(
                 throw new InvalidOperationException("Wait for the current Codex turn to finish.");
             }
 
+            selectedModel = _selectedModel;
             _isBusy = true;
             _errorMessage = null;
             _messages.Add(new CodexChatMessage(
@@ -307,7 +331,7 @@ internal sealed class CodexIntegrationService(
         NotifyChanged();
         try
         {
-            await client.StartTurnAsync(threadId, prompt.Trim(), cancellationToken).ConfigureAwait(false);
+            await client.StartTurnAsync(threadId, prompt.Trim(), selectedModel, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception)
         {
@@ -334,7 +358,7 @@ internal sealed class CodexIntegrationService(
         await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            CodexAppServerClient? client;
+            ICodexAppServerClient? client;
             lock (_sync)
             {
                 client = _client;

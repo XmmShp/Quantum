@@ -24,13 +24,15 @@ public sealed class CodexRpcTests
     public async Task ProductionHandlersAreDiscoverableAndReadOnlyCallsNeedNoAppServer()
     {
         await using var host = Host();
-        await host.AssertCatalog("quantum.plugin.codex", "codex", ["snapshot", "models", "connect", "new-thread", "send", "disconnect"]);
+        await host.AssertCatalog("quantum.plugin.codex", "codex", ["snapshot", "models", "connect", "new-thread", "change-model", "send", "disconnect"]);
         var snapshot = OfficialRpcHarness.Value(await host.Call("quantum.plugin.codex.codex.snapshot", new { }));
         Assert.Equal((int)CodexConnectionState.Disconnected, snapshot.GetProperty("connectionState").GetInt32());
         Assert.NotEmpty(OfficialRpcHarness.Value(await host.Call("codex.models", new { })).EnumerateArray());
         OfficialRpcHarness.Value(await host.Call("codex.disconnect", new { }));
         var invalidState = await host.Call("codex.send", new CodexSendRequest("test"));
         Assert.Equal("codex_invalid_state", invalidState.GetProperty("errorCode").GetString());
+        var invalidModelState = await host.Call("codex.change-model", new CodexChangeModelRequest("gpt-5.6-sol"));
+        Assert.Equal("codex_invalid_state", invalidModelState.GetProperty("errorCode").GetString());
         var invalidDirectory = await host.Call("codex.connect", new CodexConnectRequest(Path.Combine(Path.GetTempPath(), Guid.NewGuid().ToString("N"))));
         Assert.Equal("codex_connection_failed", invalidDirectory.GetProperty("errorCode").GetString());
     }
@@ -44,6 +46,9 @@ public sealed class CodexRpcTests
         Assert.Equal("workspace", fake.Snapshot.WorkingDirectory);
         var thread = OfficialRpcHarness.Value(await host.Call("codex.new-thread", new CodexNewThreadRequest("model-b")));
         Assert.Equal("thread-2", thread.GetProperty("threadId").GetString());
+        var changed = OfficialRpcHarness.Value(await host.Call("quantum.plugin.codex.codex.change-model", new CodexChangeModelRequest("model-a")));
+        Assert.Equal("thread-2", changed.GetProperty("threadId").GetString());
+        Assert.Equal("model-a", changed.GetProperty("selectedModel").GetString());
         var send = OfficialRpcHarness.Value(await host.Call("codex.send", new CodexSendRequest("Test prompt")));
         Assert.True(send.GetProperty("isBusy").GetBoolean());
         Assert.Equal("Test prompt", fake.LastPrompt);
@@ -51,7 +56,7 @@ public sealed class CodexRpcTests
         OfficialRpcHarness.Value(await host.Call("codex.models", new { }));
         OfficialRpcHarness.Value(await host.Call("codex.disconnect", new { }));
         Assert.Equal(CodexConnectionState.Disconnected, fake.Snapshot.ConnectionState);
-        Assert.Equal(new[] { "connect", "new-thread", "send", "disconnect" }, fake.Commands);
+        Assert.Equal(new[] { "connect", "new-thread", "change-model", "send", "disconnect" }, fake.Commands);
     }
 
     [Fact]
@@ -59,6 +64,8 @@ public sealed class CodexRpcTests
     {
         var fake = new FakeCodex { FailConnect = true };
         await using var host = Host(fake);
+        var invalidModel = await host.Call("codex.change-model", new CodexChangeModelRequest(" "));
+        Assert.Equal("codex_invalid_request", invalidModel.GetProperty("errorCode").GetString());
         var invalidPrompt = await host.Call("codex.send", new CodexSendRequest(" "));
         Assert.Equal("codex_invalid_request", invalidPrompt.GetProperty("errorCode").GetString());
         var failed = await host.Call("codex.connect", new CodexConnectRequest("workspace", "model-a"));
@@ -66,6 +73,8 @@ public sealed class CodexRpcTests
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => host.Call("codex.send", new CodexSendRequest("test"), cancellationToken: cancelled.Token));
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => host.Call("codex.change-model", new CodexChangeModelRequest("model-b"), cancellationToken: cancelled.Token));
+        Assert.DoesNotContain("change-model", fake.Commands);
         Assert.Null(fake.LastPrompt);
     }
 
@@ -98,6 +107,11 @@ public sealed class CodexRpcTests
         {
             cancellationToken.ThrowIfCancellationRequested(); Commands.Add("new-thread");
             Snapshot = Snapshot with { ThreadId = "thread-2", SelectedModel = model ?? Snapshot.SelectedModel }; return Task.CompletedTask;
+        }
+        public Task ChangeModelAsync(string model, CancellationToken cancellationToken = default)
+        {
+            cancellationToken.ThrowIfCancellationRequested(); Commands.Add("change-model");
+            Snapshot = Snapshot with { SelectedModel = model }; return Task.CompletedTask;
         }
         public Task SendAsync(string prompt, CancellationToken cancellationToken = default)
         {

@@ -31,4 +31,11 @@
   <data name="Automatically connects to local Codex. Connection errors appear here; you can retry." xml:space="preserve"><value>Automatically connects to local Codex. Connection errors appear here; you can retry.</value></data>
   <data name="Retry connection" xml:space="preserve"><value>Retry connection</value></data>
   <data name="Automatic connection timed out. Check the local Codex installation and sign-in, then retry." xml:space="preserve"><value>Automatic connection timed out. Check the local Codex installation and sign-in, then retry.</value></data>
+  <data name="Your Quantum assistant" xml:space="preserve"><value>Your Quantum assistant</value></data>
+  <data name="Current conversation" xml:space="preserve"><value>Current conversation</value></data>
+  <data name="Dismiss error" xml:space="preserve"><value>Dismiss error</value></data>
+  <data name="User" xml:space="preserve"><value>User</value></data>
+  <data name="Assistant" xml:space="preserve"><value>Assistant</value></data>
+  <data name="System" xml:space="preserve"><value>System</value></data>
+  <data name="Tool" xml:space="preserve"><value>Tool</value></data>
 </root>

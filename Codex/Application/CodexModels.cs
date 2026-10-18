@@ -56,6 +56,9 @@ public interface ICodexIntegrationService
         string? model = null,
         CancellationToken cancellationToken = default);
 
+    /// <summary>Changes the model for subsequent turns without replacing the current conversation.</summary>
+    Task ChangeModelAsync(string model, CancellationToken cancellationToken = default);
+
     Task SendAsync(string prompt, CancellationToken cancellationToken = default);
 
     Task DisconnectAsync(CancellationToken cancellationToken = default);

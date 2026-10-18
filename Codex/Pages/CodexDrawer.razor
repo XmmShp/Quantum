@@ -84,7 +84,7 @@
                         </header>
 
                         <div class="drawer-conversation" aria-live="polite" aria-busy="@_snapshot.IsBusy">
-                            @if (_snapshot.Messages.Count == 0)
+                            @if (!_snapshot.Messages.Any(message => message.Role != CodexMessageRole.System))
                             {
                                 <div class="drawer-empty">
                                     <span aria-hidden="true">✦</span>
@@ -97,7 +97,7 @@
                                 @foreach (var message in _snapshot.Messages)
                                 {
                                     <article @key="message.Id" class="drawer-message @message.Role.ToString().ToLowerInvariant()">
-                                        <span>@message.Role</span>
+                                        <span>@L[message.Role.ToString()]</span>
                                         <div>
                                             @message.Text
                                             @if (message.IsStreaming)
@@ -186,7 +186,7 @@
         }
 
         _selectedModel = model;
-        await RunAsync(() => CodexService.StartNewThreadAsync(model));
+        await RunAsync(() => CodexService.ChangeModelAsync(model));
     }
 
     private async Task SendAsync()

@@ -31,4 +31,11 @@
   <data name="Automatically connects to local Codex. Connection errors appear here; you can retry." xml:space="preserve"><value>自动连接本机 Codex；连接失败会显示原因，可手动重试。</value></data>
   <data name="Retry connection" xml:space="preserve"><value>重试连接</value></data>
   <data name="Automatic connection timed out. Check the local Codex installation and sign-in, then retry." xml:space="preserve"><value>自动连接超时。请检查本机 Codex 安装和登录状态后重试。</value></data>
+  <data name="Your Quantum assistant" xml:space="preserve"><value>Quantum 助手</value></data>
+  <data name="Current conversation" xml:space="preserve"><value>当前会话</value></data>
+  <data name="Dismiss error" xml:space="preserve"><value>关闭错误提示</value></data>
+  <data name="User" xml:space="preserve"><value>你</value></data>
+  <data name="Assistant" xml:space="preserve"><value>Codex</value></data>
+  <data name="System" xml:space="preserve"><value>状态</value></data>
+  <data name="Tool" xml:space="preserve"><value>工具</value></data>
 </root>

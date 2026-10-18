@@ -40,6 +40,17 @@ public sealed class StartCodexThread(ICodexIntegrationService codex) : CodexRpcS
         }, cancellationToken);
 }
 
+public sealed class ChangeCodexModel(ICodexIntegrationService codex) : CodexRpcService.ChangeModel
+{
+    public override Task<Result<CodexIntegrationSnapshot>> HandleAsync(CodexChangeModelRequest request, Context context, CancellationToken cancellationToken)
+        => CodexRpcExecution.RunAsync(async () =>
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(request.Model);
+            await codex.ChangeModelAsync(request.Model, cancellationToken);
+            return codex.Snapshot;
+        }, cancellationToken);
+}
+
 public sealed class SendCodexPrompt(ICodexIntegrationService codex) : CodexRpcService.Send
 {
     public override Task<Result<CodexIntegrationSnapshot>> HandleAsync(CodexSendRequest request, Context context, CancellationToken cancellationToken)

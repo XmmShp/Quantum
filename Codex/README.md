@@ -45,8 +45,10 @@ The plugin reuses the local Codex authentication state and does not store an Ope
 `QUANTUM_CODEX_COMMAND` to the Codex executable path when `codex` is not available on `PATH`.
 
 The App Server dynamic tool surface is experimental and therefore tied to the locally installed Codex version.
-Available models are refreshed from App Server's `model/list` response after connecting. Changing the model starts a
-new thread and passes the selected model explicitly to `thread/start`.
+Available models are refreshed from App Server's `model/list` response after connecting. Since 0.1.4, changing the model preserves the thread ID, messages and tool context. Each `turn/start` explicitly
+passes the selected `model` for the existing `threadId`; changing models sends no prompt. Only **New conversation**
+creates a fresh thread and clears history. Model changes are rejected while a turn is running. See the
+[official App Server turn documentation](https://developers.openai.com/codex/app-server#turns).
 If a selected model requires a newer App Server, update the CLI with
 `npm install -g @openai/codex@latest`, then disconnect and reconnect the plugin.
 
@@ -62,6 +64,7 @@ intentionally excluded from the dynamic tools injected into this same Codex sess
 | `codex.models` | `{}` | Cached model options; initial options before connection, App Server options after connection |
 | `codex.connect` | `{ "workingDirectory": "C:/work", "model": "gpt-5.6-luna" }` | Starts the local App Server and creates a session; returns its snapshot |
 | `codex.new-thread` | `{ "model": null }` | Starts a fresh thread, optionally changes model, clears displayed messages |
+| `codex.change-model` | `{ "model": "gpt-5.6-sol" }` | Selects the model for later turns; preserves the current thread and messages; no inference |
 | `codex.send` | `{ "prompt": "..." }` | Starts a model turn; poll `snapshot` for progress and completion |
 | `codex.disconnect` | `{}` | Stops this plugin's App Server process; may interrupt an active turn |
 

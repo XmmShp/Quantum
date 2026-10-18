@@ -13,6 +13,8 @@ public sealed record CodexConnectRequest(
     [property: Description("要使用的模型 ID，必须由本机 Codex 支持。默认 gpt-5.6-luna。")] string Model = "gpt-5.6-luna");
 public sealed record CodexNewThreadRequest(
     [property: Description("可选模型 ID；省略时保留当前模型。此操作会清空当前显示的会话消息。")] string? Model = null);
+public sealed record CodexChangeModelRequest(
+    [property: Description("当前可用模型 ID；仅更新后续轮次使用的模型，保留当前会话 ID 和消息。运行中拒绝切换。")] string Model);
 public sealed record CodexSendRequest(
     [property: Description("发送给当前本机 Codex 会话的非空提示词。会启动模型推理，并可能产生账号用量及 Quantum 工具副作用。")] string Prompt);
 
@@ -36,6 +38,10 @@ public interface ICodexRpcService : IRpcService
     [Description("在已连接的 App Server 中开启新会话，可选择模型；不会自动发送提示词。")]
     [RpcInvocationName("new-thread")]
     Result<CodexIntegrationSnapshot> StartNewThread(CodexNewThreadRequest request);
+
+    [Description("切换当前会话后续轮次的模型；保留会话 ID 和消息，不启动推理。当前轮次运行时拒绝操作。")]
+    [RpcInvocationName("change-model")]
+    Result<CodexIntegrationSnapshot> ChangeModel(CodexChangeModelRequest request);
 
     [Description("向当前会话发送提示词并启动一轮模型任务；返回后可轮询 snapshot 查看进度与结果。当前轮次未完成时拒绝发送。")]
     [RpcInvocationName("send")]
