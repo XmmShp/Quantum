@@ -1,5 +1,6 @@
 using System.Collections.Concurrent;
 using System.Diagnostics;
+using System.Text;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using Microsoft.Extensions.Logging;
@@ -356,7 +357,7 @@ internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger)
         }
     }
 
-    private static ProcessStartInfo CreateStartInfo()
+    internal static ProcessStartInfo CreateStartInfo()
     {
         var configuredCommand = Environment.GetEnvironmentVariable("QUANTUM_CODEX_COMMAND");
         var command = "codex";
@@ -391,6 +392,12 @@ internal sealed class CodexAppServerClient(ILogger<CodexAppServerClient> logger)
         info.RedirectStandardInput = true;
         info.RedirectStandardOutput = true;
         info.RedirectStandardError = true;
+        // App Server speaks UTF-8 JSONL. Windows GUI processes may otherwise use
+        // a legacy code page, which can consume JSON escape bytes after Unicode text.
+        var encoding = new UTF8Encoding(encoderShouldEmitUTF8Identifier: false);
+        info.StandardInputEncoding = encoding;
+        info.StandardOutputEncoding = encoding;
+        info.StandardErrorEncoding = encoding;
         return info;
     }
 

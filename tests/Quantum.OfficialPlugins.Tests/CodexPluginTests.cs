@@ -1,4 +1,6 @@
 using System.Text.Json;
+using System.Text;
+using Quantum.OfficialPlugins.Codex.Infrastructure;
 using Quantum.OfficialPlugins.Codex.Pages;
 using Quantum.OfficialPlugins.Codex.Application;
 using Xunit;
@@ -7,6 +9,32 @@ namespace Quantum.Tests;
 
 public sealed class CodexPluginTests
 {
+    [Fact]
+    public void AppServerStreamsPreserveUnicodeAndJsonEscapes()
+    {
+        var startInfo = CodexAppServerClient.CreateStartInfo();
+        // Decoding these UTF-8 bytes as GBK consumes the backslash after “：”,
+        // leaving an unescaped quote and causing "'e' is invalid after a value".
+        const string line = """{"method":"error","params":{"message":"中文说明：\"error\"，路径 C:\\工作区 😀"}}""";
+        var wireBytes = Encoding.UTF8.GetBytes(line);
+
+        foreach (var encoding in new[]
+        {
+            startInfo.StandardInputEncoding,
+            startInfo.StandardOutputEncoding,
+            startInfo.StandardErrorEncoding
+        })
+        {
+            Assert.NotNull(encoding);
+            Assert.Empty(encoding.GetPreamble());
+            Assert.Equal(wireBytes, encoding.GetBytes(line));
+            using var document = JsonDocument.Parse(encoding.GetString(wireBytes));
+            Assert.Equal(
+                "中文说明：\"error\"，路径 C:\\工作区 😀",
+                document.RootElement.GetProperty("params").GetProperty("message").GetString());
+        }
+    }
+
     [Fact]
     public void LunaIsTheDefaultModel()
     {
