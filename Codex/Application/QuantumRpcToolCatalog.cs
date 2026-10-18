@@ -19,7 +19,10 @@ internal static class QuantumRpcToolCatalog
             {
                 var rpcName = method.GetProperty("qualifiedName").GetString()
                     ?? throw new InvalidOperationException("The RPC catalog contains a method without a name.");
-                if (string.Equals(rpcName, "quantum.rpc.catalog", StringComparison.Ordinal))
+                // Keep control RPCs discoverable to external callers, but do not let
+                // a Codex turn recursively send to or disconnect its own session.
+                if (string.Equals(rpcName, "quantum.rpc.catalog", StringComparison.OrdinalIgnoreCase)
+                    || rpcName.StartsWith("quantum.plugin.codex.", StringComparison.OrdinalIgnoreCase))
                 {
                     continue;
                 }

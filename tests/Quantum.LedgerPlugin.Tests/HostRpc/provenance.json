@@ -1,0 +1,10 @@
+{
+  "repository": "https://github.com/XmmShp/Quantum",
+  "commit": "3dab8417c3428674de769707f7809dfc6d837b43",
+  "files": {
+    "quantum/src/Quantum/Plugins/Rpc/PluginRpcRuntime.cs": "90af116e14a29d51cd3c9604ae4dc82180eb703d2697f448ee7c81d517e6fc3b",
+    "quantum/src/Quantum/Plugins/Rpc/PluginRpcRegistry.cs": "196e1146868a76a57a1edeef18eafb9a81785987953940b034668bd0bfa53384",
+    "quantum/src/Quantum/Plugins/Rpc/PluginRpcCatalog.cs": "7eeae69c89f805372392f8b2413d252c92ba174ccbc05f5ba3d5973430b9718b",
+    "quantum/src/Quantum/Plugins/Rpc/PluginRpcSerializer.cs": "cc4076c9f343c4cb4eaf499b5694f840aa22aeeef0c27f0f9a948124264c0d23"
+  }
+}

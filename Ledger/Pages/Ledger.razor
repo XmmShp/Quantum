@@ -1,0 +1,197 @@
+@namespace Quantum.OfficialPlugins.Ledger.Pages
+@using System.Globalization
+@using System.Text
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.Localization
+@using Microsoft.JSInterop
+@using Quantum.OfficialPlugins.Ledger.Localization
+@inject IStringLocalizer<PluginStrings> L
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<PageTitle>@L["Ledger"] · Quantum</PageTitle>
+
+<section class="quantum-ledger" aria-busy="@_busy">
+    <header class="ledger-header">
+        <div><p class="ledger-eyebrow">QUANTUM / @L["PERSONAL FINANCE"]</p><h1>@L["A little clarity, every day."]</h1><p>@L["Keep track of what comes in and what goes out."]</p></div>
+        <button class="ledger-primary" disabled="@(_busy || !_loaded)" @onclick="NewEntry">＋ @L["Add entry"]</button>
+    </header>
+    @if (_error is not null)
+    {
+        <div class="ledger-alert" role="alert">@_error <button @onclick="() => _error = null">@L["Dismiss"]</button></div>
+    }
+    @if (_message is not null) { <p class="ledger-message" role="status">@_message</p> }
+    <div class="ledger-monthbar">
+        <div class="ledger-month">
+            <button aria-label="@L["Previous month"]" disabled="@(_busy || _month.Year == 1900 && _month.Month == 1)" @onclick="() => ChangeMonth(-1)">←</button>
+            <label><span class="ledger-sr">@L["Month"]</span><input type="month" min="1900-01" max="9998-12" value="@_month.ToString("yyyy-MM", CultureInfo.InvariantCulture)" @onchange="SelectMonth" disabled="@_busy" /></label>
+            <button aria-label="@L["Next month"]" disabled="@(_busy || _month.Year == 9998 && _month.Month == 12)" @onclick="() => ChangeMonth(1)">→</button>
+        </div>
+        <span>@L["CNY · Stored locally"]</span>
+    </div>
+    <div class="ledger-stats" aria-label="@L["Monthly summary"]">
+        <article><p>@L["Income"] <span>↗</span></p><strong class="ledger-income">@Money(Totals.Income)</strong><small>@L["This month"]</small></article>
+        <article><p>@L["Expense"] <span>↘</span></p><strong>@Money(Totals.Expense)</strong><small>@L["This month"]</small></article>
+        <article class="ledger-balance"><p>@L["Net balance"] <span>≈</span></p><strong>@Money(Totals.Balance)</strong><small>@L["Income minus expense"]</small></article>
+    </div>
+    <div class="ledger-body">
+        <main class="ledger-transactions">
+            <div class="ledger-section-title"><h2>@L["Transactions"] <span>@Filtered.Count</span></h2><button disabled="@_busy" @onclick="Refresh">↻ @L["Refresh"]</button></div>
+            <div class="ledger-filters">
+                <label><span class="ledger-sr">@L["Search"]</span><input type="search" placeholder="@L["Search category or note"]" @bind="_search" @bind:event="oninput" /></label>
+                <label><span class="ledger-sr">@L["Type"]</span><select @bind="_filter"><option value="all">@L["All types"]</option><option value="expense">@L["Expense"]</option><option value="income">@L["Income"]</option></select></label>
+            </div>
+            @if (!_loaded) { <p role="status">@L["Loading…"]</p> }
+            else if (Filtered.Count == 0)
+            {
+                <div class="ledger-empty"><span>¥</span><h3>@L["Room for a fresh start."]</h3><p>@L["Add a transaction or adjust your filters."]</p></div>
+            }
+            else
+            {
+                <div class="ledger-table-wrap"><table><thead><tr><th>@L["Date"]</th><th>@L["Category / note"]</th><th>@L["Amount"]</th><th><span class="ledger-sr">@L["Actions"]</span></th></tr></thead><tbody>
+                @foreach (var entry in Filtered)
+                {
+                    <tr @key="entry.Id"><td><time datetime="@entry.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">@entry.Date.ToString("MM/dd", CultureInfo.CurrentCulture)</time><small>@L[entry.Kind.ToString()]</small></td>
+                        <td><strong>@entry.Category</strong><small class="ledger-note">@entry.Note</small></td>
+                        <td class="ledger-amount @(entry.Kind == EntryKind.Income ? "ledger-income" : "")">@(entry.Kind == EntryKind.Income ? "+" : "−")@Money(entry.Amount)</td>
+                        <td><div class="ledger-row-actions"><button aria-label="@(L["Edit"] + " " + entry.Category)" disabled="@_busy" @onclick="() => Edit(entry)">@L["Edit"]</button><button aria-label="@(L["Delete"] + " " + entry.Category)" disabled="@_busy" @onclick="() => _deleting = entry">@L["Delete"]</button></div></td></tr>
+                }
+                </tbody></table></div>
+            }
+            <footer class="ledger-tools">
+                <button disabled="@(_busy || !_loaded || _entries.Count == 0)" @onclick="Export">↓ @L["Export month CSV"]</button>
+                <label class="ledger-file-button">↑ @L["Import CSV"]<InputFile OnChange="ReadImport" accept=".csv,text/csv" disabled="@_busy" aria-label="@L["Import CSV"]" /></label>
+                <small>@L["UTF-8 · CNY · Up to 1,000 rows / 2 MiB per import"]</small>
+            </footer>
+        </main>
+        <aside class="ledger-breakdown"><p class="ledger-eyebrow">@L["WHERE IT GOES"]</p><h2>@L["Spending by category"]</h2><p>@L["All expenses in the selected month"]</p>
+            @if (Categories.Length == 0) { <p class="ledger-muted">@L["No expenses yet."]</p> }
+            @foreach (var category in Categories)
+            {
+                <div class="ledger-category"><div><strong>@category.Name</strong><span>@Money(category.Amount)</span></div><progress max="100" value="@Percent(category.Amount)" aria-label="@category.Name"></progress><small>@Percent(category.Amount).ToString("F1", CultureInfo.CurrentCulture)%</small></div>
+            }
+        </aside>
+    </div>
+    @if (_editing)
+    {
+        <div class="ledger-overlay"><section class="ledger-dialog" role="dialog" aria-modal="true" aria-labelledby="ledger-editor-title">
+            <h2 id="ledger-editor-title">@L[_editId is null ? "Add entry" : "Edit entry"]</h2>
+            <form @onsubmit="Save" @onsubmit:preventDefault>
+                <fieldset disabled="@_busy">
+                    <label>@L["Type"]<select @bind="_kind"><option value="Expense">@L["Expense"]</option><option value="Income">@L["Income"]</option></select></label>
+                    <div class="ledger-form-row"><label>@L["Amount (CNY)"]<input type="number" min="0.01" max="999999999.99" step="0.01" required @bind="_amount" /></label><label>@L["Date"]<input type="date" min="1900-01-01" max="9998-12-31" required @bind="_date" /></label></div>
+                    <label>@L["Category"]<input maxlength="40" required list="ledger-categories" @bind="_category" /><datalist id="ledger-categories">@foreach (var name in SuggestedCategories) { <option value="@L[name]"></option> }</datalist></label>
+                    <label>@L["Note"]<textarea rows="3" maxlength="1000" @bind="_note"></textarea></label>
+                    @if (_error is not null) { <p role="alert" class="ledger-form-error">@_error</p> }
+                    <div class="ledger-dialog-actions"><button type="button" @onclick="() => _editing = false">@L["Cancel"]</button><button class="ledger-primary" type="submit">@L["Save"]</button></div>
+                </fieldset>
+            </form>
+        </section></div>
+    }
+    @if (_deleting is not null)
+    {
+        <div class="ledger-overlay"><section class="ledger-dialog" role="dialog" aria-modal="true" aria-labelledby="ledger-delete-title"><h2 id="ledger-delete-title">@L["Delete this entry?"]</h2><p>@_deleting.Category · @Money(_deleting.Amount)</p><p>@L["This action cannot be undone."]</p><div class="ledger-dialog-actions"><button disabled="@_busy" @onclick="() => _deleting = null">@L["Cancel"]</button><button class="ledger-danger" disabled="@_busy" @onclick="Delete">@L["Delete"]</button></div></section></div>
+    }
+    @if (_import is not null)
+    {
+        <div class="ledger-overlay"><section class="ledger-dialog" role="dialog" aria-modal="true" aria-labelledby="ledger-import-title"><h2 id="ledger-import-title">@L["Confirm import"]</h2><p>@L["Ready to import {0} records. Identical IDs are skipped; conflicting IDs reject the entire import.", _import.Count]</p><p>@L["Income"]: @Money(LedgerTotals.From(_import).Income) · @L["Expense"]: @Money(LedgerTotals.From(_import).Expense)</p><p>@L["Records keep their original dates and may belong to other months."]</p><div class="ledger-dialog-actions"><button disabled="@_busy" @onclick="() => _import = null">@L["Cancel"]</button><button class="ledger-primary" disabled="@_busy" @onclick="ConfirmImport">@L["Import"]</button></div></section></div>
+    }
+</section>
+
+@code {
+    private readonly LedgerService _service;
+    public Ledger(LedgerService service) => _service = service;
+    private DateOnly _month = new(DateTime.Today.Year, DateTime.Today.Month, 1);
+    private IReadOnlyList<LedgerEntry> _entries = [];
+    private bool _busy, _loaded, _editing;
+    private string? _error, _message;
+    private string _search = "", _filter = "all", _category = "", _note = "";
+    private Guid? _editId;
+    private EntryKind _kind;
+    private decimal _amount;
+    private DateOnly _date = DateOnly.FromDateTime(DateTime.Today);
+    private LedgerEntry? _deleting;
+    private IReadOnlyList<LedgerEntry>? _import;
+    private IJSObjectReference? _module;
+    private static readonly string[] SuggestedCategories = ["Food", "Transport", "Shopping", "Housing", "Health", "Entertainment", "Salary", "Other"];
+    private LedgerTotals Totals => LedgerTotals.From(_entries);
+    private IReadOnlyList<LedgerEntry> Filtered => _entries.Where(item =>
+        (_filter == "all" || (_filter == "income") == (item.Kind == EntryKind.Income)) &&
+        (item.Category.Contains(_search, StringComparison.CurrentCultureIgnoreCase) || item.Note.Contains(_search, StringComparison.CurrentCultureIgnoreCase))).ToArray();
+    private (string Name, decimal Amount)[] Categories => _entries.Where(item => item.Kind == EntryKind.Expense)
+        .GroupBy(item => item.Category).Select(group => (Name: group.Key, Amount: group.Sum(item => item.Amount)))
+        .OrderByDescending(item => item.Amount).ThenBy(item => item.Name).ToArray();
+    private decimal Percent(decimal amount) => Totals.Expense == 0 ? 0 : amount / Totals.Expense * 100;
+    private static string Money(decimal value) => "¥" + value.ToString("N2", CultureInfo.CurrentCulture);
+    protected override Task OnInitializedAsync() => Refresh();
+
+    private async Task Run(Func<Task> operation)
+    {
+        if (_busy) return;
+        _busy = true; _error = null; _message = null;
+        try { await operation(); }
+        catch (ArgumentException ex) { _error = L[ex.Message]; }
+        catch (Exception) { _error = L["Operation failed. Please refresh and try again."]; }
+        finally { _busy = false; }
+    }
+    private async Task Load() { _entries = await _service.ListMonthAsync(_month); _loaded = true; }
+    private Task Refresh() => Run(Load);
+    private async Task LoadMonth(DateOnly month)
+    {
+        var entries = await _service.ListMonthAsync(month);
+        _month = month; _entries = entries; _loaded = true;
+    }
+    private Task ChangeMonth(int offset) => Run(() => LoadMonth(_month.AddMonths(offset)));
+    private Task SelectMonth(ChangeEventArgs args) => Run(async () =>
+    {
+        if (DateOnly.TryParseExact(args.Value + "-01", "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var month) && month.Year is >= 1900 and <= 9998)
+        { await LoadMonth(month); }
+    });
+    private void NewEntry()
+    {
+        _editId = null; _kind = EntryKind.Expense; _amount = 0; _category = L["Food"]; _note = "";
+        _date = _month.Year == DateTime.Today.Year && _month.Month == DateTime.Today.Month ? DateOnly.FromDateTime(DateTime.Today) : _month;
+        _error = null; _editing = true;
+    }
+    private void Edit(LedgerEntry item)
+    {
+        _editId = item.Id; _date = item.Date; _kind = item.Kind; _amount = item.Amount; _category = item.Category; _note = item.Note;
+        _error = null; _editing = true;
+    }
+    private Task Save() => Run(async () =>
+    {
+        await _service.SaveAsync(_editId, _date, _kind, _amount, _category, _note);
+        _month = new(_date.Year, _date.Month, 1); _editing = false; await Load(); _message = L["Entry saved."];
+    });
+    private Task Delete() => Run(async () =>
+    {
+        if (_deleting is null) return;
+        await _service.DeleteAsync(_deleting.Id); _deleting = null; await Load(); _message = L["Entry deleted."];
+    });
+    private Task Export() => Run(async () =>
+    {
+        _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/quantum.plugin.ledger/ledger.js");
+        await _module.InvokeVoidAsync("downloadCsv", $"quantum-ledger-{_month:yyyy-MM}.csv", LedgerCsv.Export(_entries));
+    });
+    private Task ReadImport(InputFileChangeEventArgs args) => Run(async () =>
+    {
+        await using var stream = args.File.OpenReadStream(2 * 1024 * 1024);
+        using var reader = new StreamReader(stream, new UTF8Encoding(false, true));
+        try { _import = LedgerCsv.Parse(await reader.ReadToEndAsync()); }
+        catch (Exception ex) when (ex is ArgumentException or DecoderFallbackException)
+        { throw new ArgumentException("Invalid CSV. Export a month to obtain the template, then check IDs, dates, types and amounts."); }
+    });
+    private Task ConfirmImport() => Run(async () =>
+    {
+        if (_import is null) return;
+        var added = await _service.ImportAsync(_import); _import = null; await Load(); _message = L["Imported {0} new records.", added];
+    });
+    public async ValueTask DisposeAsync()
+    {
+        if (_module is not null)
+        {
+            try { await _module.DisposeAsync(); } catch (JSDisconnectedException) { }
+        }
+    }
+}

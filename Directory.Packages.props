@@ -6,6 +6,9 @@
 
   <ItemGroup>
     <PackageVersion Include="Microsoft.Extensions.Localization" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.7" />
+    <PackageVersion Include="NOF.Infrastructure.EntityFrameworkCore" Version="$(NofVersion)" />
     <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7" />
     <PackageVersion Include="NOF.Abstraction" Version="$(NofVersion)" />
     <PackageVersion Include="NOF.Application" Version="$(NofVersion)" />

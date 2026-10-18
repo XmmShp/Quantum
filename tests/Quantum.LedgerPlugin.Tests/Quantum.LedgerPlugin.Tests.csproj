@@ -1,0 +1,25 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio" PrivateAssets="all" />
+    <PackageReference Include="Microsoft.EntityFrameworkCore.Sqlite" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
+    <PackageReference Include="NOF.Infrastructure.EntityFrameworkCore" />
+    <ProjectReference Include="../../Ledger/Quantum.LedgerPlugin.csproj" />
+    <ProjectReference Include="../../Calendar/Quantum.CalendarPlugin.csproj" />
+    <ProjectReference Include="../../Codex/Quantum.CodexPlugin.csproj" />
+    <None Include="../../Ledger/migrations/001_init.sql" Link="001_init.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../Calendar/migrations/*.sql" Link="calendar-migrations/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+  <ItemGroup>
+    <Using Include="Quantum.Plugin.Abstraction" />
+  </ItemGroup>
+</Project>

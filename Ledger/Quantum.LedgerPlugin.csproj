@@ -1,0 +1,21 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PackageId>Quantum.LedgerPlugin</PackageId>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Quantum.Plugin.Abstraction" />
+    <PackageReference Include="Microsoft.Extensions.Localization" />
+    <PackageReference Include="NOF.Application" />
+    <PackageReference Include="NOF.Contract" />
+    <PackageReference Include="NOF.Domain" />
+    <PackageReference Include="NOF.Infrastructure" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Update="plugin.json;wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="migrations\**\*.sql" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="README.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+</Project>

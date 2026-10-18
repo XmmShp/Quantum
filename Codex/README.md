@@ -27,7 +27,8 @@ tool effects.
 1. The user selects a model and connects from `/plugins/codex`; the plugin starts `codex app-server` over its default
    stdio JSONL transport. GPT-5.6 Luna is selected by default.
 2. The plugin initializes the App Server with `experimentalApi`, reads `quantum.rpc.catalog`, and creates one namespaced
-   dynamic tool for every available RPC except the catalog itself.
+   dynamic tool for each available RPC except the catalog and this plugin's own control RPCs. This prevents a model
+   from recursively sending prompts to, replacing, or disconnecting the session executing its current turn.
 3. An `item/tool/call` request executes directly through `IRpcInvoker`; the serialized result is returned to Codex as
    tool content.
 4. Disconnecting, disabling, upgrading, or unloading the plugin terminates the child App Server process.
@@ -40,3 +41,27 @@ Available models are refreshed from App Server's `model/list` response after con
 new thread and passes the selected model explicitly to `thread/start`.
 If a selected model requires a newer App Server, update the CLI with
 `npm install -g @openai/codex@latest`, then disconnect and reconnect the plugin.
+
+## Quantum RPC (since 0.1.2)
+
+The `ICodexRpcService` NOF contract exposes these operations through `quantum.rpc.catalog`. Prefix each name below with
+`quantum.plugin.codex.` for a fully qualified name. External Quantum callers can discover and invoke them; they are
+intentionally excluded from the dynamic tools injected into this same Codex session.
+
+| Method | Request | Result |
+| --- | --- | --- |
+| `codex.snapshot` | `{}` | Connection, current thread, running state, models and messages; no process starts |
+| `codex.models` | `{}` | Cached model options; initial options before connection, App Server options after connection |
+| `codex.connect` | `{ "workingDirectory": "C:/work", "model": "gpt-5.6-luna" }` | Starts the local App Server and creates a session; returns its snapshot |
+| `codex.new-thread` | `{ "model": null }` | Starts a fresh thread, optionally changes model, clears displayed messages |
+| `codex.send` | `{ "prompt": "..." }` | Starts a model turn; poll `snapshot` for progress and completion |
+| `codex.disconnect` | `{}` | Stops this plugin's App Server process; may interrupt an active turn |
+
+Requests and responses cross the host JSON boundary using NOF `Result<T>`. Business failures use
+`codex_invalid_request`, `codex_invalid_state` or `codex_connection_failed`; cancellation propagates.
+Connection failures that the UI records in its snapshot are explicitly returned as failed RPC results.
+
+Connect and send only with the user's authorization: these operations may expose other Quantum plugin tools to Codex,
+consume model usage and cause tool effects. Snapshot includes local session messages. No authentication files or tokens
+are returned. Tests cover the actual production snapshot/disconnect/error paths without launching Codex, plus dispatch
+of all commands through a controlled application-service substitute so automated tests never consume model usage.

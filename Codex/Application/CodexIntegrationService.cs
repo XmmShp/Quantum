@@ -158,6 +158,11 @@ internal sealed class CodexIntegrationService(
                 throw;
             }
         }
+        catch (OperationCanceledException)
+        {
+            SetConnectionState(CodexConnectionState.Disconnected, null);
+            throw;
+        }
         catch (Exception exception)
         {
             logger.LogError(exception, "Could not connect the Quantum Codex integration.");

@@ -13,6 +13,8 @@
   <ItemGroup>
     <PackageReference Include="Microsoft.Extensions.Localization" />
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="NOF.Application" />
+    <PackageReference Include="NOF.Contract" />
   </ItemGroup>
 
   <ItemGroup>

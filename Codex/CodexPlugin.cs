@@ -9,6 +9,12 @@ public sealed class CodexPlugin : IQuantumPlugin
     public static void ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton<ICodexIntegrationService, CodexIntegrationService>();
+        services.AddTransient<CodexRpcService.GetSnapshot, GetCodexSnapshot>();
+        services.AddTransient<CodexRpcService.ListModels, ListCodexModels>();
+        services.AddTransient<CodexRpcService.Connect, ConnectCodex>();
+        services.AddTransient<CodexRpcService.StartNewThread, StartCodexThread>();
+        services.AddTransient<CodexRpcService.Send, SendCodexPrompt>();
+        services.AddTransient<CodexRpcService.Disconnect, DisconnectCodex>();
     }
 
     public static Task StartAsync(
