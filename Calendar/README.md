@@ -8,7 +8,7 @@ Quantum 官方日历插件，提供统一的日程与待办管理。
 - 日程、待办的创建、编辑和删除
 - 待办完成状态、全部/未完成/已完成筛选及逾期提示
 - 中英文界面与响应式布局
-- 通过 NOF Application Service 和宿主共享 SQLite 持久化；本地数据使用物理删除，不启用软删除
+- 页面通过生成的 `ICalendarRpcServiceClient` 调用，Handler 直接使用仓储和宿主共享 SQLite 持久化；本地数据使用物理删除，不启用软删除
 - 通过 NOF `IRpcService` 向其它 .NET 与 Web 插件提供稳定的跨插件接口
 
 ## 插件 RPC
@@ -45,6 +45,12 @@ var tasks = await rpc.InvokeAsync<MyCalendarEntry[]>(
     Context.Empty,
     cancellationToken);
 ```
+
+## 内部调用结构
+
+页面使用构造函数注入生成的 `ICalendarRpcServiceClient`，注册到 `LocalCalendarRpcServiceClient`。Handler 承担应用层用例，直接查询仓储、调用领域对象并通过 `IDbContext` 提交；不再使用 `ICalendarApplicationService` / `CalendarApplicationService`。每次本地调用和宿主 RPC 都有独立服务端作用域，页面统一处理失败 Result。
+
+详见 [官方插件开发指南](../docs/plugin-development.md)。
 
 ## 开发
 

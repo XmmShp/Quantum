@@ -32,17 +32,41 @@ public sealed class CalendarEntry
         Update(title, notes, kind, date, startTime, endTime, style, createdAt);
     }
 
-    public Guid Id { get; private set; }
+    public Guid Id
+    {
+        get; private set;
+    }
     public string Title { get; private set; } = string.Empty;
     public string Notes { get; private set; } = string.Empty;
-    public CalendarEntryKind Kind { get; private set; }
-    public DateOnly Date { get; private set; }
-    public TimeOnly StartTime { get; private set; }
-    public TimeOnly? EndTime { get; private set; }
-    public bool IsCompleted { get; private set; }
+    public CalendarEntryKind Kind
+    {
+        get; private set;
+    }
+    public DateOnly Date
+    {
+        get; private set;
+    }
+    public TimeOnly StartTime
+    {
+        get; private set;
+    }
+    public TimeOnly? EndTime
+    {
+        get; private set;
+    }
+    public bool IsCompleted
+    {
+        get; private set;
+    }
     public string Style { get; private set; } = "violet";
-    public DateTimeOffset CreatedAt { get; private set; }
-    public DateTimeOffset UpdatedAt { get; private set; }
+    public DateTimeOffset CreatedAt
+    {
+        get; private set;
+    }
+    public DateTimeOffset UpdatedAt
+    {
+        get; private set;
+    }
 
     public static CalendarEntry Create(
         string title,

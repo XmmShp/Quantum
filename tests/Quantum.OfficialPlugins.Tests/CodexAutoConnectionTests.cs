@@ -1,4 +1,3 @@
-using System.Text.Json;
 using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
@@ -6,15 +5,17 @@ using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NOF.Contract;
 using Quantum.OfficialPlugins.Codex.Application;
+using Quantum.OfficialPlugins.Codex.Infrastructure;
 using Quantum.Plugin.Abstraction;
+using System.Text.Json;
 using Xunit;
 
 namespace Quantum.Tests;
 
 public sealed class CodexAutoConnectionTests
 {
-    private static CodexIntegrationService Service(GatedInvoker invoker, TimeSpan? timeout = null) =>
-        new(invoker, NullLoggerFactory.Instance, NullLogger<CodexIntegrationService>.Instance, timeout);
+    private static CodexRuntime Service(GatedInvoker invoker, TimeSpan? timeout = null) =>
+        new(invoker, NullLoggerFactory.Instance, NullLogger<CodexRuntime>.Instance, timeout);
 
     [Fact]
     public async Task PageAndDrawerShareOneAttemptFailurePersistsAndManualRetryWorks()
@@ -32,7 +33,7 @@ public sealed class CodexAutoConnectionTests
         Assert.Contains("Catalog unavailable <detail>", service.Snapshot.ErrorMessage);
         await service.EnsureAutoConnectedAsync();
         Assert.Equal(1, invoker.Calls);
-        await service.ConnectAsync(Environment.CurrentDirectory, CodexIntegrationService.DefaultModel);
+        await service.ConnectAsync(Environment.CurrentDirectory, CodexRuntime.DefaultModel);
         Assert.Equal(2, invoker.Calls);
     }
 
@@ -88,14 +89,16 @@ public sealed class CodexAutoConnectionTests
     [Fact]
     public async Task ConnectionFailureRendersTheActualReasonOnThePageWithARetryAction()
     {
-        var invoker = new GatedInvoker(); invoker.Release.TrySetResult();
+        var invoker = new GatedInvoker();
+        invoker.Release.TrySetResult();
         await using var service = Service(invoker);
         await service.EnsureAutoConnectedAsync();
         var services = new ServiceCollection();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         services.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
         services.AddLocalization();
-        services.AddSingleton<ICodexIntegrationService>(service);
+        OfficialPlugins.Codex.CodexPlugin.ConfigureServices(services);
+        services.AddSingleton<ICodexRuntime>(service);
         services.AddSingleton<IComponentActivator, InjectingActivator>();
         await using var provider = services.BuildServiceProvider();
         await using var renderer = new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>());
@@ -123,7 +126,8 @@ public sealed class CodexAutoConnectionTests
         public async Task<Result<T>> InvokeAsync<T>(string rpcName, object payload, Context context, CancellationToken cancellationToken = default)
         {
             Assert.Equal("quantum.rpc.catalog", rpcName);
-            Interlocked.Increment(ref Calls); Entered.TrySetResult();
+            Interlocked.Increment(ref Calls);
+            Entered.TrySetResult();
             await Release.Task.WaitAsync(cancellationToken);
             return Result.Fail("catalog_unavailable", "Catalog unavailable <detail>");
         }

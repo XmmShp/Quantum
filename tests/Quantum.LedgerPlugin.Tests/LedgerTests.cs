@@ -1,8 +1,8 @@
-using System.Globalization;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Quantum.OfficialPlugins.Ledger;
 using Quantum.OfficialPlugins.Ledger.Localization;
+using System.Globalization;
 using Xunit;
 
 namespace Quantum.LedgerPlugin.Tests;
@@ -81,7 +81,10 @@ public sealed class LedgerTests
         var result = Assert.Single(LedgerCsv.Parse(LedgerCsv.Export([item])));
         Assert.Equal(item.Id, result.Id);
         Assert.True(item.SameContent(result));
-        if (note.StartsWith('=')) Assert.Contains("'=" , LedgerCsv.Export([item]));
+        if (note.StartsWith('='))
+        {
+            Assert.Contains("'=", LedgerCsv.Export([item]));
+        }
     }
 
     [Fact]
@@ -96,7 +99,10 @@ public sealed class LedgerTests
             Assert.Contains("1234.56", csv);
             Assert.Equal(1234.56m, Assert.Single(LedgerCsv.Parse(csv)).Amount);
         }
-        finally { CultureInfo.CurrentCulture = original; }
+        finally
+        {
+            CultureInfo.CurrentCulture = original;
+        }
     }
 
     [Fact]
@@ -112,7 +118,22 @@ public sealed class LedgerTests
         Assert.Throws<ArgumentException>(() => LedgerCsv.Parse("id,date,type,amount,category,note\r\n\"closed\"x,1"));
         Assert.Throws<ArgumentException>(() => LedgerCsv.Parse("id,date,type,amount,category,note\r\n"));
         Assert.Throws<ArgumentException>(() => LedgerCsv.Parse(new string('x', 2 * 1024 * 1024 + 1)));
-        Assert.Throws<ArgumentException>(() => LedgerCsv.Parse(LedgerCsv.Export(Enumerable.Range(0,1001).Select(_ => Entry()))));
+        Assert.Throws<ArgumentException>(() => LedgerCsv.Parse(LedgerCsv.Export(Enumerable.Range(0, 1001).Select(_ => Entry()))));
+    }
+
+    [Fact]
+    public void LegacyCsvRemainsReadableAndRelationsRoundTrip()
+    {
+        var id = Guid.NewGuid();
+        var legacy = $"id,date,type,amount,category,note\r\n{id},2026-10-18,expense,25.50,Food,Lunch\r\n";
+        var expense = Assert.Single(LedgerCsv.Parse(legacy));
+        Assert.Null(expense.RelatedExpenseId);
+        var income = LedgerEntry.Create(Guid.NewGuid(), new(2026, 11, 1), EntryKind.Income, 10m, "AA", "", id);
+        var restored = Assert.Single(LedgerCsv.Parse(LedgerCsv.Export([income])));
+        Assert.True(income.SameContent(restored));
+        Assert.False(income.SameContent(LedgerEntry.Create(income.Id, income.Date, income.Kind, income.Amount, income.Category, income.Note)));
+        Assert.DoesNotContain("relation_kind", LedgerCsv.Export([income]));
+        Assert.Throws<ArgumentException>(() => LedgerCsv.Parse(LedgerCsv.Export([income]).Replace(id.ToString(), "invalid-guid")));
     }
 
     [Fact]
@@ -129,6 +150,10 @@ public sealed class LedgerTests
             CultureInfo.CurrentUICulture = CultureInfo.GetCultureInfo("en-US");
             Assert.Equal("Ledger", localizer["Ledger"].Value);
         }
-        finally { CultureInfo.CurrentUICulture = original; services.Dispose(); }
+        finally
+        {
+            CultureInfo.CurrentUICulture = original;
+            services.Dispose();
+        }
     }
 }

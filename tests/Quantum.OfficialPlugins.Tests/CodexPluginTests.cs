@@ -1,8 +1,8 @@
-using System.Text.Json;
-using System.Text;
+using Quantum.OfficialPlugins.Codex.Application;
 using Quantum.OfficialPlugins.Codex.Infrastructure;
 using Quantum.OfficialPlugins.Codex.Pages;
-using Quantum.OfficialPlugins.Codex.Application;
+using System.Text;
+using System.Text.Json;
 using Xunit;
 
 namespace Quantum.Tests;
@@ -38,19 +38,19 @@ public sealed class CodexPluginTests
     [Fact]
     public void LunaIsTheDefaultModel()
     {
-        Assert.Equal("gpt-5.6-luna", CodexIntegrationService.DefaultModel);
+        Assert.Equal("gpt-5.6-luna", CodexRuntime.DefaultModel);
         Assert.Equal(
             "gpt-5.6-luna",
-            CodexIntegrationService.ResolveModel(
-                CodexIntegrationService.DefaultModel,
-                CodexIntegrationService.InitialModels));
+            CodexRuntime.ResolveModel(
+                CodexRuntime.DefaultModel,
+                CodexRuntime.InitialModels));
     }
 
     [Fact]
     public void UnavailableModelIsRejectedBeforeStartingAThread()
     {
         var exception = Assert.Throws<InvalidOperationException>(() =>
-            CodexIntegrationService.ResolveModel("gpt-missing", CodexIntegrationService.InitialModels));
+            CodexRuntime.ResolveModel("gpt-missing", CodexRuntime.InitialModels));
 
         Assert.Contains("not available", exception.Message, StringComparison.Ordinal);
     }
@@ -74,9 +74,8 @@ public sealed class CodexPluginTests
     {
         var constructor = Assert.Single(typeof(Codex).GetConstructors());
 
-        Assert.Equal(
-            typeof(ICodexIntegrationService),
-            Assert.Single(constructor.GetParameters()).ParameterType);
+        Assert.Equal(new[] { typeof(ICodexRpcServiceClient), typeof(ICodexRuntimeEvents) },
+            constructor.GetParameters().Select(parameter => parameter.ParameterType));
     }
 
     [Fact]
@@ -84,9 +83,8 @@ public sealed class CodexPluginTests
     {
         var constructor = Assert.Single(typeof(CodexDrawer).GetConstructors());
 
-        Assert.Equal(
-            typeof(ICodexIntegrationService),
-            Assert.Single(constructor.GetParameters()).ParameterType);
+        Assert.Equal(new[] { typeof(ICodexRpcServiceClient), typeof(ICodexRuntimeEvents) },
+            constructor.GetParameters().Select(parameter => parameter.ParameterType));
     }
 
     [Fact]
@@ -159,7 +157,7 @@ public sealed class CodexPluginTests
     public void IntegrationContractDoesNotExposeToolApprovalState()
     {
         Assert.DoesNotContain(
-            typeof(ICodexIntegrationService).GetMethods(),
+            typeof(ICodexRuntime).GetMethods(),
             method => method.Name.Contains("ResolveToolCall", StringComparison.Ordinal));
         Assert.Null(typeof(CodexIntegrationSnapshot).GetProperty("PendingCalls"));
     }

@@ -1,17 +1,18 @@
-using System.Collections.Concurrent;
-using System.Text.Json;
 using Microsoft.Extensions.Logging;
 using NOF.Contract;
-using Quantum.OfficialPlugins.Codex.Infrastructure;
+using Quantum.OfficialPlugins.Codex.Application;
 using Quantum.Plugin.Abstraction;
+using System.Collections.Concurrent;
+using System.Text.Json;
 
-namespace Quantum.OfficialPlugins.Codex.Application;
+namespace Quantum.OfficialPlugins.Codex.Infrastructure;
 
-internal sealed class CodexIntegrationService(
+internal sealed class CodexRuntime(
     IRpcInvoker rpcInvoker,
     ILoggerFactory loggerFactory,
-    ILogger<CodexIntegrationService> logger,
-    TimeSpan? automaticConnectionTimeout = null) : ICodexIntegrationService, IAsyncDisposable
+    ILogger<CodexRuntime> logger,
+    TimeSpan? automaticConnectionTimeout = null,
+    Func<ICodexAppServerClient>? clientFactory = null) : ICodexRuntime, IAsyncDisposable
 {
     internal const string DefaultModel = "gpt-5.6-luna";
 
@@ -30,7 +31,7 @@ internal sealed class CodexIntegrationService(
     private IReadOnlyList<QuantumRpcTool> _tools = [];
     private IReadOnlyList<CodexModelOption> _models = InitialModels;
     private string _selectedModel = DefaultModel;
-    private CodexAppServerClient? _client;
+    private ICodexAppServerClient? _client;
     private CodexConnectionState _connectionState;
     private string? _threadId;
     private bool _isBusy;
@@ -47,9 +48,16 @@ internal sealed class CodexIntegrationService(
         lock (_sync)
         {
             ObjectDisposedException.ThrowIf(_disposed, this);
-            if (_automaticConnectionTask is not null) return _automaticConnectionTask;
+            if (_automaticConnectionTask is not null)
+            {
+                return _automaticConnectionTask;
+            }
+
             if (_automaticConnectionSuppressed || _connectionState != CodexConnectionState.Disconnected)
+            {
                 return Task.CompletedTask;
+            }
+
             _automaticConnectionTask = AutoConnectAsync();
             return _automaticConnectionTask;
         }
@@ -63,7 +71,11 @@ internal sealed class CodexIntegrationService(
         CancellationToken token;
         lock (_sync)
         {
-            if (_disposed || _automaticConnectionSuppressed || _connectionState != CodexConnectionState.Disconnected) return;
+            if (_disposed || _automaticConnectionSuppressed || _connectionState != CodexConnectionState.Disconnected)
+            {
+                return;
+            }
+
             _automaticConnection = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
             _automaticConnection.CancelAfter(automaticConnectionTimeout ?? TimeSpan.FromSeconds(30));
             token = _automaticConnection.Token;
@@ -89,7 +101,11 @@ internal sealed class CodexIntegrationService(
         lock (_sync)
         {
             if (_disposed || _automaticConnectionSuppressed
-                || _connectionState is CodexConnectionState.Connected or CodexConnectionState.Connecting) return;
+                || _connectionState is CodexConnectionState.Connected or CodexConnectionState.Connecting)
+            {
+                return;
+            }
+
             _connectionState = CodexConnectionState.Failed;
             _errorMessage = message;
         }
@@ -127,7 +143,7 @@ internal sealed class CodexIntegrationService(
         await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            CodexAppServerClient? staleClient = null;
+            ICodexAppServerClient? staleClient = null;
             lock (_sync)
             {
                 if (_client is not null && _connectionState is CodexConnectionState.Connected
@@ -163,7 +179,9 @@ internal sealed class CodexIntegrationService(
 
             var catalogResult = await rpcInvoker.InvokeAsync<JsonElement>(
                 "quantum.rpc.catalog",
-                new { },
+                new
+                {
+                },
                 Context.Empty,
                 cancellationToken).ConfigureAwait(false);
             if (!catalogResult.IsSuccess)
@@ -174,7 +192,8 @@ internal sealed class CodexIntegrationService(
 
             var tools = QuantumRpcToolCatalog.Parse(catalogResult.Value);
             var selectedModel = ResolveModel(model, InitialModels);
-            var client = new CodexAppServerClient(loggerFactory.CreateLogger<CodexAppServerClient>());
+            var client = clientFactory?.Invoke()
+                ?? new CodexAppServerClient(loggerFactory.CreateLogger<CodexAppServerClient>());
             client.NotificationReceived += HandleNotificationAsync;
             client.DynamicToolCallReceived += HandleDynamicToolCallAsync;
             client.ConnectionClosed += HandleConnectionClosed;
@@ -241,7 +260,7 @@ internal sealed class CodexIntegrationService(
         await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            CodexAppServerClient client;
+            ICodexAppServerClient client;
             IReadOnlyList<QuantumRpcTool> tools;
             string workingDirectory;
             string selectedModel;
@@ -280,12 +299,42 @@ internal sealed class CodexIntegrationService(
         }
     }
 
+    public async Task ChangeModelAsync(string model, CancellationToken cancellationToken = default)
+    {
+        ObjectDisposedException.ThrowIf(_disposed, this);
+        await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
+        try
+        {
+            lock (_sync)
+            {
+                cancellationToken.ThrowIfCancellationRequested();
+                if (_connectionState != CodexConnectionState.Connected || _threadId is null)
+                {
+                    throw new InvalidOperationException("Codex is not connected.");
+                }
+
+                if (_isBusy)
+                {
+                    throw new InvalidOperationException("Wait for the current Codex turn to finish.");
+                }
+
+                _selectedModel = ResolveModel(model, _models);
+            }
+            NotifyChanged();
+        }
+        finally
+        {
+            _operationGate.Release();
+        }
+    }
+
     public async Task SendAsync(string prompt, CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
         ArgumentException.ThrowIfNullOrWhiteSpace(prompt);
-        CodexAppServerClient client;
+        ICodexAppServerClient client;
         string threadId;
+        string selectedModel;
         lock (_sync)
         {
             client = _client ?? throw new InvalidOperationException("Codex is not connected.");
@@ -295,6 +344,7 @@ internal sealed class CodexIntegrationService(
                 throw new InvalidOperationException("Wait for the current Codex turn to finish.");
             }
 
+            selectedModel = _selectedModel;
             _isBusy = true;
             _errorMessage = null;
             _messages.Add(new CodexChatMessage(
@@ -307,7 +357,7 @@ internal sealed class CodexIntegrationService(
         NotifyChanged();
         try
         {
-            await client.StartTurnAsync(threadId, prompt.Trim(), cancellationToken).ConfigureAwait(false);
+            await client.StartTurnAsync(threadId, prompt.Trim(), selectedModel, cancellationToken).ConfigureAwait(false);
         }
         catch (Exception exception)
         {
@@ -330,11 +380,15 @@ internal sealed class CodexIntegrationService(
             _automaticConnectionSuppressed = true;
             automaticConnection = _automaticConnection;
         }
-        if (automaticConnection is not null) await automaticConnection.CancelAsync().ConfigureAwait(false);
+        if (automaticConnection is not null)
+        {
+            await automaticConnection.CancelAsync().ConfigureAwait(false);
+        }
+
         await _operationGate.WaitAsync(cancellationToken).ConfigureAwait(false);
         try
         {
-            CodexAppServerClient? client;
+            ICodexAppServerClient? client;
             lock (_sync)
             {
                 client = _client;
@@ -366,13 +420,21 @@ internal sealed class CodexIntegrationService(
         Task? automaticTask;
         lock (_sync)
         {
-            if (_disposed) return;
+            if (_disposed)
+            {
+                return;
+            }
+
             _disposed = true;
             _automaticConnectionSuppressed = true;
             automaticTask = _automaticConnectionTask;
         }
         await _lifetime.CancelAsync().ConfigureAwait(false);
-        if (automaticTask is not null) await automaticTask.ConfigureAwait(false);
+        if (automaticTask is not null)
+        {
+            await automaticTask.ConfigureAwait(false);
+        }
+
         await DisconnectAsync(CancellationToken.None).ConfigureAwait(false);
         _automaticConnection?.Dispose();
         _lifetime.Dispose();
@@ -500,7 +562,12 @@ internal sealed class CodexIntegrationService(
     }
 
     private static CodexDynamicToolResult Failure(string errorCode, string message)
-        => new(false, JsonSerializer.Serialize(new { isSuccess = false, errorCode, message }));
+        => new(false, JsonSerializer.Serialize(new
+        {
+            isSuccess = false,
+            errorCode,
+            message
+        }));
 
     internal static string ResolveModel(
         string model,
@@ -528,7 +595,10 @@ internal sealed class CodexIntegrationService(
             return;
         }
 
-        _messages[index] = _messages[index] with { Text = _messages[index].Text + delta };
+        _messages[index] = _messages[index] with
+        {
+            Text = _messages[index].Text + delta
+        };
     }
 
     private void CompleteStreamingMessage()
@@ -536,7 +606,10 @@ internal sealed class CodexIntegrationService(
         var index = _messages.FindLastIndex(static message => message.IsStreaming);
         if (index >= 0)
         {
-            _messages[index] = _messages[index] with { IsStreaming = false };
+            _messages[index] = _messages[index] with
+            {
+                IsStreaming = false
+            };
         }
     }
 

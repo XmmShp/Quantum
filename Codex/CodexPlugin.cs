@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Quantum.OfficialPlugins.Codex.Application;
+using Quantum.OfficialPlugins.Codex.Infrastructure;
 using Quantum.Plugin.Abstraction;
 
 namespace Quantum.OfficialPlugins.Codex;
@@ -8,11 +9,16 @@ public sealed class CodexPlugin : IQuantumPlugin
 {
     public static void ConfigureServices(IServiceCollection services)
     {
-        services.AddSingleton<ICodexIntegrationService, CodexIntegrationService>();
+        services.AddPluginRpcServer<CodexRpcService>();
+        services.AddScoped<ICodexRpcServiceClient, LocalCodexRpcServiceClient>();
+        services.AddSingleton<ICodexRuntime, CodexRuntime>();
+        services.AddSingleton<ICodexRuntimeEvents>(provider => provider.GetRequiredService<ICodexRuntime>());
+        services.AddTransient<CodexRpcService.EnsureAutoConnected, EnsureCodexAutoConnected>();
         services.AddTransient<CodexRpcService.GetSnapshot, GetCodexSnapshot>();
         services.AddTransient<CodexRpcService.ListModels, ListCodexModels>();
         services.AddTransient<CodexRpcService.Connect, ConnectCodex>();
         services.AddTransient<CodexRpcService.StartNewThread, StartCodexThread>();
+        services.AddTransient<CodexRpcService.ChangeModel, ChangeCodexModel>();
         services.AddTransient<CodexRpcService.Send, SendCodexPrompt>();
         services.AddTransient<CodexRpcService.Disconnect, DisconnectCodex>();
     }
@@ -29,7 +35,7 @@ public sealed class CodexPlugin : IQuantumPlugin
         IServiceProvider services,
         CancellationToken cancellationToken = default)
     {
-        if (services.GetService<ICodexIntegrationService>() is IAsyncDisposable service)
+        if (services.GetService<ICodexRuntime>() is IAsyncDisposable service)
         {
             await service.DisposeAsync().ConfigureAwait(false);
         }

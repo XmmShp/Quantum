@@ -225,4 +225,19 @@
   <data name="An imported ID conflicts with an existing record." xml:space="preserve">
     <value>An imported ID conflicts with an existing record.</value>
   </data>
+  <data name="Related entries" xml:space="preserve"><value>Related entries</value></data>
+  <data name="No relation" xml:space="preserve"><value>No relation</value></data>
+  <data name="Expense month" xml:space="preserve"><value>Expense month</value></data>
+  <data name="Original expense" xml:space="preserve"><value>Original expense</value></data>
+  <data name="Relations do not change monthly income or expense totals." xml:space="preserve"><value>Relations do not change monthly income or expense totals.</value></data>
+  <data name="Recovered" xml:space="preserve"><value>Recovered</value></data>
+  <data name="Net expense" xml:space="preserve"><value>Net expense</value></data>
+  <data name="No related entries." xml:space="preserve"><value>No related entries.</value></data>
+  <data name="Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Only an income can link to another expense." xml:space="preserve"><value>Only an income can link to another expense.</value></data>
+  <data name="Unlink repayments before changing this expense to income." xml:space="preserve"><value>Unlink repayments before changing this expense to income.</value></data>
+  <data name="Unlink repayments before deleting this expense." xml:space="preserve"><value>Unlink repayments before deleting this expense.</value></data>
+  <data name="Related expense does not exist." xml:space="preserve"><value>Related expense does not exist.</value></data>
+  <data name="The linked record must be an expense." xml:space="preserve"><value>The linked record must be an expense.</value></data>
+  <data name="Record no longer exists. Refresh and try again." xml:space="preserve"><value>Record no longer exists. Refresh and try again.</value></data>
 </root>

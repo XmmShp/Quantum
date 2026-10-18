@@ -15,6 +15,7 @@
     <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
     <PackageReference Include="NOF.Application" />
     <PackageReference Include="NOF.Contract" />
+    <PackageReference Include="NOF.Infrastructure" />
   </ItemGroup>
 
   <ItemGroup>
@@ -36,4 +37,7 @@
           DestinationFiles="$(CodexScopedCssBundleTarget)"
           SkipUnchangedFiles="true" />
   </Target>
+  <ItemGroup>
+    <Compile Include="../Shared/*.cs" Link="%(Filename)%(Extension)" />
+  </ItemGroup>
 </Project>

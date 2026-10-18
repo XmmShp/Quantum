@@ -1,10 +1,10 @@
-using System.Text.Json;
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 using Quantum.OfficialPlugins.Ledger;
 using Quantum.OfficialPlugins.Ledger.Rpc;
 using Quantum.Plugins;
+using System.Text.Json;
 using Xunit;
 
 namespace Quantum.LedgerPlugin.Tests;
@@ -15,13 +15,15 @@ public sealed class LedgerRpcTests
     public async Task HostCatalogDiscoversAllLedgerMethodsWithDescriptionsAndSchemas()
     {
         await using var host = await Harness.Create();
-        var catalog = await host.Call("quantum.rpc.catalog", new { });
+        var catalog = await host.Call("quantum.rpc.catalog", new
+        {
+        });
         var service = Assert.Single(catalog.GetProperty("value").GetProperty("services").EnumerateArray(),
             item => item.GetProperty("pluginId").GetString() == "quantum.plugin.ledger");
         Assert.Equal("ledger", service.GetProperty("serviceName").GetString());
         Assert.False(string.IsNullOrWhiteSpace(service.GetProperty("description").GetString()));
         var methods = service.GetProperty("methods").EnumerateArray().ToArray();
-        Assert.Equal(new[] { "create", "delete", "export-csv", "get", "import-csv", "list", "summary", "update" },
+        Assert.Equal(new[] { "create", "delete", "export-csv", "get", "import-csv", "list", "related", "summary", "update" },
             methods.Select(method => method.GetProperty("canonicalName").GetString()!.Split('.')[1]).Order(StringComparer.Ordinal));
         foreach (var method in methods)
         {
@@ -30,6 +32,8 @@ public sealed class LedgerRpcTests
             Assert.Equal("object", method.GetProperty("inputSchema").GetProperty("type").GetString());
         }
         var create = methods.Single(method => method.GetProperty("canonicalName").GetString() == "ledger.create");
+        Assert.True(create.GetProperty("inputSchema").GetProperty("properties").TryGetProperty("relatedExpenseId", out _));
+        Assert.False(create.GetProperty("inputSchema").GetProperty("properties").TryGetProperty("relationKind", out _));
         Assert.Contains("人民币", create.GetProperty("inputSchema").GetProperty("properties").GetProperty("amount").GetProperty("description").GetString());
         Assert.Contains("ledger", create.GetProperty("outputSchema").GetRawText().ToLowerInvariant());
     }
@@ -81,6 +85,88 @@ public sealed class LedgerRpcTests
         AssertSuccess(await host.Call("ledger.delete", new LedgerEntryRequest(id), expectsValue: false));
         AssertSuccess(await host.Call("ledger.delete", new LedgerEntryRequest(id), expectsValue: false));
         Assert.Equal(JsonValueKind.Null, (await host.Call("ledger.get", new LedgerEntryRequest(id))).GetProperty("value").GetProperty("entry").ValueKind);
+    }
+
+    [Fact]
+    public async Task RelationsPersistAcrossMonthsAndCanBeChangedAndRemoved()
+    {
+        await using var host = await Harness.Create();
+        var expense = await host.Call("quantum.plugin.ledger.ledger.create",
+            new SaveLedgerEntryRequest(new(2026, 9, 1), EntryKind.Expense, 120m, "Dinner"));
+        var expenseId = expense.GetProperty("value").GetProperty("id").GetGuid();
+        var created = await host.Call("quantum.plugin.ledger.ledger.create",
+            new SaveLedgerEntryRequest(new(2026, 10, 1), EntryKind.Income, 40m, "Repayment", "Alice", expenseId));
+        AssertSuccess(created);
+        var incomeId = created.GetProperty("value").GetProperty("id").GetGuid();
+        AssertSuccess(await host.Call("quantum.plugin.ledger.ledger.create",
+            new SaveLedgerEntryRequest(new(2026, 11, 1), EntryKind.Income, 30m, "Repayment", "Bob", expenseId)));
+        var related = await host.Call("quantum.plugin.ledger.ledger.related", new LedgerEntryRequest(expenseId));
+        Assert.Equal(2, related.GetProperty("value").GetArrayLength());
+        Assert.Equal(70m, related.GetProperty("value").EnumerateArray().Sum(item => item.GetProperty("amount").GetDecimal()));
+        var origin = await host.Call("quantum.plugin.ledger.ledger.related", new LedgerEntryRequest(incomeId));
+        Assert.Equal(expenseId, Assert.Single(origin.GetProperty("value").EnumerateArray()).GetProperty("id").GetGuid());
+        var persisted = (await host.Call("ledger.get", new LedgerEntryRequest(incomeId))).GetProperty("value").GetProperty("entry");
+        Assert.Equal(expenseId, persisted.GetProperty("relatedExpenseId").GetGuid());
+        Assert.False(persisted.TryGetProperty("relationKind", out _));
+        var summary = (await host.Call("ledger.summary", new LedgerMonthRequest(new(2026, 10, 1)))).GetProperty("value");
+        Assert.Equal(40m, summary.GetProperty("income").GetDecimal());
+        Assert.Equal(0m, summary.GetProperty("expense").GetDecimal());
+        var blocked = await host.Call("ledger.delete", new LedgerEntryRequest(expenseId), expectsValue: false);
+        Assert.Equal("ledger_invalid_request", blocked.GetProperty("errorCode").GetString());
+        blocked = await host.Call("ledger.update", new UpdateLedgerEntryRequest(expenseId,
+            new(new(2026, 9, 1), EntryKind.Income, 120m, "Changed")));
+        Assert.Equal("ledger_invalid_request", blocked.GetProperty("errorCode").GetString());
+        Assert.Equal(0, (await host.Call("ledger.get", new LedgerEntryRequest(expenseId))).GetProperty("value").GetProperty("entry").GetProperty("kind").GetInt32());
+        var otherExpense = await host.Call("ledger.create", new SaveLedgerEntryRequest(new(2026, 9, 2), EntryKind.Expense, 80m, "Taxi"));
+        var otherExpenseId = otherExpense.GetProperty("value").GetProperty("id").GetGuid();
+        AssertSuccess(await host.Call("ledger.update", new UpdateLedgerEntryRequest(incomeId,
+            new(new(2026, 10, 1), EntryKind.Income, 40m, "Repayment", "Alice", otherExpenseId))));
+        Assert.Equal(otherExpenseId, Assert.Single((await host.Call("ledger.related", new LedgerEntryRequest(incomeId))).GetProperty("value").EnumerateArray()).GetProperty("id").GetGuid());
+        AssertSuccess(await host.Call("ledger.update", new UpdateLedgerEntryRequest(incomeId,
+            new(new(2026, 10, 1), EntryKind.Income, 40m, "Repayment", "Alice"))));
+        Assert.Empty((await host.Call("ledger.related", new LedgerEntryRequest(incomeId))).GetProperty("value").EnumerateArray());
+        var remaining = (await host.Call("ledger.related", new LedgerEntryRequest(expenseId))).GetProperty("value");
+        var remainingId = Assert.Single(remaining.EnumerateArray()).GetProperty("id").GetGuid();
+        AssertSuccess(await host.Call("ledger.delete", new LedgerEntryRequest(remainingId), expectsValue: false));
+        AssertSuccess(await host.Call("ledger.delete", new LedgerEntryRequest(expenseId), expectsValue: false));
+    }
+
+    [Fact]
+    public async Task RelationValidationImportsAndCancellationCrossTheHostBoundary()
+    {
+        await using var host = await Harness.Create();
+        var expense = LedgerEntry.Create(Guid.NewGuid(), new(2026, 9, 1), EntryKind.Expense, 60m, "Taxi", "");
+        var income = LedgerEntry.Create(Guid.NewGuid(), new(2026, 10, 1), EntryKind.Income, 30m, "AA", "", expense.Id);
+        // The origin may follow its repayment in the same atomic import.
+        var csv = LedgerCsv.Export([income, expense]);
+        var imported = await host.Call("ledger.import-csv", new ImportLedgerCsvRequest(csv));
+        AssertSuccess(imported);
+        Assert.Equal(2, imported.GetProperty("value").GetProperty("addedCount").GetInt32());
+        Assert.Equal(0, (await host.Call("ledger.import-csv", new ImportLedgerCsvRequest(csv))).GetProperty("value").GetProperty("addedCount").GetInt32());
+        Assert.Single((await host.Call("ledger.related", new LedgerEntryRequest(expense.Id))).GetProperty("value").EnumerateArray());
+        var exported = (await host.Call("ledger.export-csv", new LedgerMonthRequest(new(2026, 10, 1)))).GetProperty("value").GetProperty("csv").GetString()!;
+        Assert.True(income.SameContent(Assert.Single(LedgerCsv.Parse(exported))));
+        var missing = await host.Call("ledger.create", new SaveLedgerEntryRequest(new(2026, 10, 1), EntryKind.Income, 1m, "AA", "", Guid.NewGuid()));
+        Assert.Equal("ledger_entry_not_found", missing.GetProperty("errorCode").GetString());
+        foreach (var request in new[] {
+            new SaveLedgerEntryRequest(new(2026, 10, 1), EntryKind.Expense, 1m, "Bad", "", expense.Id),
+            new SaveLedgerEntryRequest(new(2026, 10, 1), EntryKind.Income, 1m, "Bad", "", income.Id),
+            new SaveLedgerEntryRequest(new(2026, 10, 1), EntryKind.Income, 1m, "Bad", "", Guid.Empty) })
+        {
+            Assert.Equal("ledger_invalid_request", (await host.Call("ledger.create", request)).GetProperty("errorCode").GetString());
+        }
+
+        var self = await host.Call("ledger.update", new UpdateLedgerEntryRequest(income.Id,
+            new(new(2026, 10, 1), EntryKind.Income, 30m, "AA", "", income.Id)));
+        Assert.Equal("ledger_invalid_request", self.GetProperty("errorCode").GetString());
+        var fresh = LedgerEntry.Create(Guid.NewGuid(), new(2026, 10, 1), EntryKind.Expense, 10m, "Fresh", "");
+        var dangling = LedgerEntry.Create(Guid.NewGuid(), new(2026, 10, 1), EntryKind.Income, 10m, "Bad", "", Guid.NewGuid());
+        Assert.Equal("ledger_entry_not_found", (await host.Call("ledger.import-csv", new ImportLedgerCsvRequest(LedgerCsv.Export([fresh, dangling])))).GetProperty("errorCode").GetString());
+        Assert.Equal(JsonValueKind.Null, (await host.Call("ledger.get", new LedgerEntryRequest(fresh.Id))).GetProperty("value").GetProperty("entry").ValueKind);
+        Assert.Equal("ledger_entry_not_found", (await host.Call("ledger.related", new LedgerEntryRequest(Guid.NewGuid()))).GetProperty("errorCode").GetString());
+        using var cancelled = new CancellationTokenSource();
+        cancelled.Cancel();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => host.Call("quantum.plugin.ledger.ledger.related", new LedgerEntryRequest(expense.Id), cancellationToken: cancelled.Token));
     }
 
     [Theory]
@@ -145,6 +231,7 @@ public sealed class LedgerRpcTests
             await using (var migration = connection.CreateCommand())
             {
                 migration.CommandText = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "001_init.sql"));
+                migration.CommandText += await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "002_entry_relations.sql"));
                 await migration.ExecuteNonQueryAsync();
             }
             var builder = LedgerPersistenceTests.Configure(connection.ConnectionString);

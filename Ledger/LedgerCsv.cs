@@ -7,7 +7,8 @@ namespace Quantum.OfficialPlugins.Ledger;
 public static class LedgerCsv
 {
     public const int MaxRecords = 1000;
-    private static readonly string[] Header = ["id", "date", "type", "amount", "category", "note"];
+    private static readonly string[] LegacyHeader = ["id", "date", "type", "amount", "category", "note"];
+    private static readonly string[] Header = [.. LegacyHeader, "related_expense_id"];
 
     public static string Export(IEnumerable<LedgerEntry> entries)
     {
@@ -16,7 +17,7 @@ public static class LedgerCsv
         {
             string[] cells = [item.Id.ToString(), item.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture),
                 item.Kind == EntryKind.Income ? "income" : "expense", item.Amount.ToString("F2", CultureInfo.InvariantCulture),
-                Protect(item.Category), Protect(item.Note)];
+                Protect(item.Category), Protect(item.Note), item.RelatedExpenseId?.ToString() ?? ""];
             csv.AppendJoin(',', cells.Select(cell => "\"" + cell.Replace("\"", "\"\"") + "\""));
             csv.Append("\r\n");
         }
@@ -25,27 +26,50 @@ public static class LedgerCsv
 
     public static IReadOnlyList<LedgerEntry> Parse(string csv)
     {
-        if (csv.Length > 2 * 1024 * 1024) throw new ArgumentException("CSV exceeds 2 MiB.");
+        if (csv.Length > 2 * 1024 * 1024)
+        {
+            throw new ArgumentException("CSV exceeds 2 MiB.");
+        }
+
         var rows = ReadRows(csv.TrimStart('\uFEFF'));
-        if (rows.Count == 0 || !rows[0].SequenceEqual(Header))
+        if (rows.Count == 0 || !(rows[0].SequenceEqual(Header) || rows[0].SequenceEqual(LegacyHeader)))
+        {
             throw new ArgumentException("Expected CSV header: id,date,type,amount,category,note");
-        if (rows.Count is < 2 or > MaxRecords + 1) throw new ArgumentException("CSV must contain 1–1,000 records.");
+        }
+
+        if (rows.Count is < 2 or > MaxRecords + 1)
+        {
+            throw new ArgumentException("CSV must contain 1–1,000 records.");
+        }
+
         var result = new List<LedgerEntry>();
         var ids = new HashSet<Guid>();
         for (var index = 1; index < rows.Count; index++)
         {
             var cells = rows[index];
-            if (cells.Length != 6 || !Guid.TryParse(cells[0], out var id) || !ids.Add(id) ||
+            if (cells.Length != rows[0].Length || !Guid.TryParse(cells[0], out var id) || !ids.Add(id) ||
                 !DateOnly.TryParseExact(cells[1], "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var date) ||
                 !decimal.TryParse(cells[3], NumberStyles.AllowDecimalPoint, CultureInfo.InvariantCulture, out var amount))
+            {
                 throw new ArgumentException($"Invalid CSV record {index}.");
+            }
+
             var kind = cells[2] switch
             {
                 "income" => EntryKind.Income,
                 "expense" => EntryKind.Expense,
                 _ => throw new ArgumentException($"Invalid type in CSV record {index}.")
             };
-            result.Add(LedgerEntry.Create(id, date, kind, amount, Unprotect(cells[4]), Unprotect(cells[5])));
+            Guid? expenseId = null;
+            if (cells.Length == Header.Length)
+            {
+                if (cells[6] != "")
+                {
+                    expenseId = Guid.TryParse(cells[6], out var parsedId) ? parsedId
+                    : throw new ArgumentException("Invalid related expense ID.");
+                }
+            }
+            result.Add(LedgerEntry.Create(id, date, kind, amount, Unprotect(cells[4]), Unprotect(cells[5]), expenseId));
         }
         return result;
     }
@@ -65,29 +89,75 @@ public static class LedgerCsv
             var ch = csv[i];
             if (quoted)
             {
-                if (ch != '"') cell.Append(ch);
-                else if (i + 1 < csv.Length && csv[i + 1] == '"') { cell.Append('"'); i++; }
-                else { quoted = false; closed = true; }
+                if (ch != '"')
+                {
+                    cell.Append(ch);
+                }
+                else if (i + 1 < csv.Length && csv[i + 1] == '"')
+                {
+                    cell.Append('"');
+                    i++;
+                }
+                else
+                {
+                    quoted = false;
+                    closed = true;
+                }
                 continue;
             }
             if (ch == ',' || ch == '\r' || ch == '\n')
             {
-                row.Add(cell.ToString()); cell.Clear(); closed = false; started = false;
-                if (ch == ',') continue;
-                if (ch == '\r' && i + 1 < csv.Length && csv[i + 1] == '\n') i++;
-                rows.Add(row.ToArray()); row.Clear();
-                if (rows.Count > MaxRecords + 1) throw new ArgumentException("CSV contains too many records.");
+                row.Add(cell.ToString());
+                cell.Clear();
+                closed = false;
+                started = false;
+                if (ch == ',')
+                {
+                    continue;
+                }
+
+                if (ch == '\r' && i + 1 < csv.Length && csv[i + 1] == '\n')
+                {
+                    i++;
+                }
+
+                rows.Add(row.ToArray());
+                row.Clear();
+                if (rows.Count > MaxRecords + 1)
+                {
+                    throw new ArgumentException("CSV contains too many records.");
+                }
             }
-            else if (closed) throw new ArgumentException("Unexpected characters after a CSV quote.");
+            else if (closed)
+            {
+                throw new ArgumentException("Unexpected characters after a CSV quote.");
+            }
             else if (ch == '"')
             {
-                if (started) throw new ArgumentException("Unexpected quote in CSV field.");
-                quoted = true; started = true;
+                if (started)
+                {
+                    throw new ArgumentException("Unexpected quote in CSV field.");
+                }
+
+                quoted = true;
+                started = true;
             }
-            else { cell.Append(ch); started = true; }
+            else
+            {
+                cell.Append(ch);
+                started = true;
+            }
         }
-        if (quoted) throw new ArgumentException("Unclosed CSV quote.");
-        if (started || closed || row.Count > 0) { row.Add(cell.ToString()); rows.Add(row.ToArray()); }
+        if (quoted)
+        {
+            throw new ArgumentException("Unclosed CSV quote.");
+        }
+
+        if (started || closed || row.Count > 0)
+        {
+            row.Add(cell.ToString());
+            rows.Add(row.ToArray());
+        }
         return rows;
     }
 }
