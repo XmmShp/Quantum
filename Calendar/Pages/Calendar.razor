@@ -10,18 +10,7 @@
 
 <PageTitle>@L["Calendar"] · Quantum</PageTitle>
 
-<section class="calendar-shell">
-    <header class="page-header">
-        <div>
-            <h1>@L["Calendar"]</h1>
-            <p>@L["Keep events and tasks on one timeline."]</p>
-        </div>
-        <div class="toolbar" aria-label="@L["Month navigation"]">
-            <button type="button" disabled="@_isBusy" @onclick="ShowTodayAsync">@L["Today"]</button>
-            <button type="button" class="primary-button" disabled="@_isBusy" @onclick="BeginCreate">＋ @L["New"]</button>
-        </div>
-    </header>
-
+<section class="calendar-shell" @onclick="CancelDelete" @onkeydown="HandleKeyDown">
     @if (_errorMessage is not null)
     {
         <div class="error-banner" role="alert">
@@ -33,9 +22,13 @@
     <div class="calendar-layout" aria-busy="@_isBusy">
         <div class="calendar-board">
             <header class="month-navigation" aria-label="@L["Month navigation"]">
-                <button type="button" class="icon-button" aria-label="@L["Previous month"]" disabled="@_isBusy" @onclick="() => ChangeMonthAsync(-1)">‹</button>
+                <div class="month-controls">
+                    <button type="button" class="icon-button" aria-label="@L["Previous month"]" disabled="@_isBusy" @onclick="() => ChangeMonthAsync(-1)"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m14.5 7-5 5 5 5" /></svg></button>
+                    <button type="button" class="icon-button" aria-label="@L["Next month"]" disabled="@_isBusy" @onclick="() => ChangeMonthAsync(1)"><svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="m9.5 7 5 5-5 5" /></svg></button>
+                    <button type="button" class="today-button" disabled="@_isBusy" @onclick="ShowTodayAsync">@L["Today"]</button>
+                </div>
                 <h2>@MonthTitle</h2>
-                <button type="button" class="icon-button" aria-label="@L["Next month"]" disabled="@_isBusy" @onclick="() => ChangeMonthAsync(1)">›</button>
+                <div class="month-heading-spacer" aria-hidden="true"></div>
             </header>
             <div class="weekday-row" aria-hidden="true">
                 @foreach (var weekday in Weekdays)
@@ -43,31 +36,57 @@
                     <span>@weekday</span>
                 }
             </div>
-            <div class="day-grid" role="grid" aria-label="@MonthTitle">
-                @foreach (var day in CalendarDays)
+            <div class="month-viewport" style="--month-direction: @_monthDirection">
+                @if (_previousMonthDays is { } previousDays)
                 {
-                    <button @key="day.Date"
-                            type="button"
-                            class="@GetDayClass(day)"
-                            aria-label="@GetDayAriaLabel(day)"
-                            aria-pressed="@(day.Date == _selectedDate)"
-                            @onclick="() => SelectDateAsync(day.Date)">
-                        <time datetime="@day.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">@day.Date.Day</time>
-                        <div class="day-entries">
-                            @foreach (var item in day.Items.Take(3))
-                            {
-                                <span class="entry-chip @item.Style @(item.IsCompleted ? "completed" : null)">
-                                    <span aria-hidden="true">@(item.Kind == CalendarEntryKind.Task ? "✓" : "●")</span>
-                                    @item.Title
-                                </span>
-                            }
-                            @if (day.Items.Count > 3)
-                            {
-                                <span class="more-entries">+@(day.Items.Count - 3)</span>
-                            }
-                        </div>
-                    </button>
+                    <div @key="previousDays" class="day-grid outgoing-grid" aria-hidden="true" inert>
+                        @foreach (var day in previousDays)
+                        {
+                            <div class="@GetDayClass(day)">
+                                <time>@day.Date.Day</time>
+                                <div class="day-entries">
+                                    @foreach (var item in day.Items.Take(3))
+                                    {
+                                        <span class="entry-chip @item.Style @(item.IsCompleted ? "completed" : null)">
+                                            <span>@(item.Kind == CalendarEntryKind.Task ? "✓" : "●")</span>
+                                            @item.Title
+                                        </span>
+                                    }
+                                    @if (day.Items.Count > 3)
+                                    {
+                                        <span class="more-entries">+@(day.Items.Count - 3)</span>
+                                    }
+                                </div>
+                            </div>
+                        }
+                    </div>
                 }
+                <div @key="_visibleMonth" class="day-grid incoming-grid" role="grid" aria-label="@MonthTitle">
+                    @foreach (var day in CalendarDays)
+                    {
+                        <button @key="day.Date"
+                                type="button"
+                                class="@GetDayClass(day)"
+                                aria-label="@GetDayAriaLabel(day)"
+                                aria-pressed="@(day.Date == _selectedDate)"
+                                @onclick="() => SelectDateAsync(day.Date)">
+                            <time datetime="@day.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">@day.Date.Day</time>
+                            <div class="day-entries">
+                                @foreach (var item in day.Items.Take(3))
+                                {
+                                    <span class="entry-chip @item.Style @(item.IsCompleted ? "completed" : null)">
+                                        <span aria-hidden="true">@(item.Kind == CalendarEntryKind.Task ? "✓" : "●")</span>
+                                        @item.Title
+                                    </span>
+                                }
+                                @if (day.Items.Count > 3)
+                                {
+                                    <span class="more-entries">+@(day.Items.Count - 3)</span>
+                                }
+                            </div>
+                        </button>
+                    }
+                </div>
             </div>
             <footer class="month-stats">
                 <div><strong>@EventCount</strong><span>@L["Events"]</span></div>
@@ -149,25 +168,54 @@
                         @foreach (var item in SelectedItems)
                         {
                             <article @key="item.Id" class="agenda-entry @item.Style @(item.IsCompleted ? "completed" : null)">
-                                <div class="entry-meta">
-                                    <span>@(item.Kind == CalendarEntryKind.Task ? L["Task"] : L["Event"])</span>
-                                    <time>@FormatTime(item)</time>
+                                <div class="entry-heading">
+                                    <div class="entry-meta">
+                                        <span>@(item.Kind == CalendarEntryKind.Task ? L["Task"] : L["Event"])</span>
+                                        <time>@FormatTime(item)</time>
+                                    </div>
+                                    <div class="entry-actions">
+                                        @if (item.Kind == CalendarEntryKind.Task)
+                                        {
+                                            <button type="button" class="action-icon complete" aria-label="@(item.IsCompleted ? L["Mark as open"] : L["Mark as complete"])" title="@(item.IsCompleted ? L["Restore"] : L["Complete"])" aria-pressed="@item.IsCompleted" disabled="@_isBusy" @onclick="() => ToggleCompletedAsync(item)">
+                                                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                                    @if (item.IsCompleted)
+                                                    {
+                                                        <path d="M3 10a9 9 0 1 1 3 8M3 4v6h6" />
+                                                    }
+                                                    else
+                                                    {
+                                                        <circle cx="12" cy="12" r="9" />
+                                                        <path d="m8 12 3 3 5-6" />
+                                                    }
+                                                </svg>
+                                            </button>
+                                        }
+                                        <button type="button" class="action-icon" aria-label="@L["Edit"]" title="@L["Edit"]" disabled="@_isBusy" @onclick="() => BeginEdit(item)">
+                                            <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                                <path d="m15 5 4 4M4 20l4-1L20 7a2.83 2.83 0 0 0-4-4L4 15z" />
+                                            </svg>
+                                        </button>
+                                        <button type="button" class="action-icon danger @(_pendingDelete == (item.Id, false) ? "confirm-delete" : null)" aria-label="@(_pendingDelete == (item.Id, false) ? L["Click again to delete"] : L["Delete"])" title="@(_pendingDelete == (item.Id, false) ? L["Click again to delete"] : L["Delete"])" disabled="@_isBusy" @onclick="() => DeleteAsync(item.Id, false)" @onclick:stopPropagation="true" @onblur="CancelDelete">
+                                            <span @key="(_pendingDelete == (item.Id, false))" class="action-symbol" aria-hidden="true">
+                                                @if (_pendingDelete == (item.Id, false))
+                                                {
+                                                    <span class="confirm-symbol">?</span>
+                                                }
+                                                else
+                                                {
+                                                    <svg viewBox="0 0 24 24" focusable="false">
+                                                        <path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" />
+                                                    </svg>
+                                                }
+                                            </span>
+                                        </button>
+                                    </div>
                                 </div>
                                 <h2>@item.Title</h2>
                                 @if (!string.IsNullOrWhiteSpace(item.Notes))
                                 {
                                     <p>@item.Notes</p>
                                 }
-                                <div class="entry-actions">
-                                    @if (item.Kind == CalendarEntryKind.Task)
-                                    {
-                                        <button type="button" disabled="@_isBusy" @onclick="() => ToggleCompletedAsync(item)">
-                                            @(item.IsCompleted ? L["Restore"] : L["Complete"])
-                                        </button>
-                                    }
-                                    <button type="button" disabled="@_isBusy" @onclick="() => BeginEdit(item)">@L["Edit"]</button>
-                                    <button type="button" class="danger" disabled="@_isBusy" @onclick="() => DeleteAsync(item.Id)">@L["Delete"]</button>
-                                </div>
                             </article>
                         }
                     </div>
@@ -175,9 +223,7 @@
                 else
                 {
                     <div class="empty-state">
-                        <span aria-hidden="true">○</span>
-                        <h2>@L["This day is wide open"]</h2>
-                        <p>@L["Add an event or task to turn the day into a plan."]</p>
+                        <p class="empty-day-poem">@L["A quiet day, an unwritten page."]</p>
                     </div>
                 }
             </aside>
@@ -206,14 +252,6 @@
                         @foreach (var task in FilteredTasks)
                         {
                             <article @key="task.Id" class="task-item @task.Style @(task.IsCompleted ? "completed" : null)">
-                                <button type="button"
-                                        class="completion-toggle"
-                                        aria-label="@(task.IsCompleted ? L["Mark as open"] : L["Mark as complete"])"
-                                        aria-pressed="@task.IsCompleted"
-                                        disabled="@_isBusy"
-                                        @onclick="() => ToggleCompletedAsync(task)">
-                                    @(task.IsCompleted ? "✓" : null)
-                                </button>
                                 <div class="task-content">
                                     <h3>@task.Title</h3>
                                     <div class="task-date @(IsOverdue(task) ? "overdue" : null)">
@@ -229,8 +267,38 @@
                                     }
                                 </div>
                                 <div class="task-actions">
-                                    <button type="button" disabled="@_isBusy" @onclick="() => EditTaskAsync(task)">@L["Edit"]</button>
-                                    <button type="button" class="danger" disabled="@_isBusy" @onclick="() => DeleteAsync(task.Id)">@L["Delete"]</button>
+                                    <button type="button" class="action-icon complete" aria-label="@(task.IsCompleted ? L["Mark as open"] : L["Mark as complete"])" title="@(task.IsCompleted ? L["Restore"] : L["Complete"])" aria-pressed="@task.IsCompleted" disabled="@_isBusy" @onclick="() => ToggleCompletedAsync(task)">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                            @if (task.IsCompleted)
+                                            {
+                                                <path d="M3 10a9 9 0 1 1 3 8M3 4v6h6" />
+                                            }
+                                            else
+                                            {
+                                                <circle cx="12" cy="12" r="9" />
+                                                <path d="m8 12 3 3 5-6" />
+                                            }
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="action-icon" aria-label="@L["Edit"]" title="@L["Edit"]" disabled="@_isBusy" @onclick="() => EditTaskAsync(task)">
+                                        <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                                            <path d="m15 5 4 4M4 20l4-1L20 7a2.83 2.83 0 0 0-4-4L4 15z" />
+                                        </svg>
+                                    </button>
+                                    <button type="button" class="action-icon danger @(_pendingDelete == (task.Id, true) ? "confirm-delete" : null)" aria-label="@(_pendingDelete == (task.Id, true) ? L["Click again to delete"] : L["Delete"])" title="@(_pendingDelete == (task.Id, true) ? L["Click again to delete"] : L["Delete"])" disabled="@_isBusy" @onclick="() => DeleteAsync(task.Id, true)" @onclick:stopPropagation="true" @onblur="CancelDelete">
+                                        <span @key="(_pendingDelete == (task.Id, true))" class="action-symbol" aria-hidden="true">
+                                            @if (_pendingDelete == (task.Id, true))
+                                            {
+                                                <span class="confirm-symbol">?</span>
+                                            }
+                                            else
+                                            {
+                                                <svg viewBox="0 0 24 24" focusable="false">
+                                                    <path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" />
+                                                </svg>
+                                            }
+                                        </span>
+                                    </button>
                                 </div>
                             </article>
                         }
@@ -239,9 +307,7 @@
                 else
                 {
                     <div class="empty-tasks">
-                        <span aria-hidden="true">✓</span>
-                        <h3>@L["All clear here"]</h3>
-                        <p>@L["No tasks match this filter."]</p>
+                        <p class="empty-day-poem">@L["Clouds drift by; the day is still."]</p>
                     </div>
                 }
             </section>

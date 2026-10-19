@@ -44,8 +44,7 @@
   <data name="Delete" xml:space="preserve"><value>删除</value></data>
   <data name="Restore" xml:space="preserve"><value>恢复</value></data>
   <data name="Complete" xml:space="preserve"><value>完成</value></data>
-  <data name="This day is wide open" xml:space="preserve"><value>这一天还很自由</value></data>
-  <data name="Add an event or task to turn the day into a plan." xml:space="preserve"><value>添加日程或待办，让计划落到具体的一天。</value></data>
+  <data name="A quiet day, an unwritten page." xml:space="preserve"><value>且将新火试新茶。</value></data>
   <data name="Events" xml:space="preserve"><value>本月日程</value></data>
   <data name="Open tasks" xml:space="preserve"><value>未完成待办</value></data>
   <data name="Free days" xml:space="preserve"><value>自由日</value></data>
@@ -55,8 +54,8 @@
   <data name="Mark as open" xml:space="preserve"><value>标记为未完成</value></data>
   <data name="Mark as complete" xml:space="preserve"><value>标记为已完成</value></data>
   <data name="Overdue" xml:space="preserve"><value>已逾期</value></data>
-  <data name="All clear here" xml:space="preserve"><value>这里已经清空了</value></data>
-  <data name="No tasks match this filter." xml:space="preserve"><value>没有符合当前筛选条件的待办。</value></data>
+  <data name="Clouds drift by; the day is still." xml:space="preserve"><value>行到水穷处，坐看云起时。</value></data>
+  <data name="Click again to delete" xml:space="preserve"><value>再次点击删除</value></data>
   <data name="Plan the next step" xml:space="preserve"><value>安排下一步</value></data>
   <data name="Edit task" xml:space="preserve"><value>调整待办</value></data>
   <data name="Add task" xml:space="preserve"><value>添加待办</value></data>

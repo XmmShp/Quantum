@@ -44,8 +44,7 @@
   <data name="Delete" xml:space="preserve"><value>Delete</value></data>
   <data name="Restore" xml:space="preserve"><value>Restore</value></data>
   <data name="Complete" xml:space="preserve"><value>Complete</value></data>
-  <data name="This day is wide open" xml:space="preserve"><value>This day is wide open</value></data>
-  <data name="Add an event or task to turn the day into a plan." xml:space="preserve"><value>Add an event or task to turn the day into a plan.</value></data>
+  <data name="A quiet day, an unwritten page." xml:space="preserve"><value>A quiet day, an unwritten page.</value></data>
   <data name="Events" xml:space="preserve"><value>Events</value></data>
   <data name="Open tasks" xml:space="preserve"><value>Open tasks</value></data>
   <data name="Free days" xml:space="preserve"><value>Free days</value></data>
@@ -55,8 +54,8 @@
   <data name="Mark as open" xml:space="preserve"><value>Mark as open</value></data>
   <data name="Mark as complete" xml:space="preserve"><value>Mark as complete</value></data>
   <data name="Overdue" xml:space="preserve"><value>Overdue</value></data>
-  <data name="All clear here" xml:space="preserve"><value>All clear here</value></data>
-  <data name="No tasks match this filter." xml:space="preserve"><value>No tasks match this filter.</value></data>
+  <data name="Clouds drift by; the day is still." xml:space="preserve"><value>Clouds drift by; the day is still.</value></data>
+  <data name="Click again to delete" xml:space="preserve"><value>Click again to delete</value></data>
   <data name="Plan the next step" xml:space="preserve"><value>Plan the next step</value></data>
   <data name="Edit task" xml:space="preserve"><value>Edit task</value></data>
   <data name="Add task" xml:space="preserve"><value>Add task</value></data>

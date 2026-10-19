@@ -1,3 +1,4 @@
+using Microsoft.AspNetCore.Components.Web;
 using NOF.Contract;
 using Quantum.OfficialPlugins.Calendar.Application;
 using Quantum.OfficialPlugins.Calendar.Domain;
@@ -31,7 +32,10 @@ public partial class Calendar
     private DateOnly _selectedDate = DateOnly.FromDateTime(DateTime.Today);
     private EntryDraft _draft = EntryDraft.Create(DateOnly.FromDateTime(DateTime.Today));
     private TaskFilter _taskFilter = TaskFilter.Open;
+    private IReadOnlyList<CalendarDay>? _previousMonthDays;
+    private int _monthDirection = 1;
     private Guid? _editingId;
+    private (Guid Id, bool IsTaskList)? _pendingDelete;
     private bool _isEditorOpen;
     private bool _isBusy;
     private string? _errorMessage;
@@ -73,9 +77,21 @@ public partial class Calendar
 
     protected override Task OnInitializedAsync() => ExecuteAsync(LoadAllCoreAsync);
 
+    private void SetVisibleMonth(DateOnly month)
+    {
+        if (month == _visibleMonth)
+        {
+            return;
+        }
+
+        _previousMonthDays = CalendarDays;
+        _monthDirection = month > _visibleMonth ? 1 : -1;
+        _visibleMonth = month;
+    }
+
     private async Task ChangeMonthAsync(int offset)
     {
-        _visibleMonth = _visibleMonth.AddMonths(offset);
+        SetVisibleMonth(_visibleMonth.AddMonths(offset));
         _selectedDate = new DateOnly(_visibleMonth.Year, _visibleMonth.Month, Math.Min(_selectedDate.Day, DateTime.DaysInMonth(_visibleMonth.Year, _visibleMonth.Month)));
         CancelEdit();
         await LoadMonthAsync();
@@ -83,7 +99,7 @@ public partial class Calendar
 
     private async Task ShowTodayAsync()
     {
-        _visibleMonth = new DateOnly(_today.Year, _today.Month, 1);
+        SetVisibleMonth(new DateOnly(_today.Year, _today.Month, 1));
         _selectedDate = _today;
         CancelEdit();
         await LoadMonthAsync();
@@ -95,7 +111,7 @@ public partial class Calendar
         CancelEdit();
         if (date.Month != _visibleMonth.Month || date.Year != _visibleMonth.Year)
         {
-            _visibleMonth = new DateOnly(date.Year, date.Month, 1);
+            SetVisibleMonth(new DateOnly(date.Year, date.Month, 1));
             await LoadMonthAsync();
         }
     }
@@ -111,7 +127,7 @@ public partial class Calendar
     private async Task BeginCreateTaskAsync()
     {
         _selectedDate = _today;
-        _visibleMonth = new DateOnly(_today.Year, _today.Month, 1);
+        SetVisibleMonth(new DateOnly(_today.Year, _today.Month, 1));
         await ExecuteAsync(LoadMonthCoreAsync);
         BeginCreate();
         SetDraftKind(CalendarEntryKind.Task);
@@ -128,7 +144,7 @@ public partial class Calendar
     private async Task EditTaskAsync(CalendarEntryDetails task)
     {
         _selectedDate = task.Date;
-        _visibleMonth = new DateOnly(task.Date.Year, task.Date.Month, 1);
+        SetVisibleMonth(new DateOnly(task.Date.Year, task.Date.Month, 1));
         await ExecuteAsync(LoadMonthCoreAsync);
         BeginEdit(task);
     }
@@ -168,7 +184,7 @@ public partial class Calendar
             }
 
             _selectedDate = _draft.Date;
-            _visibleMonth = new DateOnly(_draft.Date.Year, _draft.Date.Month, 1);
+            SetVisibleMonth(new DateOnly(_draft.Date.Year, _draft.Date.Month, 1));
             CancelEdit();
             await LoadAllCoreAsync();
         });
@@ -181,8 +197,31 @@ public partial class Calendar
             await LoadAllCoreAsync();
         });
 
-    private Task DeleteAsync(Guid id)
-        => ExecuteAsync(async () =>
+    private void CancelDelete() => _pendingDelete = null;
+
+    private void HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            CancelDelete();
+        }
+    }
+
+    private Task DeleteAsync(Guid id, bool isTaskList)
+    {
+        if (_isBusy)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (_pendingDelete != (id, isTaskList))
+        {
+            _pendingDelete = (id, isTaskList);
+            return Task.CompletedTask;
+        }
+
+        CancelDelete();
+        return ExecuteAsync(async () =>
         {
             RpcResults.ThrowIfFailed(await CalendarService.DeleteEntryAsync(new(id), Context.Empty));
             if (_editingId == id)
@@ -192,6 +231,7 @@ public partial class Calendar
 
             await LoadAllCoreAsync();
         });
+    }
 
     private Task LoadMonthAsync() => ExecuteAsync(LoadMonthCoreAsync);
 
