@@ -19,8 +19,6 @@ public sealed class LedgerPlugin : IQuantumPlugin
         services.AddTransient<LedgerRpcService.CreateEntry, CreateLedgerEntry>();
         services.AddTransient<LedgerRpcService.UpdateEntry, UpdateLedgerEntry>();
         services.AddTransient<LedgerRpcService.DeleteEntry, DeleteLedgerEntry>();
-        services.AddTransient<LedgerRpcService.ExportCsv, ExportLedgerCsv>();
-        services.AddTransient<LedgerRpcService.ImportCsv, ImportLedgerCsv>();
     }
 
     public static Task StartAsync(IServiceProvider services, CancellationToken cancellationToken = default)

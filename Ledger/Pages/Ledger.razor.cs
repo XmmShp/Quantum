@@ -1,10 +1,9 @@
 using Microsoft.AspNetCore.Components;
-using Microsoft.AspNetCore.Components.Forms;
+using Microsoft.AspNetCore.Components.Web;
 using Microsoft.JSInterop;
 using NOF.Contract;
 using Quantum.OfficialPlugins.Ledger.Rpc;
 using System.Globalization;
-using System.Text;
 
 namespace Quantum.OfficialPlugins.Ledger.Pages;
 
@@ -18,22 +17,72 @@ public partial class Ledger
     private string? _error, _message;
     private string _search = "", _filter = "all", _category = "", _note = "";
     private Guid? _editId;
-    private Guid? _relatedExpenseId;
     private DateOnly _candidateMonth;
     private IReadOnlyList<LedgerEntryDetails> _candidates = [], _related = [];
-    private LedgerEntryDetails? _linkedExpense, _viewing;
-    private IEnumerable<LedgerEntryDetails> ExpenseOptions => _candidates.Concat(_linkedExpense is null ? [] : new[] { _linkedExpense })
-        .Where(item => item.Id != _editId).DistinctBy(item => item.Id);
+    private LedgerEntryDetails? _viewing;
+    private List<LedgerEntryDetails> _selectedRelated = [];
+    private IEnumerable<LedgerEntryDetails> RelationOptions => _candidates
+        .Where(item => item.Id != _editId && !_selectedRelated.Any(selected => selected.Id == item.Id));
     private EntryKind _kind;
     private decimal _amount;
     private DateOnly _date = DateOnly.FromDateTime(DateTime.Today);
     private LedgerEntryDetails? _deleting;
-    private IReadOnlyList<LedgerEntryDetails>? _import;
-    private string? _importCsv;
     private IJSObjectReference? _module;
+    private ElementReference _dialog;
+    private bool IsDialogOpen => _editing || _viewing is not null;
+    private string DialogTitle => L[_editing ? (_editId is null ? "Add entry" : "Edit entry") : "Related entries"];
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!IsDialogOpen && _module is null)
+        {
+            return;
+        }
+
+        _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/quantum.plugin.ledger/ledger.js");
+        await _module.InvokeVoidAsync("syncDialog", _dialog, IsDialogOpen);
+    }
+
+    private void CloseDialog()
+    {
+        if (_busy)
+        {
+            return;
+        }
+
+        _editing = false;
+        _viewing = null;
+        _error = null;
+    }
+
+    private void CancelDelete() => _deleting = null;
+
+    private void HandleKeyDown(KeyboardEventArgs args)
+    {
+        if (args.Key == "Escape")
+        {
+            CancelDelete();
+        }
+    }
+
+    private Task RequestDelete(LedgerEntryDetails entry)
+    {
+        if (_busy)
+        {
+            return Task.CompletedTask;
+        }
+
+        if (_deleting?.Id != entry.Id)
+        {
+            _deleting = entry;
+            return Task.CompletedTask;
+        }
+
+        return Delete();
+    }
+
     private static readonly string[] SuggestedCategories = ["Food", "Transport", "Shopping", "Housing", "Health", "Entertainment", "Salary", "Other"];
     private LedgerTotals Totals => TotalsFor(_entries);
-    private LedgerTotals ImportTotals => TotalsFor(_import ?? []);
     private static LedgerTotals TotalsFor(IEnumerable<LedgerEntryDetails> entries) => new(
         entries.Where(item => item.Kind == EntryKind.Income).Sum(item => item.Amount),
         entries.Where(item => item.Kind == EntryKind.Expense).Sum(item => item.Amount));
@@ -107,8 +156,7 @@ public partial class Ledger
     {
         _candidateMonth = _month;
         await LoadCandidates();
-        _relatedExpenseId = null;
-        _linkedExpense = null;
+        _selectedRelated = [];
         _editId = null;
         _kind = EntryKind.Expense;
         _amount = 0;
@@ -120,11 +168,10 @@ public partial class Ledger
     });
     private Task Edit(LedgerEntryDetails item) => Run(async () =>
     {
-        var linked = item.RelatedExpenseId is { } id ? RpcResults.ValueOrThrow(await _service.GetEntryAsync(new(id), Context.Empty)).Entry : null;
-        _candidateMonth = linked is null ? _month : new(linked.Date.Year, linked.Date.Month, 1);
+        var related = RpcResults.ValueOrThrow(await _service.GetRelatedEntriesAsync(new(item.Id), Context.Empty));
+        _candidateMonth = _month;
         await LoadCandidates();
-        _relatedExpenseId = item.RelatedExpenseId;
-        _linkedExpense = linked;
+        _selectedRelated = [.. related];
         _viewing = null;
         _editId = item.Id;
         _date = item.Date;
@@ -135,9 +182,17 @@ public partial class Ledger
         _error = null;
         _editing = true;
     });
-    private async Task LoadCandidates() => _candidates = (RpcResults.ValueOrThrow(await _service.ListEntriesAsync(new(_candidateMonth), Context.Empty))).Where(item => item.Kind == EntryKind.Expense).ToArray();
-    private void RememberExpense() => _linkedExpense = ExpenseOptions.FirstOrDefault(item => item.Id == _relatedExpenseId);
-    private Task SelectExpenseMonth(ChangeEventArgs args) => Run(async () =>
+    private async Task LoadCandidates() => _candidates = RpcResults.ValueOrThrow(await _service.ListEntriesAsync(new(_candidateMonth), Context.Empty));
+
+    private void AddRelatedEntry(ChangeEventArgs args)
+    {
+        if (Guid.TryParse(args.Value?.ToString(), out var id) && RelationOptions.FirstOrDefault(item => item.Id == id) is { } entry)
+        {
+            _selectedRelated.Add(entry);
+        }
+    }
+
+    private Task SelectEntryMonth(ChangeEventArgs args) => Run(async () =>
     {
         if (DateOnly.TryParseExact(args.Value + "-01", "yyyy-MM-dd", CultureInfo.InvariantCulture, DateTimeStyles.None, out var month) && month.Year is >= 1900 and <= 9998)
         {
@@ -153,7 +208,7 @@ public partial class Ledger
     private Task Save() => Run(async () =>
     {
         var request = new SaveLedgerEntryRequest(_date, _kind, _amount, _category, _note,
-            _kind == EntryKind.Income ? _relatedExpenseId : null);
+            _selectedRelated.Select(item => item.Id).ToArray());
         RpcResults.ValueOrThrow(_editId is { } id
             ? await _service.UpdateEntryAsync(new(id, request), Context.Empty)
             : await _service.CreateEntryAsync(request, Context.Empty));
@@ -173,40 +228,6 @@ public partial class Ledger
         _deleting = null;
         await Load();
         _message = L["Entry deleted."];
-    });
-    private Task Export() => Run(async () =>
-    {
-        _module ??= await JS.InvokeAsync<IJSObjectReference>("import", "./_content/quantum.plugin.ledger/ledger.js");
-        var export = RpcResults.ValueOrThrow(await _service.ExportCsvAsync(new(_month), Context.Empty));
-        await _module.InvokeVoidAsync("downloadCsv", export.FileName, export.Csv);
-    });
-    private Task ReadImport(InputFileChangeEventArgs args) => Run(async () =>
-    {
-        await using var stream = args.File.OpenReadStream(2 * 1024 * 1024);
-        using var reader = new StreamReader(stream, new UTF8Encoding(false, true));
-        try
-        {
-            var csv = await reader.ReadToEndAsync();
-            _import = LedgerCsv.Parse(csv).Select(LedgerEntryDetails.From).ToArray();
-            _importCsv = csv;
-        }
-        catch (Exception ex) when (ex is ArgumentException or DecoderFallbackException)
-        {
-            throw new ArgumentException("Invalid CSV. Export a month to obtain the template, then check IDs, dates, types and amounts.");
-        }
-    });
-    private Task ConfirmImport() => Run(async () =>
-    {
-        if (_import is null || _importCsv is null)
-        {
-            return;
-        }
-
-        var added = RpcResults.ValueOrThrow(await _service.ImportCsvAsync(new(_importCsv), Context.Empty)).AddedCount;
-        _import = null;
-        _importCsv = null;
-        await Load();
-        _message = L["Imported {0} new records.", added];
     });
     public async ValueTask DisposeAsync()
     {

@@ -42,11 +42,12 @@ public sealed class LedgerTests
     }
 
     [Fact]
-    public void MaximumAmountAndLeapDateRoundTrip()
+    public void MaximumAmountAndLeapDateAreExact()
     {
         var item = LedgerEntry.Create(Guid.NewGuid(), new(2024, 2, 29), EntryKind.Income, 999999999.99m, "工资", "");
         Assert.Equal(99999999999L, item.AmountInFen);
-        Assert.True(item.SameContent(Assert.Single(LedgerCsv.Parse(LedgerCsv.Export([item])))));
+        Assert.Equal(999999999.99m, item.Amount);
+        Assert.Equal(new(2024, 2, 29), item.Date);
     }
 
     [Theory]
@@ -65,75 +66,17 @@ public sealed class LedgerTests
         Assert.Throws<ArgumentException>(() => Entry(note: new string('x', 1001)));
     }
 
-    [Theory]
-    [InlineData("Lunch, tea\r\n\"quoted\"")]
-    [InlineData("=HYPERLINK(\"https://example.invalid\")")]
-    [InlineData("+123")]
-    [InlineData("-123")]
-    [InlineData("@SUM(1,2)")]
-    [InlineData("\tformula")]
-    [InlineData("'literal")]
-    [InlineData("'=literal")]
-    [InlineData("")]
-    public void CsvRoundTripsUnicodeQuotesNewlinesAndFormulaPrefixes(string note)
-    {
-        var item = Entry(note: note);
-        var result = Assert.Single(LedgerCsv.Parse(LedgerCsv.Export([item])));
-        Assert.Equal(item.Id, result.Id);
-        Assert.True(item.SameContent(result));
-        if (note.StartsWith('='))
-        {
-            Assert.Contains("'=", LedgerCsv.Export([item]));
-        }
-    }
-
     [Fact]
-    public void CsvUsesInvariantDatesAndAmountsAcrossCultures()
+    public void LinksAreCanonicalAndRejectSelfOrEmptyIds()
     {
-        var original = CultureInfo.CurrentCulture;
-        try
-        {
-            CultureInfo.CurrentCulture = CultureInfo.GetCultureInfo("de-DE");
-            var csv = LedgerCsv.Export([Entry(1234.56m)]);
-            Assert.Contains("2026-10-18", csv);
-            Assert.Contains("1234.56", csv);
-            Assert.Equal(1234.56m, Assert.Single(LedgerCsv.Parse(csv)).Amount);
-        }
-        finally
-        {
-            CultureInfo.CurrentCulture = original;
-        }
-    }
-
-    [Fact]
-    public void DuplicateIdsAndMalformedCsvAreRejected()
-    {
-        var item = Entry();
-        Assert.Throws<ArgumentException>(() => LedgerCsv.Parse(LedgerCsv.Export([item, item])));
-        var csv = LedgerCsv.Export([item]);
-        Assert.Throws<ArgumentException>(() => LedgerCsv.Parse(csv.Replace("expense", "unknown")));
-        Assert.Throws<ArgumentException>(() => LedgerCsv.Parse(csv.Replace("25.50", "25.501")));
-        Assert.Throws<ArgumentException>(() => LedgerCsv.Parse(csv.Replace("2026-10-18", "2026-02-30")));
-        Assert.Throws<ArgumentException>(() => LedgerCsv.Parse("id,date,type,amount,category,note\r\n\"unclosed"));
-        Assert.Throws<ArgumentException>(() => LedgerCsv.Parse("id,date,type,amount,category,note\r\n\"closed\"x,1"));
-        Assert.Throws<ArgumentException>(() => LedgerCsv.Parse("id,date,type,amount,category,note\r\n"));
-        Assert.Throws<ArgumentException>(() => LedgerCsv.Parse(new string('x', 2 * 1024 * 1024 + 1)));
-        Assert.Throws<ArgumentException>(() => LedgerCsv.Parse(LedgerCsv.Export(Enumerable.Range(0, 1001).Select(_ => Entry()))));
-    }
-
-    [Fact]
-    public void LegacyCsvRemainsReadableAndRelationsRoundTrip()
-    {
-        var id = Guid.NewGuid();
-        var legacy = $"id,date,type,amount,category,note\r\n{id},2026-10-18,expense,25.50,Food,Lunch\r\n";
-        var expense = Assert.Single(LedgerCsv.Parse(legacy));
-        Assert.Null(expense.RelatedExpenseId);
-        var income = LedgerEntry.Create(Guid.NewGuid(), new(2026, 11, 1), EntryKind.Income, 10m, "AA", "", id);
-        var restored = Assert.Single(LedgerCsv.Parse(LedgerCsv.Export([income])));
-        Assert.True(income.SameContent(restored));
-        Assert.False(income.SameContent(LedgerEntry.Create(income.Id, income.Date, income.Kind, income.Amount, income.Category, income.Note)));
-        Assert.DoesNotContain("relation_kind", LedgerCsv.Export([income]));
-        Assert.Throws<ArgumentException>(() => LedgerCsv.Parse(LedgerCsv.Export([income]).Replace(id.ToString(), "invalid-guid")));
+        var first = Guid.NewGuid();
+        var second = Guid.NewGuid();
+        var forward = LedgerEntryLink.Create(first, second);
+        var reverse = LedgerEntryLink.Create(second, first);
+        Assert.Equal(forward.LeftEntryId, reverse.LeftEntryId);
+        Assert.Equal(forward.RightEntryId, reverse.RightEntryId);
+        Assert.Throws<ArgumentException>(() => LedgerEntryLink.Create(first, first));
+        Assert.Throws<ArgumentException>(() => LedgerEntryLink.Create(first, Guid.Empty));
     }
 
     [Fact]

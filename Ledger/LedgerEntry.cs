@@ -25,14 +25,9 @@ public sealed class LedgerEntry
     }
     public string Category { get; private set; } = "";
     public string Note { get; private set; } = "";
-    public Guid? RelatedExpenseId
-    {
-        get; private set;
-    }
     public decimal Amount => AmountInFen / 100m;
 
-    public static LedgerEntry Create(Guid id, DateOnly date, EntryKind kind, decimal amount, string category, string note,
-        Guid? relatedExpenseId = null)
+    public static LedgerEntry Create(Guid id, DateOnly date, EntryKind kind, decimal amount, string category, string note)
     {
         if (id == Guid.Empty)
         {
@@ -40,12 +35,11 @@ public sealed class LedgerEntry
         }
 
         var item = new LedgerEntry { Id = id };
-        item.Update(date, kind, amount, category, note, relatedExpenseId);
+        item.Update(date, kind, amount, category, note);
         return item;
     }
 
-    public void Update(DateOnly date, EntryKind kind, decimal amount, string category, string note,
-        Guid? relatedExpenseId = null)
+    public void Update(DateOnly date, EntryKind kind, decimal amount, string category, string note)
     {
         ArgumentNullException.ThrowIfNull(category);
         ArgumentNullException.ThrowIfNull(note);
@@ -75,21 +69,11 @@ public sealed class LedgerEntry
             throw new ArgumentException("Note cannot exceed 1,000 characters.");
         }
 
-        if (relatedExpenseId == Guid.Empty || relatedExpenseId == Id ||
-            relatedExpenseId.HasValue && kind != EntryKind.Income)
-        {
-            throw new ArgumentException("Only an income can link to another expense.");
-        }
-
         Date = date;
         Kind = kind;
         AmountInFen = checked((long)(amount * 100));
         Category = category;
         Note = note;
-        RelatedExpenseId = relatedExpenseId;
     }
 
-    public bool SameContent(LedgerEntry other) => Date == other.Date && Kind == other.Kind &&
-        AmountInFen == other.AmountInFen && Category == other.Category && Note == other.Note &&
-        RelatedExpenseId == other.RelatedExpenseId;
 }

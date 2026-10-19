@@ -16,11 +16,7 @@ public sealed class DeleteLedgerEntry(IRepository<LedgerEntry> entries, IDbConte
                 return;
             }
 
-            if (await entries.AsNoTracking().Where(other => other.RelatedExpenseId == request.Id).AnyAsync(cancellationToken))
-            {
-                throw new ArgumentException("Unlink repayments before deleting this expense.");
-            }
-
+            // The database cascades clue rows while preserving every linked entry.
             entries.Remove(item);
             await database.SaveChangesAsync(cancellationToken);
         });

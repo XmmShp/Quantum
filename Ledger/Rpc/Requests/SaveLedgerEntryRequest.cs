@@ -8,4 +8,4 @@ public sealed record SaveLedgerEntryRequest(
     [property: Description("人民币元金额，必须大于零、不超过 999999999.99，最多两位小数。")] decimal Amount,
     [property: Description("分类名称，1–40 个字符，不允许控制字符。")] string Category,
     [property: Description("备注，最多 1000 个字符。")] string Note = "",
-    [property: Description("可选：收入所关联的支出 GUID，支持跨月和多笔收入关联同一支出。省略或 null 表示无关联或解除关联。")] Guid? RelatedExpenseId = null);
+    [property: Description("可选：关联账单 GUID 集合，任意收支类型、跨月、多笔和双向关联；不能包含自身或空 GUID。完整更新时省略或空集合会解除该账单全部关联。")] Guid[]? RelatedEntryIds = null);

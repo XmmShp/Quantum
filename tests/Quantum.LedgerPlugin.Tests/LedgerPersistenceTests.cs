@@ -38,74 +38,71 @@ public sealed class LedgerPersistenceTests
         return builder;
     }
 
-    [Fact]
-    public async Task RelationMigrationPreservesExistingEntries()
+    internal static async Task Migrate(SqliteConnection connection, int count = 3)
     {
-        await using var connection = new SqliteConnection("Data Source=:memory:");
-        await connection.OpenAsync();
-        await using var command = connection.CreateCommand();
-        command.CommandText = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "001_init.sql"));
-        await command.ExecuteNonQueryAsync();
-        command.CommandText = "INSERT INTO OfficialLedgerEntries (Id, Date, Kind, AmountInFen, Category, Note, TenantId) VALUES ('old', '2026-09-01', 0, 1234, 'Food', 'Existing', 'tenant')";
-        await command.ExecuteNonQueryAsync();
-        command.CommandText = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "002_entry_relations.sql"));
-        await command.ExecuteNonQueryAsync();
-        command.CommandText = "INSERT INTO OfficialLedgerEntries (Id, Date, Kind, AmountInFen, Category, Note, TenantId, RelatedExpenseId) VALUES ('linked', '2026-10-01', 1, 100, 'Repayment', '', 'tenant', 'old')";
-        await command.ExecuteNonQueryAsync();
-        command.CommandText = "SELECT RelatedExpenseId FROM OfficialLedgerEntries WHERE Id = 'linked'";
-        Assert.Equal("old", await command.ExecuteScalarAsync());
-        command.CommandText = "SELECT AmountInFen, Note, RelatedExpenseId FROM OfficialLedgerEntries WHERE Id = 'old'";
-        await using var reader = await command.ExecuteReaderAsync();
-        Assert.True(await reader.ReadAsync());
-        Assert.Equal(1234, reader.GetInt64(0));
-        Assert.Equal("Existing", reader.GetString(1));
-        Assert.True(reader.IsDBNull(2));
-        Assert.Equal(3, reader.FieldCount);
+        foreach (var file in new[] { "001_init.sql", "002_entry_relations.sql", "003_entry_clues.sql" }.Take(count))
+        {
+            await using var command = connection.CreateCommand();
+            command.CommandText = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, file));
+            await command.ExecuteNonQueryAsync();
+        }
     }
 
     [Fact]
-    public async Task MigrationSupportsCrudMonthBoundariesAndAtomicIdempotentImports()
+    public async Task ClueMigrationPreservesLegacyRecordsAndBothDirectionsAcrossMonths()
     {
-        // Match the SQL artifact shipped to Quantum, rather than creating tables from EF.
-        // Keep a shared in-memory database alive across NOF's independent connections.
-        await using var shared = new SqliteConnection($"Data Source=ledger-{Guid.NewGuid():N};Mode=Memory;Cache=Shared");
-        await shared.OpenAsync();
-        await using (var migration = shared.CreateCommand())
-        {
-            migration.CommandText = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "001_init.sql"));
-            migration.CommandText += await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "002_entry_relations.sql"));
-            await migration.ExecuteNonQueryAsync();
-        }
+        await using var connection = new SqliteConnection("Data Source=:memory:");
+        await connection.OpenAsync();
+        await Migrate(connection, 2);
+        await using var command = connection.CreateCommand();
+        var original = Guid.NewGuid().ToString().ToUpperInvariant();
+        var repayment = Guid.NewGuid().ToString().ToUpperInvariant();
+        command.CommandText = "INSERT INTO OfficialLedgerEntries (Id, Date, Kind, AmountInFen, Category, Note, TenantId, RelatedExpenseId) " +
+            "VALUES ($original, '2026-09-01', 0, 1234, 'Food', 'Existing', 'tenant', NULL), " +
+            "($repayment, '2026-10-01', 1, 100, 'Repayment', 'Legacy', 'tenant', $original)";
+        command.Parameters.AddWithValue("$original", original);
+        command.Parameters.AddWithValue("$repayment", repayment);
+        await command.ExecuteNonQueryAsync();
+        command.CommandText = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, "003_entry_clues.sql"));
+        await command.ExecuteNonQueryAsync();
+        command.CommandText = "SELECT COUNT(*) FROM OfficialLedgerEntries";
+        Assert.Equal(2L, await command.ExecuteScalarAsync());
+        command.CommandText = "SELECT AmountInFen FROM OfficialLedgerEntries WHERE Id = $original";
+        Assert.Equal(1234L, await command.ExecuteScalarAsync());
+        command.CommandText = "SELECT LeftEntryId, RightEntryId, TenantId FROM OfficialLedgerEntryLinks";
+        await using var reader = await command.ExecuteReaderAsync();
+        Assert.True(await reader.ReadAsync());
+        Assert.Equal(new[] { original, repayment }.Order(StringComparer.Ordinal), new[] { reader.GetString(0), reader.GetString(1) });
+        Assert.Equal("tenant", reader.GetString(2));
+        Assert.False(await reader.ReadAsync());
+    }
+
+    [Fact]
+    public async Task LocalClientPersistsCluesRecoversAfterFailureAndUsesFreshRequestScopes()
+    {
+        await using var connection = new SqliteConnection($"Data Source=ledger-local-{Guid.NewGuid():N};Mode=Memory;Cache=Shared");
+        await connection.OpenAsync();
+        await Migrate(connection);
         var scopes = new SaveScopes();
-        var builder = Configure(shared.ConnectionString, scopes);
+        var builder = Configure(connection.ConnectionString, scopes);
         await using var provider = builder.Services.BuildServiceProvider();
         await using var scope = provider.CreateAsyncScope();
         scope.ServiceProvider.ResolveDaemonServices();
-        var client = scope.ServiceProvider.GetRequiredService<Quantum.OfficialPlugins.Ledger.Rpc.ILedgerRpcServiceClient>();
+        var client = scope.ServiceProvider.GetRequiredService<OfficialPlugins.Ledger.Rpc.ILedgerRpcServiceClient>();
         var context = NOF.Contract.Context.Empty;
-        var expense = await client.CreateEntryAsync(new(new(2026, 10, 1), EntryKind.Expense, .1m, "Food"), context);
-        Assert.True(expense.IsSuccess, expense.Message);
-        var id = expense.Value!.Id;
-        var income = await client.CreateEntryAsync(new(new(2026, 11, 1), EntryKind.Income, .1m, "Repayment", "", id), context);
-        Assert.True(income.IsSuccess, income.Message);
-        Assert.Equal(id, income.Value!.RelatedExpenseId);
-        Assert.Single((await client.GetRelatedEntriesAsync(new(id), context)).Value!);
-        var blocked = await client.DeleteEntryAsync(new(id), context);
-        Assert.False(blocked.IsSuccess);
-        Assert.True((await client.UpdateEntryAsync(new(id, new(new(2026, 10, 2), EntryKind.Expense, .2m, "Transport")), context)).IsSuccess);
-        var exported = await client.ExportCsvAsync(new(new(2026, 10, 1)), context);
-        Assert.True(exported.IsSuccess, exported.Message);
-        Assert.Equal(0, (await client.ImportCsvAsync(new(exported.Value!.Csv), context)).Value!.AddedCount);
-        var fresh = LedgerEntry.Create(Guid.NewGuid(), new(2026, 10, 5), EntryKind.Expense, 12.34m, "New", "");
-        var conflict = LedgerEntry.Create(id, new(2026, 10, 2), EntryKind.Expense, 999m, "Transport", "Conflict");
-        Assert.False((await client.ImportCsvAsync(new(LedgerCsv.Export([fresh, conflict])), context)).IsSuccess);
-        Assert.Single((await client.ListEntriesAsync(new(new(2026, 10, 1)), context)).Value!);
-        Assert.Equal(1, (await client.ImportCsvAsync(new(LedgerCsv.Export([fresh])), context)).Value!.AddedCount);
-        Assert.True((await client.DeleteEntryAsync(new(fresh.Id), context)).IsSuccess);
-        var invalid = await client.UpdateEntryAsync(new(id, new(new(2026, 10, 2), EntryKind.Expense, 0m, "Bad")), context);
+        var first = (await client.CreateEntryAsync(new(new(2026, 10, 1), EntryKind.Expense, .1m, "Food"), context)).Value!;
+        var second = await client.CreateEntryAsync(new(new(2026, 11, 1), EntryKind.Expense, .2m, "Transport", "", [first.Id]), context);
+        Assert.True(second.IsSuccess, second.Message);
+        Assert.Equal(first.Id, Assert.Single(second.Value!.RelatedEntryIds));
+        Assert.Equal(second.Value.Id, Assert.Single((await client.GetRelatedEntriesAsync(new(first.Id), context)).Value!).Id);
+        var invalid = await client.UpdateEntryAsync(new(first.Id, new(new(2026, 10, 2), EntryKind.Income, 5m, "Bad", "", [Guid.NewGuid()])), context);
         Assert.False(invalid.IsSuccess);
-        // The same long-lived client can recover after failed requests; each dispatch owns a fresh scope.
-        Assert.Equal(.2m, (await client.GetEntryAsync(new(id), context)).Value!.Entry!.Amount);
+        var unchanged = (await client.GetEntryAsync(new(first.Id), context)).Value!.Entry!;
+        Assert.Equal(.1m, unchanged.Amount);
+        Assert.Equal(EntryKind.Expense, unchanged.Kind);
+        Assert.Equal(second.Value.Id, Assert.Single(unchanged.RelatedEntryIds));
+        var changed = await client.UpdateEntryAsync(new(first.Id, new(new(2026, 10, 2), EntryKind.Income, .3m, "Changed", "", [second.Value.Id])), context);
+        Assert.True(changed.IsSuccess, changed.Message);
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => client.CreateEntryAsync(
@@ -113,9 +110,13 @@ public sealed class LedgerPersistenceTests
         Assert.Single((await client.ListEntriesAsync(new(new(2026, 10, 1)), context)).Value!);
         await using var reopened = provider.CreateAsyncScope();
         reopened.ServiceProvider.ResolveDaemonServices();
-        var reopenedClient = reopened.ServiceProvider.GetRequiredService<Quantum.OfficialPlugins.Ledger.Rpc.ILedgerRpcServiceClient>();
-        Assert.Equal(.1m, Assert.Single((await reopenedClient.ListEntriesAsync(new(new(2026, 11, 1)), context)).Value!).Amount);
-        Assert.True(scopes.ContextIds.Count >= 5);
+        var reopenedClient = reopened.ServiceProvider.GetRequiredService<OfficialPlugins.Ledger.Rpc.ILedgerRpcServiceClient>();
+        Assert.Equal(.3m, (await reopenedClient.GetEntryAsync(new(first.Id), context)).Value!.Entry!.Amount);
+        Assert.True((await client.DeleteEntryAsync(new(first.Id), context)).IsSuccess);
+        var survivor = (await reopenedClient.GetEntryAsync(new(second.Value.Id), context)).Value!.Entry!;
+        Assert.Equal(.2m, survivor.Amount);
+        Assert.Empty(survivor.RelatedEntryIds);
+        Assert.True(scopes.ContextIds.Count >= 4);
         Assert.Equal(scopes.ContextIds.Count, scopes.ContextIds.Distinct().Count());
     }
 

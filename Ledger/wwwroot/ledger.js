@@ -1,10 +1,19 @@
-export function downloadCsv(filename, content) {
-    const url = URL.createObjectURL(new Blob([content], { type: 'text/csv;charset=utf-8' }));
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = filename;
-    document.body.appendChild(link);
-    link.click();
-    link.remove();
-    setTimeout(() => URL.revokeObjectURL(url), 1000);
+const initializedDialogs = new WeakSet();
+
+export function syncDialog(dialog, open) {
+    if (!dialog?.isConnected) {
+        return;
+    }
+    if (!initializedDialogs.has(dialog)) {
+        dialog.addEventListener('cancel', event => {
+            event.preventDefault();
+            dialog.querySelector('[data-dialog-close]')?.click();
+        });
+        initializedDialogs.add(dialog);
+    }
+    if (open && !dialog.open) {
+        dialog.showModal();
+    } else if (!open && dialog.open) {
+        dialog.close();
+    }
 }

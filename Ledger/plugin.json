@@ -1,6 +1,6 @@
 {
   "id": "quantum.plugin.ledger",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "entryAssembly": "Quantum.LedgerPlugin.dll",
   "database": { "migrations": "./migrations" },
   "dependencies": [],

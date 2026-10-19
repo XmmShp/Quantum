@@ -4,6 +4,7 @@
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <PackageId>Quantum.LedgerPlugin</PackageId>
+    <Version>0.3.0</Version>
   </PropertyGroup>
   <ItemGroup>
     <PackageReference Include="Quantum.Plugin.Abstraction" />

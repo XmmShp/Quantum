@@ -6,7 +6,7 @@ Official plugins maintained for Quantum. Each plugin is independently versioned 
 
 - `Calendar` — `quantum.plugin.calendar`
 - `Codex` — `quantum.plugin.codex`
-- `Ledger` — `quantum.plugin.ledger` — offline CNY income/expense tracking, monthly summaries and CSV import/export
+- `Ledger` — `quantum.plugin.ledger` — offline CNY income/expense tracking, monthly summaries and cross-month entry clues
 
 ## Build
 

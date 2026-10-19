@@ -4,7 +4,7 @@ using System.ComponentModel;
 
 namespace Quantum.OfficialPlugins.Ledger.Rpc;
 
-[Description("管理 Quantum 本地人民币账本：查询收支、月度统计、创建修改删除记录及 CSV 导入导出。修改操作会写入本机数据库。")]
+[Description("管理 Quantum 本地人民币账本：查询收支、月度统计、创建修改删除记录及任意类型账单的双向线索关联。修改操作会写入本机数据库。")]
 [TransportOverQuantum]
 [RpcInvocationName("ledger")]
 public interface ILedgerRpcService : IRpcService
@@ -17,7 +17,7 @@ public interface ILedgerRpcService : IRpcService
     [RpcInvocationName("get")]
     Result<LedgerEntryLookup> GetEntry(LedgerEntryRequest request);
 
-    [Description("跨月查询关联明细：收入返回原支出，支出返回所有报销和 AA 回款；不存在时返回 ledger_entry_not_found。原始收支统计不因关联改变。")]
+    [Description("跨月查询任意类型的双向关联账单；不存在时返回 ledger_entry_not_found。关联仅作为线索，不改变收支统计。")]
     [RpcInvocationName("related")]
     Result<LedgerEntryDetails[]> GetRelatedEntries(LedgerEntryRequest request);
 
@@ -29,19 +29,12 @@ public interface ILedgerRpcService : IRpcService
     [RpcInvocationName("create")]
     Result<LedgerEntryDetails> CreateEntry(SaveLedgerEntryRequest request);
 
-    [Description("完整更新指定 ID 的收支记录；未提供关联字段表示解除关联。被回款关联的支出不能改为收入；不存在时返回 ledger_entry_not_found。")]
+    [Description("完整更新指定 ID 的收支记录和双向关联集合；省略或清空 relatedEntryIds 表示解除该账单的全部关联。允许自由修改收入/支出类型；不存在时返回 ledger_entry_not_found。")]
     [RpcInvocationName("update")]
     Result<LedgerEntryDetails> UpdateEntry(UpdateLedgerEntryRequest request);
 
-    [Description("永久删除指定 ID 的收支记录。存在回款关联的支出须先解除关联。调用前应确认用户的删除意图；记录不存在时视为成功。")]
+    [Description("永久删除指定 ID 的收支记录并移除其关联线索，不删除关联账单。调用前应确认用户的删除意图；记录不存在时视为成功。")]
     [RpcInvocationName("delete")]
     Result DeleteEntry(LedgerEntryRequest request);
 
-    [Description("导出指定整月的 CSV 文本和建议文件名，不操作文件系统。CSV 对电子表格公式前缀进行保护。")]
-    [RpcInvocationName("export-csv")]
-    Result<LedgerCsvExport> ExportCsv(LedgerMonthRequest request);
-
-    [Description("原子导入 CSV，保留原日期和 ID；返回新建记录数。重复导入相同记录不会重复记账。调用前应确认用户的导入意图。")]
-    [RpcInvocationName("import-csv")]
-    Result<LedgerImportResult> ImportCsv(ImportLedgerCsvRequest request);
 }

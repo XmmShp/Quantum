@@ -105,15 +105,6 @@
   <data name="Delete" xml:space="preserve">
     <value>删除</value>
   </data>
-  <data name="Export month CSV" xml:space="preserve">
-    <value>导出本月 CSV</value>
-  </data>
-  <data name="Import CSV" xml:space="preserve">
-    <value>导入 CSV</value>
-  </data>
-  <data name="UTF-8 · CNY · Up to 1,000 rows / 2 MiB per import" xml:space="preserve">
-    <value>UTF-8 · 人民币 · 每次最多 1,000 行 / 2 MiB</value>
-  </data>
   <data name="WHERE IT GOES" xml:space="preserve">
     <value>钱花在哪里</value>
   </data>
@@ -150,17 +141,8 @@
   <data name="This action cannot be undone." xml:space="preserve">
     <value>删除后无法恢复。</value>
   </data>
-  <data name="Confirm import" xml:space="preserve">
-    <value>确认导入</value>
-  </data>
-  <data name="Ready to import {0} records. Identical IDs are skipped; conflicting IDs reject the entire import." xml:space="preserve">
-    <value>即将导入 {0} 笔记录。相同编号的已有记录会跳过；编号冲突将取消整次导入。</value>
-  </data>
   <data name="Records keep their original dates and may belong to other months." xml:space="preserve">
     <value>记录会保留原日期，可能出现在其他月份。</value>
-  </data>
-  <data name="Import" xml:space="preserve">
-    <value>导入</value>
   </data>
   <data name="Food" xml:space="preserve">
     <value>餐饮</value>
@@ -195,12 +177,6 @@
   <data name="Entry deleted." xml:space="preserve">
     <value>记录已删除。</value>
   </data>
-  <data name="Invalid CSV. Export a month to obtain the template, then check IDs, dates, types and amounts." xml:space="preserve">
-    <value>CSV 格式错误。请先导出本月记录作为模板，并检查编号、日期、类型和金额。</value>
-  </data>
-  <data name="Imported {0} new records." xml:space="preserve">
-    <value>已导入 {0} 笔新记录。</value>
-  </data>
   <data name="Invalid record ID." xml:space="preserve">
     <value>记录编号无效。</value>
   </data>
@@ -219,25 +195,17 @@
   <data name="Note cannot exceed 1,000 characters." xml:space="preserve">
     <value>备注不能超过 1,000 个字符。</value>
   </data>
-  <data name="CSV must contain 1–1,000 records with unique IDs." xml:space="preserve">
-    <value>CSV 须包含 1–1,000 笔记录，且编号不能重复。</value>
-  </data>
-  <data name="An imported ID conflicts with an existing record." xml:space="preserve">
-    <value>导入编号与已有记录冲突，未导入任何记录。</value>
-  </data>
   <data name="Related entries" xml:space="preserve"><value>关联明细</value></data>
-  <data name="No relation" xml:space="preserve"><value>无关联</value></data>
-  <data name="Expense month" xml:space="preserve"><value>原支出月份</value></data>
-  <data name="Original expense" xml:space="preserve"><value>原支出</value></data>
-  <data name="Relations do not change monthly income or expense totals." xml:space="preserve"><value>关联不改变月度收支统计，已回款与净支出包含跨月关联收入。</value></data>
-  <data name="Recovered" xml:space="preserve"><value>已回款</value></data>
-  <data name="Net expense" xml:space="preserve"><value>净支出</value></data>
   <data name="No related entries." xml:space="preserve"><value>暂无关联明细。</value></data>
   <data name="Close" xml:space="preserve"><value>关闭</value></data>
-  <data name="Only an income can link to another expense." xml:space="preserve"><value>仅收入可以关联到另一笔支出。</value></data>
-  <data name="Unlink repayments before changing this expense to income." xml:space="preserve"><value>请先解除所有回款关联，再将这笔支出改为收入。</value></data>
-  <data name="Unlink repayments before deleting this expense." xml:space="preserve"><value>请先解除所有回款关联，再删除这笔支出。</value></data>
-  <data name="Related expense does not exist." xml:space="preserve"><value>关联的原支出不存在。</value></data>
-  <data name="The linked record must be an expense." xml:space="preserve"><value>关联的原明细必须是支出。</value></data>
   <data name="Record no longer exists. Refresh and try again." xml:space="preserve"><value>记录已不存在，请刷新后重试。</value></data>
+  <data name="A little ink, a little time." xml:space="preserve"><value>浮生有味是清欢。</value></data>
+  <data name="Click again to delete" xml:space="preserve"><value>再次点击删除</value></data>
+  <data name="Entry month" xml:space="preserve"><value>账单月份</value></data>
+  <data name="Add relation" xml:space="preserve"><value>添加关联</value></data>
+  <data name="Choose an entry" xml:space="preserve"><value>选择账单</value></data>
+  <data name="Remove relation" xml:space="preserve"><value>解除关联</value></data>
+  <data name="{0} related" xml:space="preserve"><value>{0} 笔关联</value></data>
+  <data name="Related entry does not exist." xml:space="preserve"><value>关联账单不存在。</value></data>
+  <data name="An entry cannot link to itself or an empty ID." xml:space="preserve"><value>账单不能关联自身或空编号。</value></data>
 </root>
