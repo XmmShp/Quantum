@@ -196,6 +196,11 @@ Service/method name 优先使用 `[RpcInvocationName]`；否则使用接口名�
 `QuantumResult`；其中未实现名称的错误码为 `rpc_not_found`，不会因为“服务未注册”而 reject Promise。Abort/超时仍按取消
 语义结束 Promise。
 
+Quantum 0.1.8 起，枚举使用名称字符串，例如 `{ kind: "Expense" }`；旧数字形式和数字字符串均会被拒绝。
+Schema 与宿主实际序列化配置一致。带构造参数默认值的字段可省略，例如 `note` 默认 `""`；显式 `null` 必须满足字段
+可空规则。`rpc_invalid_payload` 的 `message` 会指出字段，`extra.path` / `extra.reason` 提供 JSON 路径和原因，
+例如 `$.kind` 或 `$.lines[0].kind`。无效载荷在进入 Handler 前即被拒绝。
+
 RPC 不要求 manifest 声明 `dependency` 或 `integration`。每次调用在目标插件创建独立 DI scope，等待 NOF 生成的 Handler
 完成，在 Result 序列化后释放 scope；iframe 不接触 CLR TypeName、`IServiceProvider`、服务实例或反射重载。
 

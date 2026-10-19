@@ -90,6 +90,36 @@ public sealed class WebPluginInteropBridgeTests
             result.GetProperty("value").GetString());
     }
 
+    [Theory]
+    [InlineData("\"Expense\"", true)]
+    [InlineData("0", false)]
+    public async Task WebRpcUsesStringEnumsAndPreservesFieldDiagnostics(string kind, bool succeeds)
+    {
+        await using var host = CreateHost();
+        await using var target = CreateRpcTarget(host);
+        var runtimeId = Guid.NewGuid();
+        var catalog = new PluginCatalog([LoadedWebPlugin(runtimeId), target.Plugin]);
+        using var router = new PluginRpcRouter(catalog, NullLogger<PluginRpcRouter>.Instance);
+        using var bridge = CreateBridge(catalog, router, host, new RejectingEventDeliveryJavaScriptRuntime());
+        var payload = JsonSerializer.Deserialize<JsonElement>(
+            "{\"date\":\"2026-10-19\",\"kind\":" + kind + ",\"amount\":0.01,\"category\":\"Test\"}");
+        var result = await bridge.InvokeAsync(PluginId, runtimeId.ToString("N"), Guid.NewGuid().ToString("N"),
+            "rpc", "invoke", JsonSerializer.SerializeToElement(new { rpcName = "json-contract.create", payload }));
+        Assert.Equal(succeeds, result.GetProperty("isSuccess").GetBoolean());
+        if (succeeds)
+        {
+            Assert.Equal("Expense", result.GetProperty("value").GetProperty("kind").GetString());
+            Assert.Equal("", result.GetProperty("value").GetProperty("note").GetString());
+        }
+        else
+        {
+            Assert.Equal("rpc_invalid_payload", result.GetProperty("errorCode").GetString());
+            Assert.Equal("$.kind", result.GetProperty("extra").GetProperty("path").GetString());
+            Assert.Contains("$.kind", result.GetProperty("message").GetString());
+            Assert.Equal(0, host.GetRequiredService<JsonContractCounter>().Calls);
+        }
+    }
+
     [Fact]
     public async Task RpcCatalogIsAvailableThroughTheWebPluginBridge()
     {
@@ -200,6 +230,8 @@ public sealed class WebPluginInteropBridgeTests
         => new ServiceCollection()
             .AddQuantumPluginEventBus()
             .AddTransient<WebBridgeTestRpcService.Echo, WebBridgeEcho>()
+            .AddSingleton<JsonContractCounter>()
+            .AddTransient<JsonContractRpcService.Create, JsonContractCreate>()
             .BuildServiceProvider(new ServiceProviderOptions
             {
                 ValidateOnBuild = true,

@@ -179,6 +179,20 @@ var catalog = await services.GetRequiredService<IRpcInvoker>()
 ```
 
 目录按插件和服务列出完整名称、短名称、Alias、请求/响应 CLR 类型以及可直接提供给 AI 工具的 JSON Schema。
+
+从 Quantum 0.1.8 起，RPC 的 Schema 由实际序列化器的 `JsonSerializerOptions` 通过 .NET JSON Schema exporter 生成。
+默认使用字符串枚举转换器并禁用整数枚举：请求和响应中枚举以名称字符串传输，例如 `"kind": "Expense"`，不再兼容
+`"kind": 0` 或 `"kind": "0"`。枚举上的 `JsonStringEnumMemberName`、属性上的 `JsonPropertyName` / `JsonIgnore`
+与序列化规则一致。可空类型、字典、集合和递归类型也由同一份序列化元数据导出。
+
+无默认值的必需构造参数会被列入 `required` 并在载荷缺失时拒绝；带默认值的参数可省略，例如 `string Note = ""`
+生成 `default: ""` 而不列入 `required`，反序列化时保留该默认值。可省略不等于可传 `null`：非空字符串显式传 `null`
+仍会失败。RPC 请求本身不能为 `null`。
+
+载荷错误返回 `rpc_invalid_payload`，`message` 包含 JSON 路径和转换原因，`extra` 提供 `rpc`、`path`、`reason`
+三个字符串字段。例如旧数字枚举会指出 `$.kind`，嵌套数组错误会指出 `$.lines[0].kind`。错误在调用 Handler 前返回，
+不会因反序列化失败触发业务写入。Web 插件与 .NET `IRpcInvoker` 使用相同的规则和诊断信息。
+
 在服务接口、方法、唯一请求参数、返回值、DTO 类型和 DTO 属性上声明的全部 Attribute 都会以类型名、构造参数和命名参数
 导出；`DescriptionAttribute` 还会提升为相应节点的 `description`。元数据读取使用 `CustomAttributeData`，不会为了发现接口而
 实例化 Attribute。Web 插件可使用 `context.rpc.catalog()` 获取同一份目录。

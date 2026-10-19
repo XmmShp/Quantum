@@ -59,7 +59,7 @@ internal sealed class PluginRpcRuntime : IAsyncDisposable
             scopeFactory,
             serializer,
             logger);
-        runtime._methods = DiscoverMethods(assembly);
+        runtime._methods = DiscoverMethods(assembly, serializer);
         return runtime;
     }
 
@@ -115,18 +115,37 @@ internal sealed class PluginRpcRuntime : IAsyncDisposable
             {
                 request = _serializer.Deserialize(payload, method.Mapping.RequestType);
             }
-            catch (Exception exception) when (exception is JsonException or NotSupportedException)
+            catch (JsonException exception)
+            {
+                var path = exception.Path ?? "$";
+                return PluginRpcDispatchResult.Fail(
+                    PluginRpcErrors.InvalidPayload,
+                    $"The payload for RPC '{method.CanonicalName}' is invalid at {path}: {exception.Message}",
+                    new Dictionary<string, string>
+                    {
+                        ["rpc"] = method.CanonicalName,
+                        ["path"] = path,
+                        ["reason"] = exception.Message
+                    });
+            }
+            catch (NotSupportedException exception)
             {
                 return PluginRpcDispatchResult.Fail(
                     PluginRpcErrors.InvalidPayload,
-                    $"The payload does not match RPC '{method.CanonicalName}'.");
+                    $"The request type for RPC '{method.CanonicalName}' does not support this JSON payload: {exception.Message}");
             }
 
-            if (request is null && method.Mapping.RequestType.IsValueType)
+            if (request is null)
             {
                 return PluginRpcDispatchResult.Fail(
                     PluginRpcErrors.InvalidPayload,
-                    $"The payload does not match RPC '{method.CanonicalName}'.");
+                    $"The payload for RPC '{method.CanonicalName}' is invalid at $: A non-null request is required.",
+                    new Dictionary<string, string>
+                    {
+                        ["rpc"] = method.CanonicalName,
+                        ["path"] = "$",
+                        ["reason"] = "A non-null request is required."
+                    });
             }
 
             IResult result;
@@ -238,7 +257,7 @@ internal sealed class PluginRpcRuntime : IAsyncDisposable
         return Context.Empty.WithItems(items);
     }
 
-    private static IReadOnlyList<PluginRpcMethodDefinition> DiscoverMethods(Assembly assembly)
+    private static IReadOnlyList<PluginRpcMethodDefinition> DiscoverMethods(Assembly assembly, PluginRpcSerializer serializer)
     {
         var definitions = new List<PluginRpcMethodDefinition>();
         foreach (var serverType in GetLoadableTypes(assembly)
@@ -308,7 +327,8 @@ internal sealed class PluginRpcRuntime : IAsyncDisposable
                         serviceType,
                         contractMethod,
                         parameter,
-                        responseType)));
+                        responseType,
+                        serializer)));
             }
         }
 
