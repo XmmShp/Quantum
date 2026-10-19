@@ -59,6 +59,7 @@ jobs:
         shell: bash
         env:
           SELECTED_PLUGIN: ${{ inputs.plugin }}
+          HAS_LEDGER_CREDENTIALS: ${{ secrets.QUANTUM_LEDGER_CLIENT_ID != '' && secrets.QUANTUM_LEDGER_CLIENT_PRIVATE_JWKS != '' }}
         run: |
           set -euo pipefail
           selection="$GITHUB_REF_NAME"
@@ -94,7 +95,7 @@ jobs:
           if [[ "$directory" == Codex ]]; then
             echo "client_id_secret=QUANTUM_CODEX_CLIENT_ID" >> "$GITHUB_OUTPUT"
             echo "client_jwks_secret=QUANTUM_CODEX_CLIENT_PRIVATE_JWKS" >> "$GITHUB_OUTPUT"
-          elif [[ "$directory" == Ledger ]]; then
+          elif [[ "$directory" == Ledger && "$HAS_LEDGER_CREDENTIALS" == true ]]; then
             echo "client_id_secret=QUANTUM_LEDGER_CLIENT_ID" >> "$GITHUB_OUTPUT"
             echo "client_jwks_secret=QUANTUM_LEDGER_CLIENT_PRIVATE_JWKS" >> "$GITHUB_OUTPUT"
           else
