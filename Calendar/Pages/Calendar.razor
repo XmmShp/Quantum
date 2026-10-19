@@ -11,7 +11,7 @@
 <PageTitle>@L["Calendar"] · Quantum</PageTitle>
 
 <section class="calendar-shell" @onclick="CancelDelete" @onkeydown="HandleKeyDown">
-    @if (_errorMessage is not null)
+    @if (_errorMessage is not null && !_isEditorOpen)
     {
         <div class="error-banner" role="alert">
             <span>@_errorMessage</span>
@@ -104,65 +104,10 @@
                             <span>@SelectedDateTitle</span>
                         </div>
                     </div>
-                    <button type="button" class="round-add" aria-label="@L["New"]" disabled="@_isBusy" @onclick="BeginCreate">＋</button>
+                    <button type="button" class="round-add" aria-label="@L["New"]" title="@L["New"]" disabled="@_isBusy" @onclick="BeginCreate">＋</button>
                 </div>
 
-                @if (_isEditorOpen)
-                {
-                    <section class="entry-editor" aria-label="@EditorTitle">
-                        <div class="editor-title">
-                            <h2>@EditorTitle</h2>
-                            <button type="button" aria-label="@L["Close editor"]" @onclick="CancelEdit">×</button>
-                        </div>
-                        <div class="kind-switch" role="group" aria-label="@L["Item type"]">
-                            <button type="button" class="@(_draft.Kind == CalendarEntryKind.Event ? "active" : null)" @onclick="() => SetDraftKind(CalendarEntryKind.Event)">@L["Event"]</button>
-                            <button type="button" class="@(_draft.Kind == CalendarEntryKind.Task ? "active" : null)" @onclick="() => SetDraftKind(CalendarEntryKind.Task)">@L["Task"]</button>
-                        </div>
-                        <label>
-                            <span>@L["Title"]</span>
-                            <input maxlength="120" placeholder="@L["What needs to be done?"]" @bind="_draft.Title" />
-                        </label>
-                        <div class="form-row">
-                            <label>
-                                <span>@L["Date"]</span>
-                                <input type="date" @bind="_draft.Date" />
-                            </label>
-                            <label>
-                                <span>@(_draft.Kind == CalendarEntryKind.Task ? L["Due time"] : L["Start time"])</span>
-                                <input type="time" @bind="_draft.StartTime" />
-                            </label>
-                        </div>
-                        @if (_draft.Kind == CalendarEntryKind.Event)
-                        {
-                            <label>
-                                <span>@L["End time (optional)"]</span>
-                                <input type="time" @bind="_draft.EndTime" />
-                            </label>
-                        }
-                        <label>
-                            <span>@L["Notes"]</span>
-                            <textarea maxlength="1000" rows="3" placeholder="@L["Add some details…"]" @bind="_draft.Notes"></textarea>
-                        </label>
-                        <fieldset class="color-picker">
-                            <legend>@L["Color"]</legend>
-                            @foreach (var style in Styles)
-                            {
-                                <button type="button"
-                                        class="swatch @style @(_draft.Style == style ? "selected" : null)"
-                                        aria-label="@style"
-                                        aria-pressed="@(_draft.Style == style)"
-                                        @onclick="() => _draft.Style = style"></button>
-                            }
-                        </fieldset>
-                        <div class="editor-actions">
-                            <button type="button" disabled="@_isBusy" @onclick="CancelEdit">@L["Cancel"]</button>
-                            <button type="button" class="primary-button" disabled="@(_isBusy || string.IsNullOrWhiteSpace(_draft.Title))" @onclick="SaveAsync">
-                                @(_editingId is null ? L["Add"] : L["Save"])
-                            </button>
-                        </div>
-                    </section>
-                }
-                else if (SelectedItems.Count > 0)
+                @if (SelectedItems.Count > 0)
                 {
                     <div class="agenda-list">
                         @foreach (var item in SelectedItems)
@@ -233,7 +178,7 @@
                     <div>
                         <h2>@L["Tasks"]</h2>
                     </div>
-                    <button type="button" class="task-create-button" disabled="@_isBusy" @onclick="BeginCreateTaskAsync">＋ @L["New task"]</button>
+                    <button type="button" class="round-add" aria-label="@L["New task"]" title="@L["New task"]" disabled="@_isBusy" @onclick="BeginCreateTaskAsync">＋</button>
                 </header>
 
                 <div class="task-list-toolbar">
@@ -313,4 +258,65 @@
             </section>
         </div>
     </div>
+    <dialog class="entry-dialog" @ref="_editorDialog" aria-labelledby="@_editorTitleId">
+        @if (_isEditorOpen)
+        {
+            <form class="entry-editor" @onsubmit="SaveAsync" @onsubmit:preventDefault="true">
+                <div class="editor-title">
+                    <h2 id="@_editorTitleId">@EditorTitle</h2>
+                    <button type="button" aria-label="@L["Close editor"]" data-editor-close disabled="@_isBusy" @onclick="CancelEdit">×</button>
+                </div>
+                @if (_errorMessage is not null)
+                {
+                    <div class="error-banner" role="alert">@_errorMessage</div>
+                }
+                <div class="kind-switch" role="group" aria-label="@L["Item type"]">
+                    <button type="button" class="@(_draft.Kind == CalendarEntryKind.Event ? "active" : null)" @onclick="() => SetDraftKind(CalendarEntryKind.Event)">@L["Event"]</button>
+                    <button type="button" class="@(_draft.Kind == CalendarEntryKind.Task ? "active" : null)" @onclick="() => SetDraftKind(CalendarEntryKind.Task)">@L["Task"]</button>
+                </div>
+                <label>
+                    <span>@L["Title"]</span>
+                    <input maxlength="120" placeholder="@L["What needs to be done?"]" autofocus @bind="_draft.Title" @bind:event="oninput" />
+                </label>
+                <div class="form-row">
+                    <label>
+                        <span>@L["Date"]</span>
+                        <input type="date" @bind="_draft.Date" />
+                    </label>
+                    <label>
+                        <span>@(_draft.Kind == CalendarEntryKind.Task ? L["Due time"] : L["Start time"])</span>
+                        <input type="time" @bind="_draft.StartTime" />
+                    </label>
+                </div>
+                @if (_draft.Kind == CalendarEntryKind.Event)
+                {
+                    <label>
+                        <span>@L["End time (optional)"]</span>
+                        <input type="time" @bind="_draft.EndTime" />
+                    </label>
+                }
+                <label>
+                    <span>@L["Notes"]</span>
+                    <textarea maxlength="1000" rows="3" placeholder="@L["Add some details…"]" @bind="_draft.Notes"></textarea>
+                </label>
+                <fieldset class="color-picker">
+                    <legend>@L["Color"]</legend>
+                    @foreach (var style in Styles)
+                    {
+                        <button type="button"
+                                class="swatch @style @(_draft.Style == style ? "selected" : null)"
+                                aria-label="@style"
+                                aria-pressed="@(_draft.Style == style)"
+                                @onclick="() => _draft.Style = style"></button>
+                    }
+                </fieldset>
+                <div class="editor-actions">
+                    <button type="button" disabled="@_isBusy" @onclick="CancelEdit">@L["Cancel"]</button>
+                    <button type="submit" class="primary-button" disabled="@(_isBusy || string.IsNullOrWhiteSpace(_draft.Title))">
+                        @(_editingId is null ? L["Add"] : L["Save"])
+                    </button>
+                </div>
+            </form>
+        }
+    </dialog>
 </section>

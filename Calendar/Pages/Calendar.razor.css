@@ -22,7 +22,7 @@ button:disabled { cursor: wait; opacity: .55; }
 button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; }
 .month-navigation, .month-controls, .agenda-heading, .editor-title, .entry-meta, .entry-actions, .editor-actions, .task-board-header, .task-list-toolbar { align-items: center; display: flex; justify-content: space-between; }
 .month-controls { gap: 6px; }
-.icon-button, .today-button, .round-add, .task-create-button, .editor-actions button {
+.icon-button, .today-button, .round-add, .editor-actions button {
     align-items: center;
     background: white;
     border: 1px solid var(--line);
@@ -37,7 +37,7 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
     line-height: 1;
 }
 .editor-actions .primary-button { background: var(--accent); border-color: var(--accent); color: white; }
-.icon-button:hover, .today-button:hover, .round-add:hover, .task-create-button:hover, .editor-actions button:hover { background: var(--hover); }
+.icon-button:hover, .today-button:hover, .round-add:hover, .editor-actions button:hover { background: var(--hover); }
 .editor-actions .primary-button:hover { background: #5e4b85; }
 .icon-button, .round-add { flex: 0 0 auto; font-size: 22px; padding: 0; width: 36px; }
 
@@ -85,7 +85,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .month-stats span { color: var(--muted); font-size: 12px; }
 
 .calendar-sidebar { display: grid; grid-template-rows: minmax(0, 3fr) minmax(0, 2fr); gap: 20px; min-width: 0; min-height: 0; }
-.calendar-sidebar:has(.entry-editor) { grid-template-rows: minmax(0, 1fr) 180px; }
 .agenda-card { display: flex; flex-direction: column; min-height: 0; padding: 16px; overflow: hidden; }
 .agenda-heading { flex: 0 0 auto; gap: 10px; padding-bottom: 12px; }
 .selected-date { align-items: baseline; display: flex; flex-wrap: wrap; gap: 8px; }
@@ -132,7 +131,14 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .empty-state { align-items: center; color: var(--muted); display: flex; flex: 1; justify-content: center; min-height: 0; padding: 24px 12px; }
 .empty-day-poem { font-size: 14px; font-weight: 400; line-height: 1.9; margin: 0; text-align: center; }
 
-.entry-editor { flex: 1; min-height: 0; overflow: auto; align-content: start; border-top: 1px solid var(--line); display: grid; gap: 12px; padding-top: 14px; }
+.entry-dialog { background: white; border: 1px solid var(--line); border-radius: 14px; box-shadow: 0 20px 70px #24203226; color: var(--ink); margin: auto; max-height: calc(100dvh - 32px); max-width: calc(100vw - 32px); overflow: auto; overscroll-behavior: contain; padding: 0; width: 480px; }
+.entry-dialog::backdrop { background: #24203240; }
+.entry-dialog[open] { animation: editor-enter 120ms ease-out; }
+.entry-editor { align-content: start; display: grid; gap: 14px; margin: 0; padding: 24px; }
+@keyframes editor-enter {
+    from { opacity: 0; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+}
 .editor-title h2 { font-size: 15px; font-weight: 500; margin: 0; }
 .editor-title button { background: transparent; border: 0; color: var(--muted); font-size: 22px; min-height: 30px; min-width: 30px; }
 .kind-switch, .task-filters { background: #f1eef7; border-radius: 8px; display: flex; padding: 3px; }
@@ -154,7 +160,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .task-board { display: flex; flex-direction: column; min-height: 0; overflow: hidden; }
 .task-board-header { flex: 0 0 auto; gap: 8px; padding: 16px 16px 12px; }
 .task-board-header h2 { font-size: 17px; font-weight: 500; margin: 0; }
-.task-create-button { color: var(--accent); font-size: 12px; min-height: 32px; padding: 5px 9px; }
 .task-list-toolbar { flex: 0 0 auto; border-bottom: 1px solid #eeeaf3; flex-wrap: wrap; gap: 8px; padding: 0 16px 12px; }
 .task-list-toolbar > span { color: var(--muted); font-size: 11px; }
 .task-list { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; }
@@ -168,7 +173,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 .task-date.overdue { color: #aa425b; }
 .task-actions { grid-column: 2; grid-row: 1; }
 .empty-tasks { display: flex; flex-direction: column; justify-content: center; flex: 1; overflow: auto; color: var(--muted); min-height: 0; padding: 20px 16px; text-align: center; }
-.calendar-sidebar:has(.entry-editor) .empty-tasks { padding: 8px 16px; }
 .agenda-list, .task-list { scrollbar-width: thin; scrollbar-color: var(--line) transparent; }
 .agenda-list::-webkit-scrollbar, .task-list::-webkit-scrollbar { display: block; width: 5px; }
 .agenda-list::-webkit-scrollbar-thumb, .task-list::-webkit-scrollbar-thumb { background: var(--line); border-radius: 4px; }
@@ -198,13 +202,11 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
     .calendar-shell { height: auto; min-height: calc(100dvh - 40px); }
     .calendar-layout { grid-template-columns: minmax(0, 1fr); }
     .calendar-board { min-height: 600px; }
-    .calendar-sidebar, .calendar-sidebar:has(.entry-editor) { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto; align-items: stretch; }
+    .calendar-sidebar { grid-template-columns: repeat(2, minmax(0, 1fr)); grid-template-rows: auto; align-items: stretch; }
     .agenda-card, .task-board { min-height: 260px; max-height: 600px; }
-    .entry-editor { overflow: visible; }
-    .agenda-card:has(.entry-editor) { max-height: none; }
 }
 @media (max-width: 600px) {
-    .calendar-sidebar, .calendar-sidebar:has(.entry-editor) { grid-template-columns: minmax(0, 1fr); }
+    .calendar-sidebar { grid-template-columns: minmax(0, 1fr); }
     .calendar-board { min-height: 540px; padding: 8px; }
     .month-navigation h2 { font-size: 18px; }
     .day-cell { padding: 3px; }
@@ -213,6 +215,6 @@ button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px
 }
 @media (prefers-reduced-motion: reduce) {
     * { scroll-behavior: auto !important; transition: none !important; }
-    .incoming-grid, .action-symbol { animation: none; }
+    .incoming-grid, .action-symbol, .entry-dialog[open] { animation: none; }
     .outgoing-grid { display: none; }
 }

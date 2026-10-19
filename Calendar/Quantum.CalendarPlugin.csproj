@@ -20,6 +20,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Update="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
     <Content Update="plugin.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="migrations\**\*.sql" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>

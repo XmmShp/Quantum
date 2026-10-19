@@ -1,6 +1,6 @@
 {
   "id": "quantum.plugin.calendar",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "entryAssembly": "Quantum.CalendarPlugin.dll",
   "database": {
     "migrations": "./migrations"

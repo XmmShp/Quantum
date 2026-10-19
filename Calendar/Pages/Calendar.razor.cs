@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
+using Microsoft.JSInterop;
 using NOF.Contract;
 using Quantum.OfficialPlugins.Calendar.Application;
 using Quantum.OfficialPlugins.Calendar.Domain;
@@ -6,8 +8,14 @@ using System.Globalization;
 
 namespace Quantum.OfficialPlugins.Calendar.Pages;
 
-public partial class Calendar
+public partial class Calendar : IAsyncDisposable
 {
+    [Inject]
+    private IJSRuntime JavaScript { get; set; } = default!;
+
+    private ElementReference _editorDialog;
+    private IJSObjectReference? _editorModule;
+    private readonly string _editorTitleId = $"calendar-editor-{Guid.NewGuid():N}";
     private readonly ICalendarRpcServiceClient CalendarService;
     private static readonly string[] Styles = ["violet", "blue", "coral", "green"];
 
@@ -76,6 +84,35 @@ public partial class Calendar
     }
 
     protected override Task OnInitializedAsync() => ExecuteAsync(LoadAllCoreAsync);
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (!_isEditorOpen && _editorModule is null)
+        {
+            return;
+        }
+
+        _editorModule ??= await JavaScript.InvokeAsync<IJSObjectReference>(
+            "import", "./_content/quantum.plugin.calendar/calendar.js");
+        await _editorModule.InvokeVoidAsync("syncEditor", _editorDialog, _isEditorOpen);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        if (_editorModule is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _editorModule.DisposeAsync();
+        }
+        catch (JSDisconnectedException)
+        {
+            // The WebView has already disconnected.
+        }
+    }
 
     private void SetVisibleMonth(DateOnly month)
     {
