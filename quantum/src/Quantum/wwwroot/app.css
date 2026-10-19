@@ -200,8 +200,12 @@ a {
   padding: 64px clamp(36px, 6vw, 84px) 80px;
 }
 
-/* Calendar is a workspace: use the available window instead of the reading column. */
-.content:has(.calendar-shell) {
+body:has(.quantum-ledger) {
+  min-width: 0;
+}
+
+/* Calendar and Ledger use the available window as workspaces. */
+.content:has(.calendar-shell, .quantum-ledger) {
   width: 100%;
   min-width: 0;
   margin: 0;
