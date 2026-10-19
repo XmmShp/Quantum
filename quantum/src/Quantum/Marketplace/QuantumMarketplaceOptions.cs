@@ -1,3 +1,5 @@
+using System.Reflection;
+
 namespace Quantum.Marketplace;
 
 public sealed record QuantumMarketplaceOptions(Uri BaseAddress, string QuantumVersion)
@@ -17,7 +19,9 @@ public sealed record QuantumMarketplaceOptions(Uri BaseAddress, string QuantumVe
         }
         var configuredVersion = Environment.GetEnvironmentVariable("QUANTUM_VERSION");
         var quantumVersion = string.IsNullOrWhiteSpace(configuredVersion)
-            ? "0.1.0"
+            ? typeof(QuantumMarketplaceOptions).Assembly
+                .GetCustomAttribute<AssemblyInformationalVersionAttribute>()!
+                .InformationalVersion.Split('+')[0]
             : configuredVersion.Trim();
         return new QuantumMarketplaceOptions(baseAddress, quantumVersion);
     }
