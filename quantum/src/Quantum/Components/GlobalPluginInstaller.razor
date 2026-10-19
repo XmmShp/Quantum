@@ -11,6 +11,7 @@
 
     <div @ref="_dropOverlay" class="global-plugin-drop-overlay" aria-hidden="true">
         <InputFile @key="_fileInputKey"
+                   @ref="_packageInput"
                    class="global-plugin-drop-input"
                    accept=".zip,application/zip,application/x-zip-compressed"
                    disabled="@_isProcessing"
@@ -116,6 +117,7 @@
     private int _fileInputKey;
     private readonly string _dropTargetId = Guid.NewGuid().ToString("N");
     private ElementReference _dropOverlay;
+    private InputFile? _packageInput;
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -143,7 +145,13 @@
 
     public bool IsProcessing => _isProcessing;
 
-    public int FileInputKey => _fileInputKey;
+    public async Task ChoosePackageAsync()
+    {
+        if (!_isProcessing && _packageInput is not null)
+        {
+            await JSRuntime.InvokeVoidAsync("quantum.pluginInstallerDropTarget.choosePackage", _packageInput.Element);
+        }
+    }
 
     public async Task PrepareInstallAsync(InputFileChangeEventArgs eventArgs)
     {

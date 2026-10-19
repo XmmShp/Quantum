@@ -3,6 +3,8 @@
 @inject IQuantumMarketplaceClient MarketplaceClient
 @inject MarketplacePluginInstaller MarketplaceInstaller
 @inject PluginCatalog PluginCatalog
+@inject IPluginRuntimeManager PluginRuntime
+@inject QuantumMarketplaceOptions MarketplaceOptions
 @inject IStringLocalizer<AppStrings> L
 
 <PageTitle>@L["PluginMarketplace"] · Quantum</PageTitle>
@@ -10,11 +12,11 @@
 <section class="marketplace-page">
     <header class="marketplace-hero">
         <div>
-            <p class="eyebrow">@L["MARKETPLACE"]</p>
             <h1>@L["PluginMarketplace"]</h1>
             <p>@L["FindPluginsForQuantum"]</p>
         </div>
         <div class="platform-status @(_platformReachable ? "connected" : "unavailable")">
+            <img src="assets/quantum-mark.svg" alt="" />
             <span aria-hidden="true">●</span>
             <div>
                 <strong>@L["QuantumPlatform"]</strong>
@@ -22,6 +24,7 @@
         </div>
     </header>
 
+    <div class="marketplace-toolbar">
     <nav class="marketplace-sections" aria-label="@L["MarketplaceViews"]">
         <button type="button"
                 class="@(_activeArea == MarketplaceArea.Discover ? "active" : null)"
@@ -36,6 +39,12 @@
             <strong>@L["MyTestReleases"]</strong>
         </button>
     </nav>
+    <button type="button" class="secondary-button"
+            disabled="@(PluginInstaller is null || PluginInstaller.IsProcessing)"
+            @onclick="() => PluginInstaller!.ChoosePackageAsync()">
+        @L["InstallFromThisDevice"]
+    </button>
+    </div>
 
     @if (_activeArea == MarketplaceArea.DeveloperTesting)
     {
@@ -129,11 +138,11 @@
                     </div>
                     <div class="card-actions">
                         <button type="button" class="secondary-button" disabled="@_isBusy" @onclick="() => ShowDetailsAsync(plugin.PluginId)">@L["Details"]</button>
-                        @if (plugin.LatestRelease is not null)
+                        @if (plugin.LatestRelease is not null && (installedVersion is null || HasUpdate(plugin.PluginId, installedVersion)))
                         {
                             <button type="button" class="primary-button" disabled="@_isBusy" @onclick="() => PrepareMarketplaceInstallAsync(plugin)">
                                 <span aria-hidden="true">↓</span>
-                                @(_installingPluginId == plugin.PluginId ? L["InstallingPlugin"] : installedVersion is null ? L["DownloadAndInstall"] : L["CheckForUpdate"])
+                                @(_installingPluginId == plugin.PluginId ? L["InstallingPlugin"] : installedVersion is null ? L["DownloadAndInstall"] : L["UpdatePlugin"])
                             </button>
                         }
                     </div>
@@ -172,8 +181,12 @@
 }
 
 @code {
+    [CascadingParameter]
+    private GlobalPluginInstaller? PluginInstaller { get; set; }
+
     private readonly CancellationTokenSource _lifetime = new();
     private IReadOnlyList<MarketplacePlugin> _plugins = [];
+    private readonly Dictionary<string, string> _availableUpdates = new(StringComparer.Ordinal);
     private MarketplacePluginDetails? _details;
     private string _search = string.Empty;
     private string? _selectedTag;
@@ -185,10 +198,18 @@
     private string? _installingPluginId;
     private MarketplaceArea _activeArea;
 
-    protected override Task OnInitializedAsync() => LoadPluginsAsync();
+    protected override Task OnInitializedAsync()
+    {
+        PluginCatalog.Changed += OnCatalogChanged;
+        return LoadPluginsAsync();
+    }
+
+    private void OnCatalogChanged(object? sender, EventArgs eventArgs)
+        => _ = InvokeAsync(StateHasChanged);
 
     public async ValueTask DisposeAsync()
     {
+        PluginCatalog.Changed -= OnCatalogChanged;
         _lifetime.Cancel();
         _lifetime.Dispose();
     }
@@ -209,6 +230,24 @@
                 _search,
                 _selectedTag is null ? null : [_selectedTag],
                 _lifetime.Token);
+            _availableUpdates.Clear();
+            foreach (var plugin in _plugins)
+            {
+                if (GetInstalledVersion(plugin.PluginId) is not { } installedVersion
+                    || plugin.LatestRelease is not { } latest
+                    || !IsNewerVersion(latest.Version, installedVersion))
+                {
+                    continue;
+                }
+
+                var compatibility = await MarketplaceClient.CheckCompatibilityAsync(
+                    plugin.PluginId, MarketplaceOptions.QuantumVersion, _lifetime.Token);
+                if (compatibility.IsCompatible && compatibility.MatchedReleaseVersion is { } version
+                    && IsNewerVersion(version, installedVersion))
+                {
+                    _availableUpdates[plugin.PluginId] = version;
+                }
+            }
             _platformReachable = true;
         }
         catch (OperationCanceledException) when (_lifetime.IsCancellationRequested)
@@ -315,7 +354,15 @@
 
     private string? GetInstalledVersion(string pluginId)
         => PluginCatalog.Plugins.FirstOrDefault(plugin =>
-            string.Equals((string)plugin.Manifest.Id, pluginId, StringComparison.Ordinal))?.Manifest.Version.ToString();
+            string.Equals((string)plugin.Manifest.Id, pluginId, StringComparison.Ordinal))?.Manifest.Version.ToString()
+            ?? PluginRuntime.GetDisabledPlugins().FirstOrDefault(plugin =>
+                string.Equals(plugin.PluginId, pluginId, StringComparison.Ordinal))?.Version;
+
+    private bool HasUpdate(string pluginId, string installedVersion)
+        => _availableUpdates.TryGetValue(pluginId, out var version) && IsNewerVersion(version, installedVersion);
+
+    private static bool IsNewerVersion(string candidate, string installed)
+        => SemanticVersion.Of(candidate).CompareTo(SemanticVersion.Of(installed)) > 0;
 
     private static string FormatSize(long bytes)
         => bytes >= 1024 * 1024

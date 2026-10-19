@@ -2,7 +2,7 @@
   color-scheme: light;
   font-family: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   color: #252239;
-  background: #f6f5fb;
+  background: #ffffff;
   font-synthesis: none;
 }
 
@@ -28,9 +28,7 @@ body,
 
 body {
   min-width: 760px;
-  background:
-    radial-gradient(circle at 82% 2%, rgba(109, 93, 251, 0.09), transparent 28rem),
-    #f6f5fb;
+  background: #ffffff;
 }
 
 a {
@@ -59,6 +57,13 @@ a {
   font-weight: 800;
 }
 
+.brand-mark img,
+.boot-mark img {
+  width: 30px;
+  height: 30px;
+  filter: brightness(0) invert(1);
+}
+
 .app-shell {
   min-height: 100vh;
   display: grid;
@@ -77,9 +82,8 @@ a {
   flex-direction: column;
   align-items: center;
   padding: 24px 14px 18px;
-  background: rgba(255, 255, 255, 0.82);
+  background: #ffffff;
   border-right: 1px solid rgba(57, 49, 91, 0.08);
-  backdrop-filter: blur(24px);
 }
 
 .brand {
@@ -194,6 +198,14 @@ a {
   width: min(1120px, calc(100vw - 80px));
   margin: 0 auto;
   padding: 64px clamp(36px, 6vw, 84px) 80px;
+}
+
+/* Calendar is a workspace: use the available window instead of the reading column. */
+.content:has(.calendar-shell) {
+  width: 100%;
+  min-width: 0;
+  margin: 0;
+  padding: 20px 24px;
 }
 
 .settings-header {

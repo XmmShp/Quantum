@@ -9,7 +9,7 @@ public sealed class MainPage : ContentPage
     public MainPage(PluginStaticAssetFileProvider pluginAssets)
     {
         Title = "Quantum";
-        BackgroundColor = Color.FromArgb("#F6F5FB");
+        BackgroundColor = Color.FromArgb("#FFFFFF");
 
         var blazorWebView = new PluginBlazorWebView(pluginAssets)
         {

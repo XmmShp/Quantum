@@ -10,6 +10,10 @@ window.quantum.localization = {
 window.quantum.pluginInstallerDropTarget = {
   registrations: new Map(),
 
+  choosePackage(input) {
+    input.click();
+  },
+
   initialize(id, element) {
     this.dispose(id);
     const containsFiles = event => Array.from(event.dataTransfer?.types ?? [])

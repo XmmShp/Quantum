@@ -174,7 +174,7 @@
   <data name="By" xml:space="preserve"><value>作者</value></data>
   <data name="Details" xml:space="preserve"><value>详情</value></data>
   <data name="Get" xml:space="preserve"><value>获取</value></data>
-  <data name="CheckForUpdate" xml:space="preserve"><value>检查更新</value></data>
+  <data name="UpdatePlugin" xml:space="preserve"><value>更新插件</value></data>
   <data name="PublishedVersions" xml:space="preserve"><value>已发布版本</value></data>
   <data name="Downloads" xml:space="preserve"><value>次下载</value></data>
   <data name="SupportsQuantumArg" xml:space="preserve"><value>支持 Quantum {0}</value></data>

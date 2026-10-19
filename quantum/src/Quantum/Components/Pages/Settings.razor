@@ -1,6 +1,5 @@
 @page "/settings"
 @implements IDisposable
-@using Microsoft.AspNetCore.Components.Forms
 @inject PluginCatalog PluginCatalog
 @inject IPluginRuntimeManager PluginRuntimeManager
 @inject CultureService CultureService
@@ -28,32 +27,6 @@
                 <option value="zh-CN">简体中文</option>
                 <option value="en-US">English</option>
             </select>
-        </label>
-    </div>
-</section>
-
-<section class="section-block">
-    <div class="section-heading">
-        <div>
-            <p class="eyebrow">@L["InstallEyebrow"]</p>
-            <h2>@L["InstallFromThisDevice"]</h2>
-        </div>
-        <span class="package-limit">@L["UpTo512MiB256PluginsPerPackage"]</span>
-    </div>
-    <div class="local-install-card">
-        <div class="local-install-copy">
-            <span class="drop-symbol">＋</span>
-            <div>
-                <strong>@L["SelectAQuantumPluginZIP"]</strong>
-                <p>@L["ChooseAZIPFileOrDragItOnto"]</p>
-            </div>
-        </div>
-        <label class="archive-picker">
-            <InputFile @key="PluginInstaller.FileInputKey"
-                       accept=".zip,application/zip,application/x-zip-compressed"
-                       disabled="@(IsBusy || PluginInstaller.IsProcessing)"
-                       OnChange="PluginInstaller.PrepareInstallAsync" />
-            <span>@(PluginInstaller.IsProcessing ? L["ProcessingPluginPackage"] : L["ChooseZIP"])</span>
         </label>
     </div>
 </section>
@@ -260,9 +233,6 @@
 }
 
 @code {
-    [CascadingParameter]
-    private GlobalPluginInstaller PluginInstaller { get; set; } = default!;
-
     private string? _busyPluginId;
     private string? _operationMessage;
     private bool _operationSucceeded;

@@ -1,7 +1,9 @@
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
+using NOF.Application;
 using NOF.Hosting;
 using NOF.Infrastructure;
 using NOF.Infrastructure.EntityFrameworkCore;
@@ -41,7 +43,15 @@ internal static class PluginPersistenceServiceCollectionExtensions
 
         foreach (var descriptor in builder.Services)
         {
-            services.Add(descriptor);
+            // Keep servers registered by plugin initializers when adding persistence defaults.
+            if (descriptor.ServiceType == typeof(RpcServerRegistry))
+            {
+                services.TryAdd(descriptor);
+            }
+            else
+            {
+                services.Add(descriptor);
+            }
         }
 
         services.AddLogging();
