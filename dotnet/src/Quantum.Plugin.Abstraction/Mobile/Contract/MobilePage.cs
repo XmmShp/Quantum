@@ -7,5 +7,3 @@ public sealed record MobilePage
     public required MobileNode Root { get; set; }
     public int SchemaVersion { get; set; } = 1;
 }
-
-/// <summary>Executed only in the desktop plugin, never interpreted by the mobile client.</summary>

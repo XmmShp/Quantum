@@ -1,5 +1,6 @@
 namespace Quantum.Plugin.Abstraction;
 
+/// <summary>Declares pages in desktop plugins; the mobile client renders host-generated views.</summary>
 public static class Mobile
 {
     public static MobilePage Page(string id, string title, MobileNode root) => new() { Id = id, Title = title, Root = root };
