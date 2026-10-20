@@ -1,4 +1,3 @@
-using Quantum.Mobile.Protocol;
 
 namespace Quantum.Plugin.Abstraction;
 

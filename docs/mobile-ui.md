@@ -1,8 +1,10 @@
 # 移动 UI 开发预览
 
-本功能以首版开发预览发布，协议版本为 `schemaVersion: 1`。使用同一发布版本的 NuGet 包 `Quantum.Plugin.Abstraction`、`Quantum.Mobile.Protocol` 与 npm 包 `@io7/quantum-plugin-sdk`；main 推送产生 nightly，npm 使用 `nightly` 标签。桌面、平台和手机需使用兼容的协议版本。纯协议包不依赖 NOF、插件 ABI 或桌面宿主。
+本功能以首版开发预览发布，协议版本为 `schemaVersion: 1`。使用同一发布版本的 NuGet 包 `Quantum.Plugin.Abstraction` 与 npm 包 `@io7/quantum-plugin-sdk`；main 推送产生 nightly，npm 使用 `nightly` 标签。桌面、平台和手机需使用兼容的协议版本。移动通信由框架内部模块共享，不作为插件 SDK 或独立 NuGet 包发布。
 
 手机只接收版本化控件树和不透明动作 ID。界面声明、插件代码和 RPC 参数组装均在桌面。已支持 VStack、HStack、Scroll、Text、TextField、Toggle、Button、Divider、Spacer 和 Progress。
+
+从上一预览升级时，将 `Quantum.Mobile.Protocol.Mobile` 改为 `Quantum.Plugin.Abstraction.Mobile`，并移除对 `Quantum.Mobile.Protocol` 的引用。页面 DTO 使用必填成员与属性初始化；ActionId、InputIds、设备注册和通信客户端属于框架内部，不是插件 API。
 
 ## .NET
 
@@ -10,7 +12,7 @@
 
 ```csharp
 using Quantum.Plugin.Abstraction;
-using Ui = Quantum.Mobile.Protocol.Mobile;
+using Ui = Quantum.Plugin.Abstraction.Mobile;
 
 services.GetRequiredService<IQuantumMobilePages>().Publish(
     Ui.Page("quick-note", "Quick note", Ui.VStack("root",
@@ -59,7 +61,7 @@ TS 的 publish/remove 是实际 iframe→Host capability，不是仅类型声明
 
 `Quantum/mobile/Quantum.Mobile` 的 Windows/Mac Catalyst 目标与手机使用同一个原生 Renderer。打开应用后可选 Mock 示例；桌面目标还可用“打开 UI JSON”加载本 SDK 的 `fixtures/mobile-page-v1.json`。文件里的动作会替换为 Mock ID，只展示输入，不调用业务 RPC。登录平台后则可以作为真实手机设备联调桌面共享。
 
-手机包只引用协议包；协议包不引用 NOF、插件 ABI 或桌面 Host。新增组件需要更新协议校验器、两种 builder、Host 和内置 Renderer，再发布移动应用版本。
+手机应用只引用框架内部的通信模块；该模块不公开发包，也不依赖插件 SDK、NOF 或桌面 Host。新增组件需要更新协议校验器、两种 builder、Host 和内置 Renderer，再发布移动应用版本。
 
 ## 首版范围与兼容性
 

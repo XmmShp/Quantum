@@ -24,8 +24,15 @@ test('version-one fixture and .NET nullable defaults use the same declaration co
   validateMobilePage(page);
   assert.equal(page.root.children[3].action.inputs.text, 'content');
   assert.equal(page.root.children[3].action.inputs.pinned, 'pinned');
-  const dotnetDefaults = { type: 'Text', id: 'text', text: null, placeholder: null, style: 'body', maxLength: 500, enabled: true, actionId: null, inputIds: [], action: null, children: [] };
+  const dotnetDefaults = { type: 'Text', id: 'text', text: null, placeholder: null, style: 'body', maxLength: 500, enabled: true, action: null, children: [] };
   validateMobilePage(Mobile.page('p', 'Page', dotnetDefaults));
   assert.throws(() => validateMobilePage({ ...page, schemaVersion: 2 }));
   assert.throws(() => validateMobilePage(Mobile.page('p', 'Page', { ...dotnetDefaults, enabled: 'false' })));
+});
+
+
+test('plugin declarations reject internal transport fields', () => {
+  for (const property of [{ actionId: 'host-assigned' }, { inputIds: [] }, { deviceSecret: 'private' }]) {
+    assert.throws(() => validateMobilePage(Mobile.page('p', 'Page', { ...Mobile.button('save', 'Save'), ...property })));
+  }
 });

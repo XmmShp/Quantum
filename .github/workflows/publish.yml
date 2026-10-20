@@ -112,12 +112,26 @@ jobs:
       - name: Pack NuGet package
         if: steps.version.outputs.publish == 'true'
         run: >-
-          dotnet pack Quantum.Sdk.slnx
+          dotnet pack dotnet/src/Quantum.Plugin.Abstraction/Quantum.Plugin.Abstraction.csproj
           --configuration Release
           --no-restore
           --output artifacts/nuget
           -p:PackageVersion=${{ steps.version.outputs.version }}
           -p:ContinuousIntegrationBuild=true
+
+      - name: Verify public NuGet boundary
+        if: steps.version.outputs.publish == 'true'
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from zipfile import ZipFile
+          packages = list(Path("artifacts/nuget").glob("*.nupkg"))
+          assert len(packages) == 1 and packages[0].name.startswith("Quantum.Plugin.Abstraction.")
+          with ZipFile(packages[0]) as package:
+              manifest = package.read("Quantum.Plugin.Abstraction.nuspec").decode("utf-8-sig")
+              assert "Quantum.Mobile." not in manifest, "Internal mobile protocol must not be a public dependency"
+              assert not any("Quantum.Mobile." in name for name in package.namelist())
+          PY
 
       - name: Apply npm package version
         if: steps.version.outputs.publish == 'true'
@@ -130,8 +144,7 @@ jobs:
         shell: bash
         run: |
           version="${{ steps.version.outputs.version }}"
-          if curl --fail --silent --head "https://api.nuget.org/v3-flatcontainer/quantum.plugin.abstraction/${version,,}/quantum.plugin.abstraction.${version,,}.nupkg" >/dev/null \
-            && curl --fail --silent --head "https://api.nuget.org/v3-flatcontainer/quantum.mobile.protocol/${version,,}/quantum.mobile.protocol.${version,,}.nupkg" >/dev/null; then
+          if curl --fail --silent --head "https://api.nuget.org/v3-flatcontainer/quantum.plugin.abstraction/${version,,}/quantum.plugin.abstraction.${version,,}.nupkg" >/dev/null; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"

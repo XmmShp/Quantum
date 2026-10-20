@@ -1,6 +1,6 @@
 # Quantum Plugin SDK
 
-移动端开发预览新增纯数据包 `Quantum.Mobile.Protocol` 与 `IQuantumMobilePages`。插件在桌面声明界面；手机不加载插件代码。参见[移动 UI 开发说明](docs/mobile-ui.md)。
+移动端开发预览提供页面声明 API 与 `IQuantumMobilePages`（包含在 `Quantum.Plugin.Abstraction` 中）。插件在桌面声明界面；手机不加载插件代码。参见[移动 UI 开发说明](docs/mobile-ui.md)。
 
 本仓库包含保持能力一致的 .NET 与 TypeScript Quantum Plugin SDK。`Quantum.Plugin.Abstraction` 是桌面宿主与
 本地 DLL 插件共享的稳定 ABI；`@io7/quantum-plugin-sdk` 是隔离 Web 插件的 Host transport 契约。

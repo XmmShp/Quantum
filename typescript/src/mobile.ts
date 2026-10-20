@@ -64,13 +64,18 @@ export const Mobile = Object.freeze({
 });
 
 export function validateMobilePage(page: MobilePage): void {
+  const onlyFields = (value: object, fields: readonly string[]) => {
+    if (Object.keys(value).some(key => !fields.includes(key))) throw new TypeError("Unknown mobile declaration field.");
+  };
   const validId = (value: unknown) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(value);
   if (!page || page.schemaVersion !== 1 || !validId(page.id) || typeof page.title !== "string" || !page.title.trim() || page.title.length > 200)
     throw new TypeError("Invalid mobile page.");
+  onlyFields(page, ["schemaVersion", "id", "title", "root"]);
   const nodes = new Map<string, MobileNode>();
   const types = ["VStack", "HStack", "Scroll", "Text", "TextField", "Toggle", "Button", "Divider", "Spacer", "Progress"];
   const visit = (node: MobileNode, depth: number) => {
     if (!node || depth > 16 || nodes.size >= 500 || !validId(node.id) || nodes.has(node.id) || !types.includes(node.type)) throw new TypeError("Invalid mobile tree.");
+    onlyFields(node, ["type", "id", "text", "placeholder", "style", "maxLength", "enabled", "action", "children"]);
     if ((node.text != null && (typeof node.text !== "string" || node.text.length > 2000)) ||
         (node.placeholder != null && (typeof node.placeholder !== "string" || node.placeholder.length > 2000)) ||
         (node.enabled !== undefined && typeof node.enabled !== "boolean") ||
@@ -89,6 +94,7 @@ export function validateMobilePage(page: MobilePage): void {
     if (node.type !== "Button" || typeof action.rpcName !== "string" || action.rpcName.length > 256 ||
         action.rpcName.split(".").length < 3 || !/^[A-Za-z0-9_.-]+$/.test(action.rpcName) || !action.constants || !action.inputs)
       throw new TypeError("Invalid mobile action.");
+    onlyFields(action, ["rpcName", "constants", "inputs"]);
     const fields = [...Object.keys(action.constants), ...Object.keys(action.inputs)];
     if (fields.length > 32 || !fields.every(validId)) throw new TypeError("Invalid mobile action fields.");
     for (const [field, source] of Object.entries(action.inputs)) {
