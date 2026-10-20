@@ -61,11 +61,16 @@ jobs:
         run: |
           echo "Skipping publish: ${{ steps.version.outputs.reason }}"
 
-      - name: Validate first-publish credentials
+      - name: Select npm publishing authentication
+        id: npm-auth
         if: steps.version.outputs.publish == 'true'
         shell: bash
         run: |
-          if ! npm view '@io7/quantum-plugin-sdk' name >/dev/null 2>&1 && [[ -z "$NPM_TOKEN" ]]; then
+          if npm view '@io7/quantum-plugin-sdk' name >/dev/null 2>&1; then
+            echo 'mode=oidc' >> "$GITHUB_OUTPUT"
+          elif [[ -n "$NPM_TOKEN" ]]; then
+            echo 'mode=bootstrap' >> "$GITHUB_OUTPUT"
+          else
             echo '::error::NPM_TOKEN is required for the first @io7/quantum-plugin-sdk publish.'
             exit 1
           fi
@@ -161,7 +166,7 @@ jobs:
           fi
 
       - name: Verify npm bootstrap identity
-        if: steps.version.outputs.publish == 'true' && steps.npm.outputs.exists != 'true' && env.NPM_TOKEN != ''
+        if: steps.version.outputs.publish == 'true' && steps.npm.outputs.exists != 'true' && steps.npm-auth.outputs.mode == 'bootstrap'
         env:
           NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
         shell: bash
@@ -184,14 +189,14 @@ jobs:
           '
 
       - name: Publish npm package with bootstrap token
-        if: steps.version.outputs.publish == 'true' && steps.npm.outputs.exists != 'true' && env.NPM_TOKEN != ''
+        if: steps.version.outputs.publish == 'true' && steps.npm.outputs.exists != 'true' && steps.npm-auth.outputs.mode == 'bootstrap'
         working-directory: typescript
         env:
           NODE_AUTH_TOKEN: ${{ env.NPM_TOKEN }}
         run: npm publish --access public --provenance --tag "${{ steps.version.outputs.npm_tag }}"
 
       - name: Publish npm package with OIDC
-        if: steps.version.outputs.publish == 'true' && steps.npm.outputs.exists != 'true' && env.NPM_TOKEN == ''
+        if: steps.version.outputs.publish == 'true' && steps.npm.outputs.exists != 'true' && steps.npm-auth.outputs.mode == 'oidc'
         working-directory: typescript
         run: npm publish --access public --tag "${{ steps.version.outputs.npm_tag }}"
 
