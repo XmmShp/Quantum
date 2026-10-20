@@ -2,7 +2,7 @@ using System.ComponentModel;
 using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Nodes;
-using System.Text.Json.Serialization;
+using System.Text.Json.Schema;
 
 namespace Quantum.Plugins;
 
@@ -57,18 +57,19 @@ internal static class PluginRpcCatalogMetadataReader
         Type serviceType,
         MethodInfo method,
         ParameterInfo parameter,
-        Type? responseType)
+        Type? responseType,
+        PluginRpcSerializer serializer)
     {
         var serviceAttributes = ReadAttributes(serviceType.CustomAttributes);
         var methodAttributes = ReadAttributes(method.CustomAttributes);
         var parameterAttributes = ReadAttributes(parameter.CustomAttributes);
         var returnAttributes = ReadAttributes(method.ReturnParameter.CustomAttributes);
         var inputSchema = AddDescription(
-            BuildSchema(parameter.ParameterType, TryGetNullability(parameter)),
+            BuildSchema(parameter.ParameterType, serializer),
             parameterAttributes);
         var outputSchema = responseType is null
             ? JsonSerializer.SerializeToElement(new { type = "null" }, JsonOptions)
-            : BuildSchema(responseType, TryGetNullability(method.ReturnParameter));
+            : BuildSchema(responseType, serializer);
         if (responseType is not null)
         {
             outputSchema = AddDescription(outputSchema, returnAttributes);
@@ -96,137 +97,48 @@ internal static class PluginRpcCatalogMetadataReader
                 ReturnAttributes: returnAttributes));
     }
 
-    private static JsonElement BuildSchema(Type type, NullabilityInfo? nullability)
+    private static JsonElement BuildSchema(Type type, PluginRpcSerializer serializer)
     {
-        var schema = BuildSchemaNode(type, nullability, []);
+        var schema = serializer.GetSchema(type, new JsonSchemaExporterOptions
+        {
+            TreatNullObliviousAsNonNullable = true,
+            TransformSchemaNode = EnrichSchema
+        });
         return JsonSerializer.SerializeToElement(schema, JsonOptions);
     }
 
-    private static JsonObject BuildSchemaNode(
-        Type type,
-        NullabilityInfo? nullability,
-        HashSet<Type> path)
+    private static JsonNode EnrichSchema(JsonSchemaExporterContext context, JsonNode node)
     {
-        var nullableType = Nullable.GetUnderlyingType(type);
-        var effectiveType = nullableType ?? type;
-        var schema = new JsonObject
+        var schema = node as JsonObject ?? new JsonObject { ["allOf"] = new JsonArray(node.DeepClone()) };
+        var type = Nullable.GetUnderlyingType(context.TypeInfo.Type) ?? context.TypeInfo.Type;
+        schema["dotnetType"] = GetTypeName(type);
+        AddDocumentation(schema, ReadAttributes(type.CustomAttributes));
+        if (context.PropertyInfo?.AttributeProvider is MemberInfo member)
         {
-            ["dotnetType"] = GetTypeName(effectiveType)
-        };
-        var attributes = ReadAttributes(effectiveType.CustomAttributes);
-        AddDocumentation(schema, attributes);
-        var isNullable = nullableType is not null
-            || (!effectiveType.IsValueType && nullability?.ReadState != NullabilityState.NotNull);
-        if (isNullable)
-        {
-            schema["nullable"] = true;
+            AddDocumentation(schema, ReadAttributes(member.CustomAttributes));
         }
 
-        if (effectiveType == typeof(string) || effectiveType == typeof(char))
+        if (type.IsEnum)
         {
-            schema["type"] = "string";
-            return schema;
-        }
-
-        if (effectiveType == typeof(DateOnly))
-        {
-            schema["type"] = "string";
-            schema["format"] = "date";
-            return schema;
-        }
-
-        if (effectiveType == typeof(TimeOnly))
-        {
-            schema["type"] = "string";
-            schema["format"] = "time";
-            return schema;
-        }
-
-        if (effectiveType == typeof(DateTime) || effectiveType == typeof(DateTimeOffset))
-        {
-            schema["type"] = "string";
-            schema["format"] = "date-time";
-            return schema;
-        }
-
-        if (effectiveType == typeof(Guid))
-        {
-            schema["type"] = "string";
-            schema["format"] = "uuid";
-            return schema;
-        }
-
-        if (effectiveType == typeof(bool))
-        {
-            schema["type"] = "boolean";
-            return schema;
-        }
-
-        if (effectiveType.IsEnum)
-        {
-            schema["type"] = "string";
-            schema["enum"] = new JsonArray(Enum.GetNames(effectiveType)
-                .Select(static name => JsonValue.Create(name))
-                .ToArray());
-            return schema;
-        }
-
-        if (IsInteger(effectiveType))
-        {
-            schema["type"] = "integer";
-            return schema;
-        }
-
-        if (IsNumber(effectiveType))
-        {
-            schema["type"] = "number";
-            return schema;
-        }
-
-        if (TryGetElementType(effectiveType) is { } elementType)
-        {
-            schema["type"] = "array";
-            schema["items"] = BuildSchemaNode(elementType, null, path);
-            return schema;
-        }
-
-        schema["type"] = "object";
-        if (!path.Add(effectiveType))
-        {
-            schema["recursive"] = true;
-            return schema;
-        }
-
-        var properties = new JsonObject();
-        var required = new JsonArray();
-        foreach (var property in effectiveType
-                     .GetProperties(BindingFlags.Instance | BindingFlags.Public)
-                     .Where(static property => property.GetMethod is not null && property.GetIndexParameters().Length == 0)
-                     .OrderBy(static property => property.Name, StringComparer.Ordinal))
-        {
-            var propertyNullability = TryGetNullability(property);
-            var propertySchema = BuildSchemaNode(property.PropertyType, propertyNullability, path);
-            var propertyAttributes = ReadAttributes(property.CustomAttributes);
-            AddDocumentation(propertySchema, propertyAttributes);
-            var jsonName = property.GetCustomAttribute<JsonPropertyNameAttribute>()?.Name
-                ?? JsonNamingPolicy.CamelCase.ConvertName(property.Name);
-            properties[jsonName] = propertySchema;
-            if (Nullable.GetUnderlyingType(property.PropertyType) is null
-                && (property.PropertyType.IsValueType
-                    || propertyNullability?.ReadState == NullabilityState.NotNull))
+            var stringValues = schema["enum"] is JsonArray values
+                && values.All(value => value is null || value is JsonValue scalar && scalar.TryGetValue<string>(out _));
+            var stringConstant = schema["const"] is JsonValue constant && constant.TryGetValue<string>(out _);
+            if (schema["type"] is null && (stringValues || stringConstant))
             {
-                required.Add(jsonName);
+                schema["type"] = schema["enum"] is JsonArray enumValues && enumValues.Any(value => value is null)
+                    ? new JsonArray("string", "null")
+                    : JsonValue.Create("string");
+            }
+
+            // Keep old CLR value descriptions while making the actual wire format explicit.
+            if (stringValues || stringConstant || schema["type"] is JsonValue kind && kind.TryGetValue<string>(out var name) && name == "string")
+            {
+                var description = schema["description"]?.GetValue<string>();
+                schema["description"] = (description is null ? "" : description + " ")
+                    + "JSON enum values must be strings; numeric values are not accepted.";
             }
         }
 
-        path.Remove(effectiveType);
-        schema["properties"] = properties;
-        if (required.Count > 0)
-        {
-            schema["required"] = required;
-        }
-
-        schema["additionalProperties"] = false;
         return schema;
     }
 
@@ -323,61 +235,4 @@ internal static class PluginRpcCatalogMetadataReader
     private static string GetTypeName(Type type)
         => type.FullName ?? type.Name;
 
-    private static NullabilityInfo? TryGetNullability(PropertyInfo property)
-    {
-        try
-        {
-            return new NullabilityInfoContext().Create(property);
-        }
-        catch (InvalidOperationException)
-        {
-            return null;
-        }
-    }
-
-    private static NullabilityInfo? TryGetNullability(ParameterInfo parameter)
-    {
-        try
-        {
-            return new NullabilityInfoContext().Create(parameter);
-        }
-        catch (InvalidOperationException)
-        {
-            return null;
-        }
-    }
-
-    private static Type? TryGetElementType(Type type)
-    {
-        if (type.IsArray)
-        {
-            return type.GetElementType();
-        }
-
-        if (type == typeof(string))
-        {
-            return null;
-        }
-
-        return type.GetInterfaces()
-            .Append(type)
-            .FirstOrDefault(static candidate => candidate.IsGenericType
-                && candidate.GetGenericTypeDefinition() == typeof(IEnumerable<>))
-            ?.GetGenericArguments()[0];
-    }
-
-    private static bool IsInteger(Type type)
-        => type == typeof(byte)
-            || type == typeof(sbyte)
-            || type == typeof(short)
-            || type == typeof(ushort)
-            || type == typeof(int)
-            || type == typeof(uint)
-            || type == typeof(long)
-            || type == typeof(ulong);
-
-    private static bool IsNumber(Type type)
-        => type == typeof(float)
-            || type == typeof(double)
-            || type == typeof(decimal);
 }

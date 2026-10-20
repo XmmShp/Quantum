@@ -62,7 +62,7 @@ public sealed class CodexRpcTests
         var snapshot = OfficialRpcHarness.Value(await host.Call("quantum.plugin.codex.codex.snapshot", new
         {
         }));
-        Assert.Equal((int)CodexConnectionState.Disconnected, snapshot.GetProperty("connectionState").GetInt32());
+        Assert.Equal("Disconnected", snapshot.GetProperty("connectionState").GetString());
         Assert.NotEmpty(OfficialRpcHarness.Value(await host.Call("codex.models", new
         {
         })).EnumerateArray());

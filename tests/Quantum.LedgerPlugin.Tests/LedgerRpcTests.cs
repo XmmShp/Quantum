@@ -31,6 +31,7 @@ public sealed class LedgerRpcTests
         }
         var create = methods.Single(method => method.GetProperty("canonicalName").GetString() == "ledger.create");
         Assert.True(create.GetProperty("inputSchema").GetProperty("properties").TryGetProperty("relatedEntryIds", out _));
+        Assert.Equal("string", create.GetProperty("inputSchema").GetProperty("properties").GetProperty("kind").GetProperty("type").GetString());
         Assert.False(create.GetProperty("inputSchema").GetProperty("properties").TryGetProperty("relatedExpenseId", out _));
         Assert.NotNull((await host.Dispatch("ledger.export-csv", new
         {
@@ -124,7 +125,7 @@ public sealed class LedgerRpcTests
             Assert.Equal(new[] { first }, await Related(host, second));
             var unchanged = await Get(host, second);
             Assert.Equal(10m, unchanged.GetProperty("amount").GetDecimal());
-            Assert.Equal(0, unchanged.GetProperty("kind").GetInt32());
+            Assert.Equal("Expense", unchanged.GetProperty("kind").GetString());
         }
         var missing = await host.Call("ledger.create", new SaveLedgerEntryRequest(new(2026, 10, 1), EntryKind.Income, 1m, "Missing", "", [Guid.NewGuid()]));
         Assert.Equal("ledger_entry_not_found", missing.GetProperty("errorCode").GetString());
@@ -137,15 +138,25 @@ public sealed class LedgerRpcTests
     }
 
     [Theory]
-    [InlineData("{\"date\":\"2026-10-18\",\"kind\":0,\"amount\":0,\"category\":\"Food\"}")]
-    [InlineData("{\"date\":\"2026-10-18\",\"kind\":0,\"amount\":0.001,\"category\":\"Food\"}")]
-    [InlineData("{\"date\":\"2026-10-18\",\"kind\":99,\"amount\":1,\"category\":\"Food\"}")]
-    [InlineData("{\"date\":\"2026-10-18\",\"kind\":0,\"amount\":1,\"category\":null}")]
-    public async Task InvalidRequestsReturnBusinessErrorsWithoutWriting(string json)
+    [InlineData(0)]
+    [InlineData(0.001)]
+    public async Task InvalidAmountsReturnBusinessErrorsWithoutWriting(decimal amount)
     {
         await using var host = await Harness.Create();
-        var result = await host.Call("ledger.create", JsonSerializer.Deserialize<JsonElement>(json));
+        var result = await host.Call("ledger.create", new SaveLedgerEntryRequest(new(2026, 10, 18), EntryKind.Expense, amount, "Food"));
         Assert.Equal("ledger_invalid_request", result.GetProperty("errorCode").GetString());
+        Assert.Empty((await host.Call("ledger.list", new LedgerMonthRequest(new(2026, 10, 1)))).GetProperty("value").EnumerateArray());
+    }
+
+    [Theory]
+    [InlineData("{\"date\":\"2026-10-18\",\"kind\":0,\"amount\":1,\"category\":\"Food\"}")]
+    [InlineData("{\"date\":\"2026-10-18\",\"kind\":\"Unknown\",\"amount\":1,\"category\":\"Food\"}")]
+    [InlineData("{\"date\":\"2026-10-18\",\"kind\":\"Expense\",\"amount\":1,\"category\":null}")]
+    public async Task InvalidWireTypesReturnHostErrorsWithoutWriting(string json)
+    {
+        await using var host = await Harness.Create();
+        var result = await host.Dispatch("ledger.create", JsonSerializer.Deserialize<JsonElement>(json));
+        Assert.Equal("rpc_invalid_payload", result.Failure!.ErrorCode);
         Assert.Empty((await host.Call("ledger.list", new LedgerMonthRequest(new(2026, 10, 1)))).GetProperty("value").EnumerateArray());
     }
 
@@ -202,7 +213,7 @@ public sealed class LedgerRpcTests
         }
 
         public Task<PluginRpcDispatchResult> Dispatch(string method, object? request, bool expectsValue = true, CancellationToken cancellationToken = default)
-            => registry.InvokeAsync(method, JsonSerializer.SerializeToElement(request, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+            => registry.InvokeAsync(method, JsonSerializer.SerializeToElement(request, new JsonSerializerOptions(JsonSerializerDefaults.Web) { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }),
                 new PluginRpcCallContext("quantum.plugin.test-caller", Guid.NewGuid().ToString("N"), new Dictionary<string, JsonElement>()), expectsValue, cancellationToken);
 
         public async ValueTask DisposeAsync()

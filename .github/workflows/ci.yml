@@ -85,7 +85,7 @@ jobs:
           echo "id=$expected_id" >> "$GITHUB_OUTPUT"
           if [[ "$directory" == Calendar ]]; then
             echo 'quantum_support=>=0.1.5' >> "$GITHUB_OUTPUT"
-            echo 'release_notes=新增记账可选联动：日程和待办可通过小按钮查看关联收支，按 ledger.by-calendar-entry 能力发现提供方，支持替换记账插件，不增加插件依赖。' >> "$GITHUB_OUTPUT"
+            echo 'release_notes=修复 Quantum 0.1.8 下查看关联收支时的 RPC 返回类型不匹配错误，兼容字符串及旧版数字收支类型；保持基于能力发现的可选联动。' >> "$GITHUB_OUTPUT"
           elif [[ "$directory" == Ledger ]]; then
             echo 'quantum_support=>=0.1.7' >> "$GITHUB_OUTPUT"
             echo 'release_notes=新增日历可选联动：收支支持跨月关联日程和待办，并通过小按钮查看关联事项；新增 ledger.by-calendar-entry 能力，支持兼容记账提供方替换，保留离线关联及原有数据。需要 Quantum 0.1.7 或更新版本。' >> "$GITHUB_OUTPUT"

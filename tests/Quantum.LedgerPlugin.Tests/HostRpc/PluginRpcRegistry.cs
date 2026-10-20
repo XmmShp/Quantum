@@ -234,8 +234,8 @@ internal sealed record PluginRpcDispatchResult(
     JsonElement? SerializedResult,
     bool ReturnsValue)
 {
-    public static PluginRpcDispatchResult Fail(string errorCode, string message)
-        => new(Result.Fail(errorCode, message), null, ReturnsValue: false);
+    public static PluginRpcDispatchResult Fail(string errorCode, string message, IDictionary<string, string>? extra = null)
+        => new(Result.Fail(errorCode, message, extra), null, ReturnsValue: false);
 
     public static PluginRpcDispatchResult Success(JsonElement result, bool returnsValue)
         => new(null, result, returnsValue);

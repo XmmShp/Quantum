@@ -69,7 +69,7 @@ public sealed class CalendarLedgerIntegrationTests
             entry = new
             {
                 date = "2026-11-01",
-                kind = 1,
+                kind = "Income",
                 amount = 15m,
                 category = "Salary",
                 calendarEntryIds = Array.Empty<Guid>()
@@ -123,9 +123,50 @@ public sealed class CalendarLedgerIntegrationTests
     }
 
     [Fact]
-    public async Task CalendarUsesReplacementLedgerQualifiedCapabilityAndHandlesProviderRemoval()
+    public async Task CalendarReadsStringLedgerKindsThroughActualHostInvoker()
     {
-        var rpc = new IntegrationInvoker("alternative.finance", "ledger.by-calendar-entry");
+        await using var connection = new SqliteConnection($"Data Source=host-enums-{Guid.NewGuid():N};Mode=Memory;Cache=Shared");
+        await connection.OpenAsync();
+        await LedgerPersistenceTests.Migrate(connection);
+        var builder = LedgerPersistenceTests.Configure(connection.ConnectionString);
+        await using var host = new OfficialRpcHarness(builder.Services, "replacement.ledger", typeof(ILedgerRpcService).Assembly);
+        var eventId = Guid.NewGuid();
+        await host.UseClient<ILedgerRpcServiceClient>(async client =>
+        {
+            await client.CreateEntryAsync(new(new(2026, 10, 20), EntryKind.Expense, 12m, "Food", CalendarEntryIds: [eventId]), Context.Empty);
+            await client.CreateEntryAsync(new(new(2026, 10, 20), EntryKind.Income, 30m, "Refund", CalendarEntryIds: [eventId]), Context.Empty);
+        });
+        var invoker = host.CreateInvoker();
+        var wire = await invoker.InvokeAsync<JsonElement>("replacement.ledger.ledger.by-calendar-entry", new
+        {
+            calendarEntryId = eventId
+        }, Context.Empty);
+        Assert.True(wire.IsSuccess);
+        Assert.Equal(new[] { "Expense", "Income" }, wire.Value.EnumerateArray().Select(row => row.GetProperty("kind").GetString()).Order().ToArray());
+        var incompatible = await invoker.InvokeAsync<NumericLedgerProjection[]>("replacement.ledger.ledger.by-calendar-entry", new
+        {
+            calendarEntryId = eventId
+        }, Context.Empty);
+        Assert.False(incompatible.IsSuccess);
+        Assert.Equal("rpc_invalid_result", incompatible.ErrorCode);
+        Assert.Equal("The RPC result does not match the requested response type.", incompatible.Message);
+        var page = new CalendarPage(null!, invoker);
+        SetLocalizer<OfficialPlugins.Calendar.Localization.PluginStrings>(page);
+        var item = new OfficialPlugins.Calendar.Application.CalendarEntryDetails(eventId, "Trip", "", OfficialPlugins.Calendar.Domain.CalendarEntryKind.Event, new(2026, 10, 20), new(9, 0), null, false, "blue");
+        await Invoke(page, "ViewLedgerAsync", item);
+        Assert.Null(Field(page, "_errorMessage"));
+        Assert.NotNull(Field(page, "_ledgerViewing"));
+        var entries = JsonSerializer.SerializeToElement(Field(page, "_linkedLedgerEntries"));
+        Assert.Equal(2, entries.GetArrayLength());
+        Assert.Equal(new[] { 12m, 30m }, entries.EnumerateArray().Select(entry => entry.GetProperty("Amount").GetDecimal()).Order().ToArray());
+    }
+
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task CalendarUsesReplacementLedgerQualifiedCapabilityAndHandlesProviderRemoval(bool legacyNumbers)
+    {
+        var rpc = new IntegrationInvoker("alternative.finance", "ledger.by-calendar-entry") { LegacyNumbers = legacyNumbers };
         var page = new CalendarPage(null!, rpc);
         SetLocalizer<OfficialPlugins.Calendar.Localization.PluginStrings>(page);
         var item = new OfficialPlugins.Calendar.Application.CalendarEntryDetails(Guid.NewGuid(), "Trip", "", OfficialPlugins.Calendar.Domain.CalendarEntryKind.Event, new(2026, 10, 20), new(9, 0), null, false, "blue");
@@ -160,6 +201,8 @@ public sealed class CalendarLedgerIntegrationTests
         Assert.Single((System.Collections.IEnumerable)Field(page, "_calendarLinks")!);
     }
 
+    private sealed record NumericLedgerProjection(int Kind);
+
     private static object? Field(object page, string name) => page.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page);
     private static void SetField(object page, string name, object value) => page.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(page, value);
     private static Task Invoke(object page, string name, params object[] args) => (Task)page.GetType().GetMethod(name, BindingFlags.Instance | BindingFlags.NonPublic)!.Invoke(page, args)!;
@@ -172,6 +215,10 @@ public sealed class CalendarLedgerIntegrationTests
     private sealed class IntegrationInvoker(string provider, params string[] methods) : IRpcInvoker
     {
         public bool Available { get; set; } = true;
+        public bool LegacyNumbers
+        {
+            get; init;
+        }
         public string? LastCall
         {
             get; private set;
@@ -206,7 +253,7 @@ public sealed class CalendarLedgerIntegrationTests
                     {
                         entry = (object?)null
                     }
-                    : new[] { new { id = Guid.NewGuid(), date = "2026-09-01", kind = 0, amount = 12m, category = "Food", note = "Lunch" } };
+                    : new[] { new { id = Guid.NewGuid(), date = "2026-09-01", kind = JsonSerializer.SerializeToElement(LegacyNumbers ? (object)0 : "Expense"), amount = 12m, category = "Food", note = "Lunch" } };
             }
             Result<T> result = JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(response), new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
             return Task.FromResult(result);

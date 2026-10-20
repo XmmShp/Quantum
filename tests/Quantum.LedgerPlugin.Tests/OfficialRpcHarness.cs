@@ -26,7 +26,7 @@ internal sealed class OfficialRpcHarness : IAsyncDisposable
 
     public async Task<JsonElement> Call(string method, object request, bool expectsValue = true, CancellationToken cancellationToken = default)
     {
-        var response = await _registry.InvokeAsync(method, JsonSerializer.SerializeToElement(request, new JsonSerializerOptions(JsonSerializerDefaults.Web)),
+        var response = await _registry.InvokeAsync(method, JsonSerializer.SerializeToElement(request, new JsonSerializerOptions(JsonSerializerDefaults.Web) { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }),
             new PluginRpcCallContext("quantum.plugin.audit", Guid.NewGuid().ToString("N"), new Dictionary<string, JsonElement>()), expectsValue, cancellationToken);
         Assert.Null(response.Failure);
         Assert.True(response.SerializedResult.HasValue);
@@ -50,6 +50,13 @@ internal sealed class OfficialRpcHarness : IAsyncDisposable
             Assert.False(string.IsNullOrWhiteSpace(method.GetProperty("description").GetString()));
             Assert.Equal("object", method.GetProperty("inputSchema").GetProperty("type").GetString());
         }
+    }
+
+    public IRpcInvoker CreateInvoker()
+    {
+        var invoker = new PluginRpcInvoker(PluginId.Of("quantum.plugin.calendar"), Guid.NewGuid(), _serializer);
+        invoker.UseRegistry(_registry);
+        return invoker;
     }
 
     public async Task UseClient<TClient>(Func<TClient, Task> action) where TClient : notnull

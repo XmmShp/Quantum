@@ -338,7 +338,7 @@
                 }
                 @foreach (var entry in _linkedLedgerEntries)
                 {
-                    <article class="agenda-entry"><strong>@entry.Category · @(entry.Kind == 1 ? "+" : "−")¥@entry.Amount.ToString("N2")</strong><p>@entry.Date · @entry.Note</p></article>
+                    <article class="agenda-entry"><strong>@entry.Category · @(entry.Kind == LinkedLedgerKind.Income ? "+" : "−")¥@entry.Amount.ToString("N2")</strong><p>@entry.Date · @entry.Note</p></article>
                 }
             </section>
         }

@@ -24,11 +24,11 @@ The page uses the generated `ILedgerRpcServiceClient`; handlers implement the us
 | `get` | `{ "id": "<guid>" }` | `{ "entry": <entry or null> }` |
 | `related` | `{ "id": "<guid>" }` | Directly linked entries across months and types |
 | `summary` | `{ "month": "2026-10-01" }` | Gross income, expense, balance and expense category totals |
-| `create` | `{ "date": "2026-10-18", "kind": 0, "amount": 25.50, "category": "Food", "note": "Lunch", "relatedEntryIds": ["<guid>"] }` | Saved entry including its new ID and relation IDs |
+| `create` | `{ "date": "2026-10-18", "kind": "Expense", "amount": 25.50, "category": "Food", "note": "Lunch", "relatedEntryIds": ["<guid>"] }` | Saved entry including its new ID and relation IDs |
 | `update` | `{ "id": "<guid>", "entry": <complete create request> }` | Saved replacement; omitted/null/empty `relatedEntryIds` unlinks all relations |
 | `delete` | `{ "id": "<guid>" }` | Non-generic success; absent IDs are idempotent |
 
-Amounts are CNY yuan, dates use `yyyy-MM-dd`, and kind is numeric (`0` expense, `1` income). Relations are one-hop clues rather than automatic transitive groups. Duplicate IDs are deduplicated. Self-links and empty GUIDs return `ledger_invalid_request`; missing endpoints return `ledger_entry_not_found`. Invalid requests leave both entries and links unchanged. Writes commit atomically; cancellation is propagated. Deletion is permanent and callers should confirm user intent.
+Amounts are CNY yuan, dates use `yyyy-MM-dd`, and kind is a string enum (`"Expense"` / `"Income"`) on Quantum 0.1.8; earlier hosts used numeric values (`0` / `1`). Relations are one-hop clues rather than automatic transitive groups. Duplicate IDs are deduplicated. Self-links and empty GUIDs return `ledger_invalid_request`; missing endpoints return `ledger_entry_not_found`. Invalid requests leave both entries and links unchanged. Writes commit atomically; cancellation is propagated. Deletion is permanent and callers should confirm user intent.
 
 Build with `dotnet build Ledger/Quantum.LedgerPlugin.csproj -c Release`. Package `plugin.json`, `Quantum.LedgerPlugin.dll`, localization satellites, `migrations/`, `wwwroot/` and the README from the output directory. The host supplies SDK/NOF assemblies. The full-window workspace uses Quantum's Ledger layout rule.
 
@@ -42,4 +42,4 @@ Create/update requests accept `calendarEntryIds: ["<guid>"]`, and every entry re
 
 `ledger.by-calendar-entry` takes `{ "calendarEntryId": "<guid>" }` and returns all matching entry details across months, sorted by date descending and ID. Missing targets or no links return `[]`; an empty GUID returns `ledger_invalid_request`. Cancellation propagates. Migration `004_calendar_links.sql` adds a default empty JSON array to existing entries without changing their content or amounts.
 
-A replacement ledger must provide the `ledger.by-calendar-entry` capability with this request/result contract for calendar-side viewing. Returned fields used by calendar are `id`, `date`, `kind` (0 expense / 1 income), `amount` (CNY yuan), `category`, and `note`. The provider owns persistent linkage and offers its own editing UI/API. No official plugin ID, CLR type, assembly reference, or route is required.
+A replacement ledger must provide the `ledger.by-calendar-entry` capability with this request/result contract for calendar-side viewing. Returned fields used by calendar are `id`, `date`, `kind` (`"Expense"` / `"Income"` on Quantum 0.1.8; 0 / 1 on earlier hosts), `amount` (CNY yuan), `category`, and `note`. The provider owns persistent linkage and offers its own editing UI/API. No official plugin ID, CLR type, assembly reference, or route is required.
