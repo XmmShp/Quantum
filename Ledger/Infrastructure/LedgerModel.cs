@@ -15,6 +15,7 @@ internal sealed class LedgerModel : IDbContextModelCreatingContributor
             entity.Property(item => item.AmountInFen).IsRequired();
             entity.Property(item => item.Category).HasMaxLength(40).IsRequired();
             entity.Property(item => item.Note).HasMaxLength(1000).IsRequired();
+            entity.Property(item => item.CalendarEntryIdsJson).IsRequired();
             entity.HasIndex(item => item.Date);
         });
         modelBuilder.Entity<LedgerEntryLink>(entity =>

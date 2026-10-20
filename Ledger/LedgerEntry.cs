@@ -25,6 +25,21 @@ public sealed class LedgerEntry
     }
     public string Category { get; private set; } = "";
     public string Note { get; private set; } = "";
+    public string CalendarEntryIdsJson { get; private set; } = "[]";
+
+    public void SetCalendarEntries(Guid[]? ids)
+    {
+        if (ids is null)
+        {
+            return;
+        }
+        if (ids.Length > 100 || ids.Contains(Guid.Empty))
+        {
+            throw new ArgumentException("Calendar links require at most 100 non-empty IDs.");
+        }
+        CalendarEntryIdsJson = System.Text.Json.JsonSerializer.Serialize(ids.Distinct().Order().ToArray());
+    }
+
     public decimal Amount => AmountInFen / 100m;
 
     public static LedgerEntry Create(Guid id, DateOnly date, EntryKind kind, decimal amount, string category, string note)

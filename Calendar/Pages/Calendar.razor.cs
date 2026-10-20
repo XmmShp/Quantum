@@ -19,9 +19,10 @@ public partial class Calendar : IAsyncDisposable
     private readonly ICalendarRpcServiceClient CalendarService;
     private static readonly string[] Styles = ["violet", "blue", "coral", "green"];
 
-    public Calendar(ICalendarRpcServiceClient calendarService)
+    public Calendar(ICalendarRpcServiceClient calendarService, Quantum.Plugin.Abstraction.IRpcInvoker? invoker = null)
     {
         CalendarService = calendarService;
+        _invoker = invoker;
     }
 
     private static IReadOnlyList<string> Weekdays
@@ -87,7 +88,7 @@ public partial class Calendar : IAsyncDisposable
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        if (!_isEditorOpen && _editorModule is null)
+        if (!_isEditorOpen && _ledgerViewing is null && _editorModule is null)
         {
             return;
         }
@@ -95,6 +96,7 @@ public partial class Calendar : IAsyncDisposable
         _editorModule ??= await JavaScript.InvokeAsync<IJSObjectReference>(
             "import", "./_content/quantum.plugin.calendar/calendar.js");
         await _editorModule.InvokeVoidAsync("syncEditor", _editorDialog, _isEditorOpen);
+        await _editorModule.InvokeVoidAsync("syncEditor", _ledgerDialog, _ledgerViewing is not null);
     }
 
     public async ValueTask DisposeAsync()
@@ -281,6 +283,7 @@ public partial class Calendar : IAsyncDisposable
     private async Task LoadAllCoreAsync()
     {
         await LoadMonthCoreAsync();
+        _ledgerMethods = await OptionalRpc.DiscoverAsync(_invoker, "ledger.by-calendar-entry");
         _tasks = RpcResults.ValueOrThrow(await CalendarService.ListTasksAsync(new(), Context.Empty));
     }
 

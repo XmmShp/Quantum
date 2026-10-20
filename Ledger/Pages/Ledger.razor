@@ -67,6 +67,10 @@
                         </td>
                         <td class="ledger-amount @(entry.Kind == EntryKind.Income ? "ledger-income" : "")">@(entry.Kind == EntryKind.Income ? "+" : "−")@Money(entry.Amount)</td>
                         <td><div class="ledger-row-actions">
+                            @if (_calendarMethods.Count > 0)
+                            {
+                                <button class="ledger-icon" title="@L["Linked calendar items"]" aria-label="@L["Linked calendar items"]" disabled="@_busy" @onclick="() => ViewCalendarLinks(entry)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 11h18"/></svg></button>
+                            }
                             <button class="ledger-icon" title="@L["Related entries"]" aria-label="@(L["Related entries"] + " " + entry.Category)" disabled="@_busy" @onclick="() => ViewRelated(entry)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 13 4-4M8 15l-2 2a3.54 3.54 0 0 1-5-5l5-5a3.54 3.54 0 0 1 5 0M16 9l2-2a3.54 3.54 0 0 1 5 5l-5 5a3.54 3.54 0 0 1-5 0" transform="translate(1 0) scale(.92)" /></svg></button>
                             <button class="ledger-icon" title="@L["Edit"]" aria-label="@(L["Edit"] + " " + entry.Category)" disabled="@_busy" @onclick="() => Edit(entry)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 4 4M4 20l4-1L20 7a2.83 2.83 0 0 0-4-4L4 15z" /></svg></button>
                             <button class="ledger-icon ledger-delete @(_deleting?.Id == entry.Id ? "confirm-delete" : null)" title="@(_deleting?.Id == entry.Id ? L["Click again to delete"] : L["Delete"])" aria-label="@((_deleting?.Id == entry.Id ? L["Click again to delete"] : L["Delete"]) + " " + entry.Category)" disabled="@_busy" @onclick="() => RequestDelete(entry)" @onclick:stopPropagation="true" @onblur="CancelDelete">
@@ -148,6 +152,26 @@
                                 }
                             </div>
                         </section>
+                        @if (_calendarMethods.Count > 0 || _selectedCalendarIds.Count > 0)
+                        {
+                            <section class="ledger-relation-picker" aria-label="@L["Linked calendar items"]">
+                                <h3>@L["Linked calendar items"]</h3>
+                                @if (_calendarMethods.Count > 0)
+                                {
+                                    <label>@L["Month"]<input type="month" min="1900-01" max="9998-12" value="@_calendarMonth.ToString("yyyy-MM")" @onchange="SelectCalendarMonth" /></label>
+                                    <label>@L["Choose a calendar item"]<select value="" @onchange="AddCalendarLink"><option value="">@L["Choose a calendar item"]</option>
+                                        @foreach (var candidate in _calendarCandidates.Where(item => !_selectedCalendarIds.Contains(item.Id)))
+                                        {
+                                            <option value="@candidate.Id">@candidate.Date · @L[candidate.Kind == "Task" ? "Task" : "Event"] · @candidate.Title</option>
+                                        }
+                                    </select></label>
+                                }
+                                @foreach (var id in _selectedCalendarIds)
+                                {
+                                    <div class="ledger-selected-relation"><span>@(_calendarCandidates.FirstOrDefault(item => item.Id == id)?.Title ?? id.ToString())</span><button type="button" class="ledger-icon" title="@L["Remove relation"]" aria-label="@L["Remove relation"]" @onclick="() => _selectedCalendarIds.Remove(id)">×</button></div>
+                                }
+                            </section>
+                        }
                         @if (_error is not null)
                         {
                             <p role="alert" class="ledger-form-error">@_error</p>
@@ -155,6 +179,30 @@
                         <div class="ledger-dialog-actions"><button type="button" @onclick="CloseDialog">@L["Cancel"]</button><button class="ledger-primary" type="submit">@L["Save"]</button></div>
                     </fieldset>
                 </form>
+            </section>
+        }
+        @if (_calendarViewing is not null)
+        {
+            <section class="ledger-dialog-content">
+                <h2>@L["Linked calendar items"]</h2>
+                @if (_calendarLinks.Count == 0)
+                {
+                    <p>@L["No linked calendar items."]</p>
+                }
+                @foreach (var link in _calendarLinks)
+                {
+                    <article class="ledger-related-item">
+                        @if (link.Entry is { } item)
+                        {
+                            <strong>@item.Title</strong><p>@item.Date · @item.StartTime.ToString("HH:mm") · @L[item.Kind == "Task" ? (item.IsCompleted ? "Completed" : "Task") : "Event"]</p><p>@item.Notes</p>
+                        }
+                        else
+                        {
+                            <p>@L["Calendar item no longer exists."] · @link.Id</p>
+                        }
+                    </article>
+                }
+                <div class="ledger-dialog-actions"><button @onclick="CloseDialog">@L["Close"]</button></div>
             </section>
         }
         @if (_viewing is not null)

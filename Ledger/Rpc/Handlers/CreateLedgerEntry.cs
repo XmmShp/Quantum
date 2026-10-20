@@ -11,6 +11,7 @@ public sealed class CreateLedgerEntry(IRepository<LedgerEntry> entries, IReposit
         {
             var item = LedgerEntry.Create(Guid.NewGuid(), request.Date, request.Kind, request.Amount,
                 request.Category, request.Note);
+            item.SetCalendarEntries(request.CalendarEntryIds);
             await LedgerQueries.ReplaceLinksAsync(entries, links, item.Id, request.RelatedEntryIds, cancellationToken);
             await entries.AddAsync(item, cancellationToken);
             await database.SaveChangesAsync(cancellationToken);

@@ -10,7 +10,11 @@ namespace Quantum.OfficialPlugins.Ledger.Pages;
 public partial class Ledger
 {
     private readonly ILedgerRpcServiceClient _service;
-    public Ledger(ILedgerRpcServiceClient service) => _service = service;
+    public Ledger(ILedgerRpcServiceClient service, Quantum.Plugin.Abstraction.IRpcInvoker? invoker = null)
+    {
+        _service = service;
+        _invoker = invoker;
+    }
     private DateOnly _month = new(DateTime.Today.Year, DateTime.Today.Month, 1);
     private IReadOnlyList<LedgerEntryDetails> _entries = [];
     private bool _busy, _loaded, _editing;
@@ -29,8 +33,8 @@ public partial class Ledger
     private LedgerEntryDetails? _deleting;
     private IJSObjectReference? _module;
     private ElementReference _dialog;
-    private bool IsDialogOpen => _editing || _viewing is not null;
-    private string DialogTitle => L[_editing ? (_editId is null ? "Add entry" : "Edit entry") : "Related entries"];
+    private bool IsDialogOpen => _editing || _viewing is not null || _calendarViewing is not null;
+    private string DialogTitle => L[_editing ? (_editId is null ? "Add entry" : "Edit entry") : (_calendarViewing is null ? "Related entries" : "Linked calendar items")];
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
@@ -51,6 +55,7 @@ public partial class Ledger
         }
 
         _editing = false;
+        _calendarViewing = null;
         _viewing = null;
         _error = null;
     }
@@ -136,7 +141,11 @@ public partial class Ledger
         _entries = RpcResults.ValueOrThrow(await _service.ListEntriesAsync(new(_month), Context.Empty));
         _loaded = true;
     }
-    private Task Refresh() => Run(Load);
+    private Task Refresh() => Run(async () =>
+    {
+        await Load();
+        _calendarMethods = await OptionalRpc.DiscoverAsync(_invoker, "calendar.list", "calendar.get");
+    });
     private async Task LoadMonth(DateOnly month)
     {
         var entries = RpcResults.ValueOrThrow(await _service.ListEntriesAsync(new(month), Context.Empty));
@@ -156,6 +165,8 @@ public partial class Ledger
     {
         _candidateMonth = _month;
         await LoadCandidates();
+        _selectedCalendarIds = [];
+        await LoadCalendarCandidates();
         _selectedRelated = [];
         _editId = null;
         _kind = EntryKind.Expense;
@@ -163,7 +174,7 @@ public partial class Ledger
         _category = L["Food"];
         _note = "";
         _date = _month.Year == DateTime.Today.Year && _month.Month == DateTime.Today.Month ? DateOnly.FromDateTime(DateTime.Today) : _month;
-        _error = null;
+        _calendarViewing = null;
         _editing = true;
     });
     private Task Edit(LedgerEntryDetails item) => Run(async () =>
@@ -171,6 +182,8 @@ public partial class Ledger
         var related = RpcResults.ValueOrThrow(await _service.GetRelatedEntriesAsync(new(item.Id), Context.Empty));
         _candidateMonth = _month;
         await LoadCandidates();
+        _selectedCalendarIds = [.. item.CalendarEntryIds ?? []];
+        await LoadCalendarCandidates();
         _selectedRelated = [.. related];
         _viewing = null;
         _editId = item.Id;
@@ -179,7 +192,7 @@ public partial class Ledger
         _amount = item.Amount;
         _category = item.Category;
         _note = item.Note;
-        _error = null;
+        _calendarViewing = null;
         _editing = true;
     });
     private async Task LoadCandidates() => _candidates = RpcResults.ValueOrThrow(await _service.ListEntriesAsync(new(_candidateMonth), Context.Empty));
@@ -208,7 +221,7 @@ public partial class Ledger
     private Task Save() => Run(async () =>
     {
         var request = new SaveLedgerEntryRequest(_date, _kind, _amount, _category, _note,
-            _selectedRelated.Select(item => item.Id).ToArray());
+            _selectedRelated.Select(item => item.Id).ToArray(), _selectedCalendarIds.ToArray());
         RpcResults.ValueOrThrow(_editId is { } id
             ? await _service.UpdateEntryAsync(new(id, request), Context.Empty)
             : await _service.CreateEntryAsync(request, Context.Empty));

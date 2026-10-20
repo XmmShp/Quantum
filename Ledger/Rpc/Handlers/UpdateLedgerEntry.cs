@@ -16,6 +16,7 @@ public sealed class UpdateLedgerEntry(IRepository<LedgerEntry> entries, IReposit
                 replacement.Category, replacement.Note);
             var item = await entries.Where(item => item.Id == request.Id).SingleOrDefaultAsync(cancellationToken)
                 ?? throw new KeyNotFoundException("Record no longer exists. Refresh and try again.");
+            item.SetCalendarEntries(replacement.CalendarEntryIds);
             await LedgerQueries.ReplaceLinksAsync(entries, links, item.Id, replacement.RelatedEntryIds, cancellationToken);
             item.Update(replacement.Date, replacement.Kind, replacement.Amount, replacement.Category,
                 replacement.Note);

@@ -69,4 +69,7 @@
   <data name="End time must be later than start time." xml:space="preserve"><value>结束时间必须晚于开始时间。</value></data>
   <data name="End date cannot be earlier than start date." xml:space="preserve"><value>结束日期不能早于开始日期。</value></data>
   <data name="Item '{0}' was not found." xml:space="preserve"><value>未找到事项 '{0}'。</value></data>
+  <data name="Linked transactions" xml:space="preserve"><value>关联收支</value></data>
+  <data name="No linked transactions." xml:space="preserve"><value>暂无关联收支。</value></data>
+  <data name="Ledger unavailable. Please refresh and try again." xml:space="preserve"><value>记账能力暂不可用，请刷新后重试。</value></data>
 </root>

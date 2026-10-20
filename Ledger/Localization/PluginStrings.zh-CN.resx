@@ -208,4 +208,13 @@
   <data name="{0} related" xml:space="preserve"><value>{0} 笔关联</value></data>
   <data name="Related entry does not exist." xml:space="preserve"><value>关联账单不存在。</value></data>
   <data name="An entry cannot link to itself or an empty ID." xml:space="preserve"><value>账单不能关联自身或空编号。</value></data>
+  <data name="Linked calendar items" xml:space="preserve"><value>关联日程/待办</value></data>
+  <data name="Choose a calendar item" xml:space="preserve"><value>选择日程或待办</value></data>
+  <data name="No linked calendar items." xml:space="preserve"><value>暂无关联日程或待办。</value></data>
+  <data name="Calendar item no longer exists." xml:space="preserve"><value>关联事项已删除。</value></data>
+  <data name="Calendar unavailable. Saved links are preserved." xml:space="preserve"><value>日历暂不可用，已保存的关联仍会保留。</value></data>
+  <data name="Calendar links require at most 100 non-empty IDs." xml:space="preserve"><value>最多关联 100 个事项，编号不能为空。</value></data>
+  <data name="Task" xml:space="preserve"><value>待办</value></data>
+  <data name="Event" xml:space="preserve"><value>日程</value></data>
+  <data name="Completed" xml:space="preserve"><value>已完成</value></data>
 </root>

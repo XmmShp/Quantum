@@ -208,4 +208,13 @@
   <data name="{0} related" xml:space="preserve"><value>{0} related</value></data>
   <data name="Related entry does not exist." xml:space="preserve"><value>Related entry does not exist.</value></data>
   <data name="An entry cannot link to itself or an empty ID." xml:space="preserve"><value>An entry cannot link to itself or an empty ID.</value></data>
+  <data name="Linked calendar items" xml:space="preserve"><value>Linked calendar items</value></data>
+  <data name="Choose a calendar item" xml:space="preserve"><value>Choose a calendar item</value></data>
+  <data name="No linked calendar items." xml:space="preserve"><value>No linked calendar items.</value></data>
+  <data name="Calendar item no longer exists." xml:space="preserve"><value>Calendar item no longer exists.</value></data>
+  <data name="Calendar unavailable. Saved links are preserved." xml:space="preserve"><value>Calendar unavailable. Saved links are preserved.</value></data>
+  <data name="Calendar links require at most 100 non-empty IDs." xml:space="preserve"><value>Calendar links require at most 100 non-empty IDs.</value></data>
+  <data name="Task" xml:space="preserve"><value>Task</value></data>
+  <data name="Event" xml:space="preserve"><value>Event</value></data>
+  <data name="Completed" xml:space="preserve"><value>Completed</value></data>
 </root>

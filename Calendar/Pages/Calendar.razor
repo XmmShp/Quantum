@@ -119,6 +119,10 @@
                                         <time>@FormatTime(item)</time>
                                     </div>
                                     <div class="entry-actions">
+                                        @if (_ledgerMethods.Count > 0)
+                                        {
+                                            <button type="button" class="action-icon" title="@L["Linked transactions"]" aria-label="@L["Linked transactions"]" disabled="@_isBusy" @onclick="() => ViewLedgerAsync(item)"><span aria-hidden="true">¥</span></button>
+                                        }
                                         @if (item.Kind == CalendarEntryKind.Task)
                                         {
                                             <button type="button" class="action-icon complete" aria-label="@(item.IsCompleted ? L["Mark as open"] : L["Mark as complete"])" title="@(item.IsCompleted ? L["Restore"] : L["Complete"])" aria-pressed="@item.IsCompleted" disabled="@_isBusy" @onclick="() => ToggleCompletedAsync(item)">
@@ -212,6 +216,10 @@
                                     }
                                 </div>
                                 <div class="task-actions">
+                                        @if (_ledgerMethods.Count > 0)
+                                        {
+                                            <button type="button" class="action-icon" title="@L["Linked transactions"]" aria-label="@L["Linked transactions"]" disabled="@_isBusy" @onclick="() => ViewLedgerAsync(task)"><span aria-hidden="true">¥</span></button>
+                                        }
                                     <button type="button" class="action-icon complete" aria-label="@(task.IsCompleted ? L["Mark as open"] : L["Mark as complete"])" title="@(task.IsCompleted ? L["Restore"] : L["Complete"])" aria-pressed="@task.IsCompleted" disabled="@_isBusy" @onclick="() => ToggleCompletedAsync(task)">
                                         <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
                                             @if (task.IsCompleted)
@@ -317,6 +325,22 @@
                     </button>
                 </div>
             </form>
+        }
+    </dialog>
+    <dialog class="entry-dialog" @ref="_ledgerDialog" aria-label="@L["Linked transactions"]">
+        @if (_ledgerViewing is not null)
+        {
+            <section class="entry-editor">
+                <div class="editor-title"><h2>@L["Linked transactions"] · @_ledgerViewing.Title</h2><button type="button" data-editor-close aria-label="@L["Close editor"]" @onclick="() => _ledgerViewing = null">×</button></div>
+                @if (_linkedLedgerEntries.Length == 0)
+                {
+                    <p>@L["No linked transactions."]</p>
+                }
+                @foreach (var entry in _linkedLedgerEntries)
+                {
+                    <article class="agenda-entry"><strong>@entry.Category · @(entry.Kind == 1 ? "+" : "−")¥@entry.Amount.ToString("N2")</strong><p>@entry.Date · @entry.Note</p></article>
+                }
+            </section>
         }
     </dialog>
 </section>

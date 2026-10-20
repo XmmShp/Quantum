@@ -38,9 +38,9 @@ public sealed class LedgerPersistenceTests
         return builder;
     }
 
-    internal static async Task Migrate(SqliteConnection connection, int count = 3)
+    internal static async Task Migrate(SqliteConnection connection, int count = 4)
     {
-        foreach (var file in new[] { "001_init.sql", "002_entry_relations.sql", "003_entry_clues.sql" }.Take(count))
+        foreach (var file in new[] { "001_init.sql", "002_entry_relations.sql", "003_entry_clues.sql", "004_calendar_links.sql" }.Take(count))
         {
             await using var command = connection.CreateCommand();
             command.CommandText = await File.ReadAllTextAsync(Path.Combine(AppContext.BaseDirectory, file));

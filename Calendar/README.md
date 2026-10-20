@@ -61,3 +61,11 @@ dotnet build .\official-plugins\Calendar\Quantum.CalendarPlugin.csproj
 ```
 
 构建产物包含 `plugin.json`、SQL migration 和 scoped CSS bundle，可按 Quantum 插件开发文档打包或复制到 `Modules` 目录。
+
+## 可选记账联动（1.3.0）
+
+日程卡片和待办列表在发现 `ledger.by-calendar-entry` 后显示「关联收支」小按钮，点击在对话框中展示该事项跨月关联的收入、支出、日期、分类和备注；无关联时显示空状态。关联在记账插件的新增/编辑表单中选择和解除。
+
+页面从 `quantum.rpc.catalog` 按能力选择提供方，并通过 `IRpcInvoker` 调用目录中的完整名称；没有写死官方记账插件 ID、程序集或页面路由。替换记账插件只需实现 `ledger.by-calendar-entry({ calendarEntryId: guid })`，返回账单数组（字段和规则见 [记账能力契约](../Ledger/README.md#optional-calendar-integration-040)）。多个提供方按插件 ID ordinal 字典序选择。每次查看重新发现提供方，未安装、停止或能力缺失时不影响日历自身的读写。
+
+关联只存储于记账提供方，不修改日程或待办，也不跨插件读写数据库。双方 manifest 的 `dependencies` / `integrations` 保持为空。另见 [官方插件开发指南](../docs/plugin-development.md)。

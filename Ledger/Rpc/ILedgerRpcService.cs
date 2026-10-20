@@ -21,6 +21,10 @@ public interface ILedgerRpcService : IRpcService
     [RpcInvocationName("related")]
     Result<LedgerEntryDetails[]> GetRelatedEntries(LedgerEntryRequest request);
 
+    [Description("跨月列出关联指定日程或待办 GUID 的收支。无关联时返回空数组；不依赖日历插件或目标是否仍存在。")]
+    [RpcInvocationName("by-calendar-entry")]
+    Result<LedgerEntryDetails[]> ListByCalendarEntry(CalendarLedgerRequest request);
+
     [Description("获取整月收入、支出、结余和支出分类合计；金额单位为人民币元。")]
     [RpcInvocationName("summary")]
     Result<LedgerMonthSummary> GetSummary(LedgerMonthRequest request);

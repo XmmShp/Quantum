@@ -33,3 +33,13 @@ Amounts are CNY yuan, dates use `yyyy-MM-dd`, and kind is numeric (`0` expense, 
 Build with `dotnet build Ledger/Quantum.LedgerPlugin.csproj -c Release`. Package `plugin.json`, `Quantum.LedgerPlugin.dll`, localization satellites, `migrations/`, `wwwroot/` and the README from the output directory. The host supplies SDK/NOF assemblies. The full-window workspace uses Quantum's Ledger layout rule.
 
 See [the official plugin RPC guide](../docs/plugin-development.md), [host JSON tests](../tests/Quantum.LedgerPlugin.Tests/LedgerRpcTests.cs) and [migration/local-client tests](../tests/Quantum.LedgerPlugin.Tests/LedgerPersistenceTests.cs).
+
+## Optional calendar integration (0.4.0)
+
+No dependency or integration manifest entry is required. The page discovers `calendar.list` and `calendar.get` from one active provider in `quantum.rpc.catalog`, then invokes its qualified names through `IRpcInvoker`. Create/edit an entry to select events or tasks by month; the calendar button displays linked items and identifies deleted items. With no calendar provider the ledger remains usable and existing IDs are preserved.
+
+Create/update requests accept `calendarEntryIds: ["<guid>"]`, and every entry response includes this array. IDs are deduplicated and may span months and event/task kinds. At most 100 non-empty GUIDs are accepted. Updates omitting or passing null preserve existing IDs; an empty array removes them. Links and entry changes commit atomically. References may be saved while calendar is offline; they do not imply foreign keys to another plugin's tables. Calendar deletion leaves a reference which can be removed in the ledger editor. Deleting a ledger entry deletes its references.
+
+`ledger.by-calendar-entry` takes `{ "calendarEntryId": "<guid>" }` and returns all matching entry details across months, sorted by date descending and ID. Missing targets or no links return `[]`; an empty GUID returns `ledger_invalid_request`. Cancellation propagates. Migration `004_calendar_links.sql` adds a default empty JSON array to existing entries without changing their content or amounts.
+
+A replacement ledger must provide the `ledger.by-calendar-entry` capability with this request/result contract for calendar-side viewing. Returned fields used by calendar are `id`, `date`, `kind` (0 expense / 1 income), `amount` (CNY yuan), `category`, and `note`. The provider owns persistent linkage and offers its own editing UI/API. No official plugin ID, CLR type, assembly reference, or route is required.

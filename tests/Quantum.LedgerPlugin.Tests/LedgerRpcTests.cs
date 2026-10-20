@@ -21,7 +21,7 @@ public sealed class LedgerRpcTests
         var service = Assert.Single(catalog.GetProperty("value").GetProperty("services").EnumerateArray(),
             item => item.GetProperty("pluginId").GetString() == "quantum.plugin.ledger");
         var methods = service.GetProperty("methods").EnumerateArray().ToArray();
-        Assert.Equal(new[] { "create", "delete", "get", "list", "related", "summary", "update" },
+        Assert.Equal(new[] { "by-calendar-entry", "create", "delete", "get", "list", "related", "summary", "update" },
             methods.Select(method => method.GetProperty("canonicalName").GetString()!.Split('.')[1]).Order(StringComparer.Ordinal));
         foreach (var method in methods)
         {

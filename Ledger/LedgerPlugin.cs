@@ -15,6 +15,7 @@ public sealed class LedgerPlugin : IQuantumPlugin
         services.AddTransient<LedgerRpcService.ListEntries, ListLedgerEntries>();
         services.AddTransient<LedgerRpcService.GetEntry, GetLedgerEntry>();
         services.AddTransient<LedgerRpcService.GetRelatedEntries, GetRelatedLedgerEntries>();
+        services.AddTransient<LedgerRpcService.ListByCalendarEntry, ListByCalendarEntry>();
         services.AddTransient<LedgerRpcService.GetSummary, GetLedgerSummary>();
         services.AddTransient<LedgerRpcService.CreateEntry, CreateLedgerEntry>();
         services.AddTransient<LedgerRpcService.UpdateEntry, UpdateLedgerEntry>();
