@@ -1,5 +1,7 @@
 # Quantum Plugin SDK
 
+移动端开发预览新增纯数据包 `Quantum.Mobile.Protocol` 与 `IQuantumMobilePages`。插件在桌面声明界面；手机不加载插件代码。参见[移动 UI 开发说明](docs/mobile-ui.md)。
+
 本仓库包含保持能力一致的 .NET 与 TypeScript Quantum Plugin SDK。`Quantum.Plugin.Abstraction` 是桌面宿主与
 本地 DLL 插件共享的稳定 ABI；`@io7/quantum-plugin-sdk` 是隔离 Web 插件的 Host transport 契约。
 
@@ -199,3 +201,11 @@ Web 插件章节。
 .NET 插件使用 NuGet 包 `Quantum.Plugin.Abstraction`；Web 插件使用 npm 包 `@io7/quantum-plugin-sdk`。
 两个 SDK 使用相同的版本号。开发插件时请选择与目标 Quantum 版本兼容的 SDK，并固定依赖版本，
 升级前检查对应版本的兼容性说明。
+
+## RPC 调用与注册
+
+跨插件调用直接使用 `IRpcInvoker.InvokeAsync<T>("calendar.get", request, Context.Empty, cancellationToken)`；TypeScript 使用 `ctx.rpc.invoke<T>("calendar.get", request, {}, options)`。宿主按能力名路由，无需先绑定提供者。UI 可通过 `.GetCatalogAsync()` / `ctx.rpc.catalog()` 逐项检查能力是否可用，不要求来自同一插件。只有显式指定实现时才使用 qualified name。
+
+.NET 调用返回 NOF `Result<T>`，TypeScript 调用返回 `QuantumResult<T>`。检查 IsSuccess / isSuccess 后再读取值并更新 UI；失败保留错误码、英文消息和 extra，取消继续传播。
+
+需要托管 NOF RpcServer 的 .NET 插件直接引用 `NOF.Application`，调用原生 `services.AddRpcServer<TServer>()`。该入口从 NOF `11.0.0-nightly.1473609.75efa591` 起提供；SDK 不重复实现服务注册，也不为此依赖 NOF.Application。隔离 Web 插件不托管本地 NOF RpcServer，因此没有对应的 TypeScript 注册入口。

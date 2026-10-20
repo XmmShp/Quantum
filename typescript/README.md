@@ -126,3 +126,9 @@ waits for all current subscribers, including asynchronous iframe handlers, and s
 to the publisher. Disposing a subscription unregisters it immediately; runtime deactivation and iframe disposal
 also remove all remaining subscriptions as a Host-side fallback. Messages are in-memory only and are not retained
 or replayed.
+
+## Optional RPC providers and explicit failure handling
+
+Invoke canonical capability names directly with `ctx.rpc.invoke<T>("calendar.get", payload, {}, { signal })`. The Host resolves providers. Use `ctx.rpc.catalog()` to check individual capabilities for UI availability; related capabilities need not come from one plugin. Use qualified names only when explicitly targeting an implementation.
+
+RPC calls return `QuantumResult<T>` directly. Check `isSuccess` before accessing `value` or updating UI state; localize errors at the UI boundary. NOF server registration is specific to .NET; Web plugins do not host local NOF servers.

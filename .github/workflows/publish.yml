@@ -107,7 +107,7 @@ jobs:
       - name: Pack NuGet package
         if: steps.version.outputs.publish == 'true'
         run: >-
-          dotnet pack dotnet/src/Quantum.Plugin.Abstraction/Quantum.Plugin.Abstraction.csproj
+          dotnet pack Quantum.Sdk.slnx
           --configuration Release
           --no-restore
           --output artifacts/nuget
@@ -125,7 +125,8 @@ jobs:
         shell: bash
         run: |
           version="${{ steps.version.outputs.version }}"
-          if curl --fail --silent --head "https://api.nuget.org/v3-flatcontainer/quantum.plugin.abstraction/${version,,}/quantum.plugin.abstraction.${version,,}.nupkg" >/dev/null; then
+          if curl --fail --silent --head "https://api.nuget.org/v3-flatcontainer/quantum.plugin.abstraction/${version,,}/quantum.plugin.abstraction.${version,,}.nupkg" >/dev/null \
+            && curl --fail --silent --head "https://api.nuget.org/v3-flatcontainer/quantum.mobile.protocol/${version,,}/quantum.mobile.protocol.${version,,}.nupkg" >/dev/null; then
             echo "exists=true" >> "$GITHUB_OUTPUT"
           else
             echo "exists=false" >> "$GITHUB_OUTPUT"

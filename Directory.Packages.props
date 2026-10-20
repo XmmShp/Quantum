@@ -1,7 +1,7 @@
 <Project>
   <PropertyGroup>
     <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
-    <NofVersion>11.0.0-nightly.1421455.89816c67</NofVersion>
+    <NofVersion>11.0.0-nightly.1473609.75efa591</NofVersion>
   </PropertyGroup>
 
   <ItemGroup>

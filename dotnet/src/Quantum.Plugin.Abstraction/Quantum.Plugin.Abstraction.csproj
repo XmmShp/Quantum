@@ -6,7 +6,7 @@
     <AssemblyName>Quantum.Plugin.Abstraction</AssemblyName>
     <PackageId>Quantum.Plugin.Abstraction</PackageId>
     <Description>The stable .NET plugin ABI for Quantum.</Description>
-    <Version>0.1.0</Version>
+    <Version>0.1.1</Version>
     <Authors>Quantum contributors</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
     <PackageTags>quantum;plugin;sdk</PackageTags>
@@ -18,6 +18,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Quantum.Mobile.Protocol\Quantum.Mobile.Protocol.csproj" />
     <PackageReference Include="Microsoft.AspNetCore.Components.Web" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="NOF.Abstraction" />

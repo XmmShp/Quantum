@@ -454,6 +454,13 @@ export interface QuantumEnvironmentSnapshot {
 
 export type QuantumRpcContext = Readonly<Record<string, unknown>>;
 
+/** Host-only provenance: callers may read these keys but may not supply quantum.mobile.* context. */
+export const QuantumMobileContextKeys = Object.freeze({
+  deviceId: "quantum.mobile.deviceId",
+  requestId: "quantum.mobile.requestId",
+  viewId: "quantum.mobile.viewId"
+});
+
 export interface QuantumRpcAttributeArgument {
   readonly type: string;
   readonly value: unknown;
@@ -522,6 +529,10 @@ export interface QuantumRpcInvoker {
   catalog(options?: QuantumRpcOptions): Promise<QuantumResult<QuantumRpcCatalog>>;
 }
 
+export { Mobile, validateMobilePage } from "./mobile.js";
+export type { MobileNode, MobilePage, MobileRpcAction, QuantumMobilePages } from "./mobile.js";
+import type { QuantumMobilePages } from "./mobile.js";
+
 export interface QuantumPluginContext {
   readonly plugin: QuantumPluginIdentity;
   /** Aborted before plugin cleanup runs. */
@@ -545,6 +556,7 @@ export interface QuantumPluginContext {
     readText(path: string, options?: QuantumRpcOptions): Promise<string>;
   };
   readonly rpc: QuantumRpcInvoker;
+  readonly mobile: QuantumMobilePages;
 }
 
 export interface QuantumRoute {
