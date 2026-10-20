@@ -12,3 +12,8 @@ artifacts/
 *.user
 *.log
 *.tmp
+
+stack*.yaml
+compose*.yaml
+**/appsettings.Production.json
+**/appsettings.Development.json

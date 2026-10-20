@@ -1,4 +1,4 @@
-name: Release
+name: Publish image
 
 on:
   push:
@@ -8,7 +8,7 @@ permissions:
   contents: read
 
 concurrency:
-  group: quantum-platform-production
+  group: quantum-platform-image
   cancel-in-progress: false
 
 jobs:
@@ -43,37 +43,25 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       - uses: docker/setup-buildx-action@v3
       - uses: docker/build-push-action@v6
+        id: image
         with:
           context: .
           push: true
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
           tags: ghcr.io/xmmshp/quantum-platform:${{ github.sha }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-  deploy:
-    name: Deploy
-    needs: publish
-    runs-on: [self-hosted, Linux, X64, quantum-platform-prod]
-    permissions:
-      contents: read
-      packages: read
-    environment:
-      name: production
-    timeout-minutes: 30
-
-    steps:
-      - uses: actions/checkout@v4
-      - uses: docker/login-action@v3
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
-      - name: Deploy
+      - name: Verify clean runtime artifact
         env:
-          QUANTUM_PLATFORM_IMAGE: ghcr.io/xmmshp/quantum-platform:${{ github.sha }}
-          QUANTUM_PLATFORM_DEPLOYMENT_ID: ${{ github.run_id }}-${{ github.run_attempt }}
-        run: bash scripts/deploy-production.sh
-      - name: Verify
+          IMAGE: ghcr.io/xmmshp/quantum-platform@${{ steps.image.outputs.digest }}
+        run: |
+          docker pull "$IMAGE"
+          docker run --rm --entrypoint /bin/sh "$IMAGE" -c 'test -z "$(find /app -maxdepth 1 -type f -name "appsettings*.json" -print)"'
+      - name: Record immutable artifact
         env:
-          QUANTUM_PLATFORM_IMAGE: ghcr.io/xmmshp/quantum-platform:${{ github.sha }}
-        run: bash scripts/verify-production.sh
+          IMAGE: ghcr.io/xmmshp/quantum-platform@${{ steps.image.outputs.digest }}
+        run: |
+          printf 'Image: `%s`\nCommit: `%s`\n' "$IMAGE" "$GITHUB_SHA" >> "$GITHUB_STEP_SUMMARY"
