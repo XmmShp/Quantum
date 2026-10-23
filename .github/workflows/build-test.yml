@@ -8,8 +8,6 @@ on:
 env:
   DOTNET_VERSION: "10.0.x"
   CONFIGURATION: "Release"
-
-env:
   QuantumMobileInternalProject: ${{ github.workspace }}/.framework/Quantum/quantum/src/Quantum.Mobile.Internal/Quantum.Mobile.Internal.csproj
 
 jobs:
