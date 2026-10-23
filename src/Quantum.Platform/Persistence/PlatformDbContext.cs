@@ -12,6 +12,16 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
     {
         base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<MobileBridgeAccount>(entity =>
+        {
+            entity.ToTable(nameof(MobileBridgeAccount));
+            entity.IsHostOnly();
+            entity.HasKey(account => account.Id);
+            entity.Property(account => account.Id).ValueGeneratedNever();
+            entity.Property(account => account.StateJson).HasColumnType("text").IsRequired();
+            entity.Property(account => account.Version).IsConcurrencyToken();
+        });
+
         modelBuilder.Entity<PlatformUser>(entity =>
         {
             entity.ToTable(nameof(PlatformUser));

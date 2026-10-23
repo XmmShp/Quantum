@@ -139,7 +139,8 @@ public sealed class ListPlugins(
         return visibleListings.Select(listing => listing.ToSummary(
                 authors.SingleOrDefault(author => author.Id == listing.AuthorUserId),
                 published.Where(release => release.ListingId == listing.Id)
-                    .OrderByDescending(static release => release.UploadedAtUtc)
+                    .OrderByDescending(static release => release.Version,
+                        Comparer<string>.Create(QuantumVersionConstraint.CompareSemanticVersions))
                     .FirstOrDefault()))
             .ToArray();
     }
@@ -176,8 +177,10 @@ public sealed class GetPlugin(
         var published = await releases.AsNoTracking()
             .Where(release => release.ListingId == listing.Id &&
                 release.Status == PluginReleaseStatus.Published)
-            .OrderByDescending(static release => release.UploadedAtUtc)
             .ToArrayAsync(cancellationToken);
+        published = published.OrderByDescending(static release => release.Version,
+                Comparer<string>.Create(QuantumVersionConstraint.CompareSemanticVersions))
+            .ToArray();
         if (published.Length == 0)
         {
             return Result.Fail("plugin_not_found", "The plugin was not found.");

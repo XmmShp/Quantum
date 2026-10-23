@@ -1,6 +1,6 @@
 # Quantum Platform
 
-Quantum Platform 是 Quantum 的统一后端平台。它负责平台级用户身份与权限，并承载插件发布、审核、检索和下载等业务；后续平台能力继续在同一套 Domain/Contract/Application/Host 边界内扩展。所有业务 Contract 通过 `POST /rpc` 暴露为 JSON-RPC 2.0，网页发布与审核台位于 `/portal/`。
+Quantum Platform 是 Quantum 的统一后端平台。它负责平台级用户身份与权限，并承载插件发布、审核、检索和下载等业务；后续平台能力继续在同一套 Domain/Contract/Application/Host 边界内扩展。账号与市场 Contract 通过 `POST /rpc` 暴露为 JSON-RPC 2.0，移动中转控制面使用独立的 `POST /rpc/mobile`，网页发布与审核台位于 `/portal/`。两个 NOF 服务不可重复映射同一路由，否则 ASP.NET Core 会报告路由歧义。
 
 ## 目录
 
@@ -148,7 +148,7 @@ dotnet test tests/Quantum.Platform.Tests/Quantum.Platform.Tests.csproj
 
 ## 生产部署
 
-生产环境部署到 `192.168.50.202`，对外地址为 `https://quantum.io-vii.com`。只有推送到 `main`
+生产服务当前运行在现有 Swarm 集群的 `koala3` 节点，通过已配置的 SSH 别名 `koala3` 访问，对外地址为 `https://quantum.io-vii.com`；原 `192.168.50.202` 访问记录已过时。只有推送到 `main`
 分支才会触发 `.github/workflows/deploy-production.yml`；Pull Request 的构建测试继续使用 GitHub 托管
 Runner，不会接触生产主机。
 

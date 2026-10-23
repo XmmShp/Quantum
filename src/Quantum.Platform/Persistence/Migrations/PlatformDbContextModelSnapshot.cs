@@ -824,6 +824,17 @@ namespace Quantum.Platform.Persistence.Migrations
 
                     b.HasAnnotation("NOF:HostOnly", true);
                 });
+            modelBuilder.Entity("Quantum.Platform.Domain.MobileBridgeAccount", b =>
+                {
+                    b.Property<long>("Id").HasColumnType("bigint");
+                    b.Property<string>("StateJson").IsRequired().HasColumnType("text");
+                    b.Property<long>("Version").IsConcurrencyToken().HasColumnType("bigint");
+                    b.Property<long>("__DeletedAtUnixTime").ValueGeneratedOnAdd().HasColumnType("bigint").HasDefaultValue(0L);
+                    b.HasKey("Id");
+                    b.HasIndex("__DeletedAtUnixTime");
+                    b.ToTable("MobileBridgeAccount", (string)null);
+                    b.HasAnnotation("NOF:HostOnly", true);
+                });
 #pragma warning restore 612, 618
         }
     }

@@ -5,6 +5,7 @@
     <ImplicitUsings>enable</ImplicitUsings>
   </PropertyGroup>
   <ItemGroup>
+    <ProjectReference Include="../../../Quantum/quantum/src/Quantum.Mobile.Internal/Quantum.Mobile.Internal.csproj" />
     <PackageReference Include="NOF.Contract" />
   </ItemGroup>
 </Project>

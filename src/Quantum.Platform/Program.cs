@@ -19,6 +19,7 @@ if (!string.IsNullOrWhiteSpace(emailConfigurationPath))
 builder.AddApplicationPart(typeof(IQuantumPlatformService).Assembly);
 builder.AddApplicationPart(typeof(RegisterUser).Assembly);
 builder.AddRpcServer<QuantumPlatformService>();
+builder.AddRpcServer<MobileBridgeService>();
 builder.Services.AddQuantumPlatformApplication();
 builder.Services.AddQuantumPlatformServices(builder.Configuration, builder.Environment);
 builder.AddQuantumPlatformAuthentication();
