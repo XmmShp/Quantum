@@ -47,7 +47,7 @@ public sealed class BridgeClient(HttpClient http, Uri platform, Func<string?> ac
         await response.Content.LoadIntoBufferAsync(1024 * 1024, cancellationToken);
         using var document = await JsonDocument.ParseAsync(await response.Content.ReadAsStreamAsync(cancellationToken), cancellationToken: cancellationToken);
         var root = document.RootElement;
-        if (root.TryGetProperty("error", out _)) throw new InvalidOperationException("Platform bridge RPC is unavailable.");
+        if (root.TryGetProperty("error", out var rpcError) && rpcError.ValueKind != JsonValueKind.Null) throw new InvalidOperationException("Platform bridge RPC is unavailable.");
         var result = root.GetProperty("result");
         if (!result.GetProperty("isSuccess").GetBoolean())
             throw new BridgeException(result.GetProperty("errorCode").GetString() ?? "mobile_failed", result.GetProperty("message").GetString() ?? "Bridge request failed.");

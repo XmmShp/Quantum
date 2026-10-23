@@ -35,7 +35,7 @@ Android 调试包在 `mobile/Quantum.Mobile/bin/Debug/net10.0-android/io.quantum
 
 ## 不登录体验模拟器
 
-启动 Windows 目标，选择“打开模拟器 · Mock 模式”，输入文字、切换开关并点保存。结果会明确标记 MOCK，不触发桌面业务。
+使用 Debug 配置启动 Windows 目标，选择“打开模拟器 · Mock 模式”，输入文字、切换开关并点保存。结果会明确标记 MOCK，不触发桌面业务。
 
 选择“模拟器 · 打开 UI JSON”可打开 `mobile/fixtures/mobile-page-v1.json`。文件中的固定 RPC 会被替换成 Mock 动作，仅采集对应输入。没有脚本或 DLL 加载路径。
 
@@ -65,10 +65,14 @@ Android 调试包在 `mobile/Quantum.Mobile/bin/Debug/net10.0-android/io.quantum
 
 进一步背景参见 [需求稿](../docs/mobile-requirements.md)、[技术设计稿](../docs/mobile-technical-design.md)与 [SDK 移动 UI 说明](https://github.com/XmmShp/Quantum.Sdk/blob/main/docs/mobile-ui.md)。
 
-## 本次验证
+## 官方插件适配
 
-- 桌面测试 176、平台测试 67、.NET SDK 测试 58、TypeScript SDK 测试 12，均通过。
-- 内存 HTTP 协议测试覆盖重复投递与 Running 记录恢复；额外的实际公网/数据库验证及截图见上述实际验证记录。
-- Windows 与 Android Debug 构建通过；Windows 模拟器隐藏启动 5 秒未退出，无启动错误输出。未完成交互与视觉验收。
-- ABI 与协议 NuGet 包仅本地打包并检查版本依赖，未上传。
-- 平台构建沿用了仓库现有的 NuGet 安全告警（WebAssembly.Server、Pkcs）与包源映射告警。本次没有改动这些依赖版本，对外发布前需另行处理。
+Calendar、Ledger 和 Codex 的移动适配与接入步骤见[官方插件移动端说明](https://github.com/XmmShp/Quantum.OfficialPlugins/blob/main/docs/mobile.md)。需要构建对应的适配版本，旧市场安装包不会自动出现移动页面。
+
+## 登录与连接设置
+
+平台账号与开发者后台使用同一套邮箱和密码；登录使用邮箱，不使用用户名或插件发布凭证。登录页右上角可切换简体中文/English，选择会保存在本机。登录后若显示“选择你的电脑”，说明已进入设备选择阶段；在电脑上使用同一账号打开“移动访问”并开始共享，手机再刷新设备列表并请求授权。
+
+默认连接官方 Quantum 平台。自部署平台的 Base URL 位于二级“高级设置”页面，保存前会校验 HTTPS（仅 localhost 允许 HTTP）；应填写平台根地址，而不是 /portal 或 /rpc。Base URL 会保存在本机，下次登录继续使用。
+
+Mock 示例和 UI JSON 导入仅出现在 Debug 构建中。Release 登录页不包含这些开发工具；Windows Release 模拟器与发布给手机的版本采用同一规则。

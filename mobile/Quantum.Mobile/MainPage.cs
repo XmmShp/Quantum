@@ -1,44 +1,29 @@
 using System.Globalization;
-
 using System.Net.Http.Headers;
-
 using System.Net.Http.Json;
-
 using System.Security.Cryptography;
-
 using System.Text;
-
 using System.Text.Json;
-
 using Microsoft.Maui.ApplicationModel;
-
 using Microsoft.Maui.Controls;
-
 using Microsoft.Maui.Devices;
-
 using Microsoft.Maui.Storage;
-
 using Quantum.Mobile.Internal;
-
 using MobileUi = Quantum.Mobile.Internal.Mobile;
-
-
 
 namespace Quantum.MobileApp;
 
-
-
-public sealed class MainPage : ContentPage
+public sealed partial class MainPage : ContentPage
 
 {
 
     private readonly HttpClient _http = new() { Timeout = TimeSpan.FromSeconds(12) };
 
-    private readonly Entry _platform = new() { Text = "https://quantum.io-vii.com/", Keyboard = Keyboard.Url };
+    private string _baseUrl = Preferences.Default.Get("quantum.mobile.platform", PlatformAddress.DefaultUrl);
 
-    private readonly Entry _email = new() { Keyboard = Keyboard.Email };
+    private Entry _email = new() { Keyboard = Keyboard.Email };
 
-    private readonly Entry _password = new() { IsPassword = true };
+    private Entry _password = new() { IsPassword = true };
 
     private readonly Label _status = new() { FontSize = 13 };
 
@@ -78,85 +63,68 @@ public sealed class MainPage : ContentPage
 
     private string? _lastOutcomeKey;
 
-    private static string T(string zh, string en) => CultureInfo.CurrentUICulture.TwoLetterISOLanguageName == "zh" ? zh : en;
-
-
+    private static string T(string zh, string en) => Preferences.Default.Get("quantum.mobile.language", CultureInfo.CurrentUICulture.Name).StartsWith("zh", StringComparison.OrdinalIgnoreCase) ? zh : en;
 
     public MainPage()
-
     {
-
+        ApplyLanguage(Preferences.Default.Get("quantum.mobile.language", CultureInfo.CurrentUICulture.TwoLetterISOLanguageName));
         Title = "Quantum Mobile";
-
-        var root = new VerticalStackLayout { Padding = new Thickness(24, 20), Spacing = 18 };
-
-        root.Children.Add(new Label { Text = "QUANTUM / MOBILE", FontSize = 12, CharacterSpacing = 3 });
-
-        root.Children.Add(_status); root.Children.Add(_desktopStatus); root.Children.Add(_body);
-
-        Content = new ScrollView { Content = root };
-
+        BackgroundColor = MobileTheme.Canvas;
+        NavigationPage.SetHasNavigationBar(this, false);
+        var root = new VerticalStackLayout
+        {
+            Padding = new Thickness(24, 28),
+            Spacing = 16,
+            MaximumWidthRequest = 480,
+            HorizontalOptions = LayoutOptions.Fill
+        };
+        _status.TextColor = MobileTheme.Muted;
+        _desktopStatus.TextColor = MobileTheme.Muted;
+        root.Children.Add(_status);
+        root.Children.Add(_desktopStatus);
+        root.Children.Add(_body);
+        var shell = new Grid { RowDefinitions = { new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Star) } };
+        shell.Add(CreateHeader());
+        shell.Add(new ScrollView { Content = root }, 0, 1);
+        Content = shell;
         ShowSignIn();
-
     }
 
     private Button Button(string text, Func<Task> action)
-
     {
-
-        var button = new Button { Text = text, CornerRadius = 12, MinimumHeightRequest = 48 };
-
+        var button = MobileTheme.PrimaryButton(text);
         button.Clicked += async (_, _) =>
-
         {
-
             button.IsEnabled = false;
-
-            try { await action(); }
-
-            catch (Exception exception) { _status.Text = exception.Message; }
-
-            finally { button.IsEnabled = true; }
-
+            try
+            {
+                await action();
+            }
+            catch (Exception exception)
+            {
+                if (_isSignIn)
+                {
+                    _signInError.Text = SignInError(exception);
+                    _signInError.IsVisible = true;
+                }
+                else
+                {
+                    _status.Text = FriendlyError(exception);
+                }
+            }
+            finally
+            {
+                button.IsEnabled = true;
+            }
         };
-
         return button;
-
-    }
-
-    private void ShowSignIn()
-
-    {
-
-        _body.Children.Clear();
-
-        _body.Children.Add(new Label { Text = T("桌面的能力，随身可用", "Your desktop, within reach"), FontSize = 30, FontAttributes = FontAttributes.Bold });
-
-        _body.Children.Add(new Label { Text = T("连接已登录 Quantum 平台的电脑。插件与业务始终在电脑上执行。", "Connect to your Quantum desktop. Plugins and business operations run on your computer.") });
-
-        _email.Placeholder = T("平台邮箱", "Platform email"); _password.Placeholder = T("密码", "Password");
-
-        _body.Children.Add(_platform); _body.Children.Add(_email); _body.Children.Add(_password);
-
-        _body.Children.Add(Button(T("登录并连接", "Sign in and connect"), SignInAsync));
-
-        _body.Children.Add(Button(T("打开模拟器 · Mock 模式", "Open simulator · Mock mode"), () => { Preview(); return Task.CompletedTask; }));
-
-#if WINDOWS || MACCATALYST
-
-        _body.Children.Add(Button(T("模拟器 · 打开 UI JSON", "Simulator · Open UI JSON"), PreviewFileAsync));
-
-#endif
-
     }
 
     private async Task SignInAsync()
 
     {
 
-        var uri = new Uri(_platform.Text.Trim().TrimEnd('/') + "/");
-
-        if (uri.Scheme != "https" && !(uri.Scheme == "http" && uri.IsLoopback)) throw new ArgumentException("HTTPS required.");
+        var uri = PlatformAddress.Parse(_baseUrl);
 
         using var response = await _http.PostAsJsonAsync(new Uri(uri, "rpc"), new
 
@@ -176,11 +144,19 @@ public sealed class MainPage : ContentPage
 
         using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
 
-        if (document.RootElement.TryGetProperty("error", out _)) throw new InvalidOperationException("Login service unavailable.");
+        if (document.RootElement.TryGetProperty("error", out var rpcError) && rpcError.ValueKind != JsonValueKind.Null)
+        {
+            throw new BridgeException("login_service_unavailable", "Login service unavailable.");
+        }
 
         var result = document.RootElement.GetProperty("result");
 
-        if (!result.GetProperty("isSuccess").GetBoolean()) throw new InvalidOperationException(T("登录失败", "Sign in failed"));
+        if (!result.GetProperty("isSuccess").GetBoolean())
+        {
+            throw new BridgeException(result.GetProperty("errorCode").GetString() ?? "login_failed",
+                result.GetProperty("message").GetString() ?? "Sign in failed.");
+        }
+        _accountAccepted = true;
 
         _token = result.GetProperty("value").GetProperty("accessToken").GetString();
 
@@ -217,6 +193,7 @@ public sealed class MainPage : ContentPage
         _pendingId = Preferences.Default.Get(_storageKey + ".pending", (string?)null);
 
         _preview = false;
+        Preferences.Default.Set("quantum.mobile.email", _email.Text?.Trim() ?? "");
 
         await ShowDevicesAsync();
 
@@ -234,10 +211,32 @@ public sealed class MainPage : ContentPage
 
         var bindings = await _client.CallAsync<BridgeBinding[]>("bindings");
 
+        _isSignIn = false;
+        _status.IsVisible = true;
+        _desktopStatus.IsVisible = true;
+        _language.IsEnabled = true;
         _body.Children.Clear();
 
         _body.Children.Add(new Label { Text = T("选择你的电脑", "Choose your desktop"), FontSize = 28 });
 
+        _body.Children.Add(new Label
+        {
+            Text = T("在电脑上打开“移动访问”，共享插件页面后，再在这里选择电脑。", "Enable Mobile access and share plugin pages on your computer, then choose it here."),
+            TextColor = MobileTheme.Muted,
+            FontSize = 14
+        });
+        if (!devices.Any(d => d.Kind == "desktop"))
+        {
+            _body.Children.Add(MobileTheme.Card(new VerticalStackLayout
+            {
+                Spacing = 10,
+                Children =
+                {
+                    new Label { Text = T("暂时没有可连接的电脑", "No desktops available yet"), TextColor = MobileTheme.Ink, FontSize = 18, FontAttributes = FontAttributes.Bold },
+                    new Label { Text = T("请确认电脑使用相同的平台账号，已开启共享并保持在线。", "Use the same platform account on your desktop, start sharing, and keep it online."), TextColor = MobileTheme.Muted, FontSize = 14 }
+                }
+            }));
+        }
         foreach (var device in devices.Where(d => d.Kind == "desktop"))
 
         {
@@ -273,6 +272,7 @@ public sealed class MainPage : ContentPage
     private async Task ShowPagesAsync()
 
     {
+        _language.IsEnabled = true;
 
         var pages = await _client!.CallAsync<BridgePageInfo[]>("pages", new { desktopId = _desktopId });
 
@@ -313,6 +313,7 @@ public sealed class MainPage : ContentPage
     private void ShowSnapshot(BridgeSnapshot snapshot)
 
     {
+        _language.IsEnabled = false;
 
         if (_snapshot?.ViewId == snapshot.ViewId) return;
 
@@ -602,6 +603,7 @@ public sealed class MainPage : ContentPage
 
     }
 
+#if DEBUG
     private void Preview()
 
     {
@@ -627,6 +629,8 @@ public sealed class MainPage : ContentPage
     private void RenderPreview(MobilePage page)
 
     {
+        _isSignIn = false;
+        _status.IsVisible = true;
 
         _preview = true; _snapshot = null;
 
@@ -657,7 +661,6 @@ public sealed class MainPage : ContentPage
         if (file is null) return;
 
         await using var stream = await file.OpenReadAsync();
-
         using var memory = new MemoryStream();
 
         var buffer = new byte[4096];
@@ -691,6 +694,8 @@ public sealed class MainPage : ContentPage
         RenderPreview(page with { Root = Mock(page.Root) });
 
     }
+
+#endif
 
 #endif
 
