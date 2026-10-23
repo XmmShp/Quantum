@@ -7,5 +7,5 @@ namespace Quantum.Platform.Contract;
 [TransportOverHttp(HttpRpcStyle.JsonRpc, "/rpc/mobile")]
 public interface IMobileBridgeService : IRpcService
 {
-    Result<JsonElement> ExchangeMobileBridge(BridgeRequest request);
+    Result<JsonElement?> ExchangeMobileBridge(BridgeRequest request);
 }

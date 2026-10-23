@@ -17,7 +17,7 @@ public sealed class ExchangeMobileBridge(
     IDbContext db,
     TimeProvider clock) : MobileBridgeService.ExchangeMobileBridge
 {
-    public override async Task<Result<JsonElement>> HandleAsync(BridgeRequest request, Context context, CancellationToken cancellationToken)
+    public override async Task<Result<JsonElement?>> HandleAsync(BridgeRequest request, Context context, CancellationToken cancellationToken)
     {
         var resolution = await caller.RequireAsync(PlatformUserRole.None, cancellationToken);
         if (resolution.User is not { } user) return Result.Fail(resolution.ErrorCode!, resolution.ErrorMessage!);
@@ -32,7 +32,7 @@ public sealed class ExchangeMobileBridge(
             account.Update(JsonSerializer.Serialize(mailbox, MobileJson.Options));
             if (isNew) await accounts.AddAsync(account, cancellationToken);
             await db.SaveChangesAsync(cancellationToken);
-            return Result.Success(result);
+            return Result.Success<JsonElement?>(result);
         }
         catch (BridgeException exception) { return Result.Fail(exception.Code, exception.Message); }
         catch (Exception exception) when (exception is ArgumentException or JsonException or KeyNotFoundException or InvalidOperationException)
