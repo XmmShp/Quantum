@@ -1,6 +1,8 @@
 FROM mcr.microsoft.com/dotnet/sdk:10.0 AS build
 WORKDIR /source
 COPY . .
+COPY --from=quantum-framework /quantum/src/Quantum.Mobile.Internal /framework/Quantum.Mobile.Internal
+ENV QuantumMobileInternalProject=/framework/Quantum.Mobile.Internal/Quantum.Mobile.Internal.csproj
 RUN dotnet restore src/Quantum.Platform/Quantum.Platform.csproj
 RUN dotnet publish src/Quantum.Platform/Quantum.Platform.csproj \
     --configuration Release \

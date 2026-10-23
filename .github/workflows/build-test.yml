@@ -9,12 +9,24 @@ env:
   DOTNET_VERSION: "10.0.x"
   CONFIGURATION: "Release"
 
+env:
+  QuantumMobileInternalProject: ${{ github.workspace }}/.framework/Quantum/quantum/src/Quantum.Mobile.Internal/Quantum.Mobile.Internal.csproj
+
 jobs:
   build-test:
     name: Verify
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      - name: Read pinned framework revision
+        id: framework
+        run: echo "sha=$(cat .framework/quantum.ref)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: XmmShp/Quantum
+          ref: ${{ steps.framework.outputs.sha }}
+          path: .framework/Quantum
+          sparse-checkout: quantum/src/Quantum.Mobile.Internal
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}

@@ -20,3 +20,5 @@ publish/
 *.p12
 .DS_Store
 Thumbs.db
+
+/.framework/Quantum/

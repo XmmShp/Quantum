@@ -11,6 +11,9 @@ concurrency:
   group: quantum-platform-image
   cancel-in-progress: false
 
+env:
+  QuantumMobileInternalProject: ${{ github.workspace }}/.framework/Quantum/quantum/src/Quantum.Mobile.Internal/Quantum.Mobile.Internal.csproj
+
 jobs:
   verify:
     name: Verify
@@ -20,6 +23,15 @@ jobs:
       CONFIGURATION: Release
     steps:
       - uses: actions/checkout@v4
+      - name: Read pinned framework revision
+        id: framework
+        run: echo "sha=$(cat .framework/quantum.ref)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: XmmShp/Quantum
+          ref: ${{ steps.framework.outputs.sha }}
+          path: .framework/Quantum
+          sparse-checkout: quantum/src/Quantum.Mobile.Internal
       - uses: actions/setup-dotnet@v5
         with:
           dotnet-version: ${{ env.DOTNET_VERSION }}
@@ -36,6 +48,15 @@ jobs:
       packages: write
     steps:
       - uses: actions/checkout@v4
+      - name: Read pinned framework revision
+        id: framework
+        run: echo "sha=$(cat .framework/quantum.ref)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: XmmShp/Quantum
+          ref: ${{ steps.framework.outputs.sha }}
+          path: .framework/Quantum
+          sparse-checkout: quantum/src/Quantum.Mobile.Internal
       - uses: docker/login-action@v3
         with:
           registry: ghcr.io
@@ -46,6 +67,8 @@ jobs:
         id: image
         with:
           context: .
+          build-contexts: |
+            quantum-framework=./.framework/Quantum
           push: true
           labels: |
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
