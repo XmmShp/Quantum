@@ -16,8 +16,7 @@ internal static class CodexErrorMessages
 
         return normalized.Contains(UpgradeRequiredMarker, StringComparison.OrdinalIgnoreCase)
             ? "The installed Codex CLI is too old for the selected model. "
-                + "Run `npm install -g @openai/codex@latest`, then disconnect and reconnect. "
-                + "/ 当前 Codex CLI 版本过旧，请升级后断开并重新连接。"
+                + "Run `npm install -g @openai/codex@latest`, then disconnect and reconnect."
             : normalized;
     }
 

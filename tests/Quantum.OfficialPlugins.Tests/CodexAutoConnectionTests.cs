@@ -4,8 +4,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 using NOF.Contract;
+using Quantum.OfficialPlugins.Codex;
 using Quantum.OfficialPlugins.Codex.Application;
-using Quantum.OfficialPlugins.Codex.Infrastructure;
 using Quantum.Plugin.Abstraction;
 using System.Text.Json;
 using Xunit;
@@ -93,7 +93,11 @@ public sealed class CodexAutoConnectionTests
         invoker.Release.TrySetResult();
         await using var service = Service(invoker);
         await service.EnsureAutoConnectedAsync();
-        var services = new ServiceCollection();
+        var builder = Microsoft.Extensions.Hosting.Host.CreateEmptyApplicationBuilder(null);
+        NOF.Hosting.NOFInfrastructureExtensions.AddNOFInfrastructure(builder);
+        NOF.Hosting.NOFHostingExtensions.AddApplicationPart(builder, typeof(OfficialPlugins.Codex.CodexPlugin).Assembly);
+        var services = builder.Services;
+        services.AddScoped<IRequestOutboundPipelineExecutor, NOF.Hosting.RequestOutboundPipelineExecutor>();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         services.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
         services.AddLocalization();
@@ -104,7 +108,7 @@ public sealed class CodexAutoConnectionTests
         await using var renderer = new HtmlRenderer(provider, provider.GetRequiredService<ILoggerFactory>());
         var html = await renderer.Dispatcher.InvokeAsync(async () =>
         {
-            var rendered = await renderer.RenderComponentAsync<OfficialPlugins.Codex.Pages.Codex>();
+            var rendered = await renderer.RenderComponentAsync<OfficialPlugins.Codex.UI.Pages.Codex>();
             return rendered.ToHtmlString();
         });
         Assert.Contains("role=\"alert\"", html);
@@ -113,9 +117,16 @@ public sealed class CodexAutoConnectionTests
         Assert.DoesNotContain("Catalog unavailable <detail>", html);
     }
 
-    private sealed class InjectingActivator(IServiceProvider services) : IComponentActivator
+    private sealed class InjectingActivator : IComponentActivator
     {
-        public IComponent CreateInstance(Type type) => (IComponent)ActivatorUtilities.CreateInstance(services, type);
+        private readonly IServiceProvider _services;
+
+        public InjectingActivator(IServiceProvider services)
+        {
+            _services = services;
+        }
+
+        public IComponent CreateInstance(Type type) => (IComponent)ActivatorUtilities.CreateInstance(_services, type);
     }
 
     private sealed class GatedInvoker : IRpcInvoker
@@ -131,6 +142,7 @@ public sealed class CodexAutoConnectionTests
             await Release.Task.WaitAsync(cancellationToken);
             return Result.Fail("catalog_unavailable", "Catalog unavailable <detail>");
         }
+
         public Task<Result> InvokeAsync(string rpcName, object payload, Context context, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
     }

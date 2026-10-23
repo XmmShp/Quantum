@@ -11,7 +11,7 @@
     "routes": [
       {
         "path": "/plugins/calendar",
-        "component": "Quantum.OfficialPlugins.Calendar.Pages.Calendar",
+        "component": "Quantum.OfficialPlugins.Calendar.UI.Pages.Calendar",
         "title": "日历",
         "titles": { "en-US": "Calendar" },
         "icon": "日",

@@ -1,11 +1,15 @@
 {
   "repository": "https://github.com/XmmShp/Quantum",
-  "commit": "be06a185fdc64c846c4251e1f41015c01edc14ec",
   "files": {
-    "quantum/src/Quantum/Plugins/Rpc/PluginRpcRuntime.cs": "8f6df06d7f49ef1a12aa3ac9efb90d414184ca2027c875a5e5fc9da010d8da96",
-    "quantum/src/Quantum/Plugins/Rpc/PluginRpcRegistry.cs": "11f531a32aff1475df732641008eeb49f676146fcb217991cda20aafeb0881d1",
+    "quantum/src/Quantum/Plugins/Rpc/PluginRpcRuntime.cs": "72256dda8afda1085391ecc0f9e851d7e5047bf6efa212dd902c1251ca76756d",
+    "quantum/src/Quantum/Plugins/Rpc/PluginRpcRegistry.cs": "22d37493a4c83bf588aac2fdca57989df8864e945df8fa2f301e804c32dc6f5c",
     "quantum/src/Quantum/Plugins/Rpc/PluginRpcCatalog.cs": "43bd332f9956309b11d5305601bbbc8b1c766c0e1c1763d1d6315542a929f0ba",
-    "quantum/src/Quantum/Plugins/Rpc/PluginRpcSerializer.cs": "7fce63b0eb0385d567cf1c7d7c14d72b025ade72b2e9e80fed316ff1fe7c2120",
-    "quantum/src/Quantum/Plugins/Rpc/PluginRpcInvoker.cs": "d068acad0f6603e7de9d418520f5389a028d54aa1af9f31ae6494d5af304d30a"
-  }
+    "quantum/src/Quantum/Plugins/Rpc/PluginRpcSerializer.cs": "c02890b908c045852de9eb0a5f3746c9124d4ac5fcf30e37283554391d8e8821",
+    "quantum/src/Quantum/Plugins/Rpc/PluginRpcInvoker.cs": "3c3bd50a8f163237e793b6281f92403e7e1a0744b7b9465ea3af4018d1c57382",
+    "quantum/src/Quantum/Plugins/Rpc/QuantumJsonDefaults.cs": "2d6c48533ebc1382d1760766b0c4dfbff09e276f478d7cde75ce2b93e6a907d6",
+    "quantum/src/Quantum/Plugins/Rpc/PluginRpcContextInboundMiddleware.cs": "cfdd40a9d56c23435729ede1ea65c239e300d47c20b36e6a91a193b1931fb246",
+    "quantum/src/Quantum/Plugins/Rpc/PluginRpcServiceCollectionExtensions.cs": "b6e88653e18a8fcb8d6727134f4cd89e851aa66001a40ce42b5292006b9bae6d"
+  },
+  "baseCommit": "af08cd08dc29a007cccae3c4f853ee5f2b40fc18",
+  "sourceState": "committed"
 }

@@ -8,7 +8,7 @@
   "ui": {
     "routes": [{
       "path": "/plugins/ledger",
-      "component": "Quantum.OfficialPlugins.Ledger.Pages.Ledger",
+      "component": "Quantum.OfficialPlugins.Ledger.UI.Pages.Ledger",
       "title": "记账",
       "titles": { "en": "Ledger", "zh": "记账" },
       "icon": "¥",

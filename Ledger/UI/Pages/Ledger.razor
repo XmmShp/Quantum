@@ -1,0 +1,226 @@
+@namespace Quantum.OfficialPlugins.Ledger.UI.Pages
+@using System.Globalization
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.Localization
+@using Microsoft.JSInterop
+@using NOF.Contract
+@using Quantum.OfficialPlugins.Ledger.Rpc
+@using Quantum.OfficialPlugins.Ledger.UI.Localization
+@inject IStringLocalizer<PluginStrings> L
+@inject IJSRuntime JS
+@implements IAsyncDisposable
+
+<PageTitle>@L["Ledger"] · Quantum</PageTitle>
+
+<section class="quantum-ledger" aria-busy="@_busy" @onclick="CancelDelete" @onkeydown="HandleKeyDown">
+    @if (_error is not null && !IsDialogOpen)
+    {
+        <div class="ledger-alert" role="alert">@_error <button @onclick="() => _error = null">@L["Dismiss"]</button></div>
+    }
+    @if (_message is not null)
+    {
+        <p class="ledger-message" role="status">@_message</p>
+    }
+    <div class="ledger-monthbar">
+        <div class="ledger-month">
+            <button aria-label="@L["Previous month"]" disabled="@(_busy || _month.Year == 1900 && _month.Month == 1)" @onclick="() => ChangeMonth(-1)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 7-5 5 5 5" /></svg></button>
+            <label><span class="ledger-sr">@L["Month"]</span><input type="month" min="1900-01" max="9998-12" value="@_month.ToString("yyyy-MM", CultureInfo.InvariantCulture)" @onchange="SelectMonth" disabled="@_busy" /></label>
+            <button aria-label="@L["Next month"]" disabled="@(_busy || _month.Year == 9998 && _month.Month == 12)" @onclick="() => ChangeMonth(1)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 7 5 5-5 5" /></svg></button>
+        </div>
+        <span class="ledger-currency">CNY</span>
+    </div>
+    <div class="ledger-stats" aria-label="@L["Monthly summary"]">
+        <article><p>@L["Income"]</p><strong class="ledger-income">@Money(Totals.Income)</strong></article>
+        <article><p>@L["Expense"]</p><strong>@Money(Totals.Expense)</strong></article>
+        <article class="ledger-balance"><p>@L["Net balance"]</p><strong>@Money(Totals.Balance)</strong></article>
+    </div>
+    <div class="ledger-body">
+        <main class="ledger-transactions">
+            <div class="ledger-section-title"><h2>@L["Transactions"] <span>@Filtered.Count</span></h2><div class="ledger-heading-actions">
+                    <button class="ledger-icon" title="@L["Refresh"]" aria-label="@L["Refresh"]" disabled="@_busy" @onclick="Refresh"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 7a9 9 0 1 0 1 7M20 3v5h-5" /></svg></button>
+                    <button class="ledger-add" title="@L["Add entry"]" aria-label="@L["Add entry"]" disabled="@(_busy || !_loaded)" @onclick="NewEntry">＋</button>
+                </div></div>
+            <div class="ledger-filters">
+                <label><span class="ledger-sr">@L["Search"]</span><input type="search" placeholder="@L["Search category or note"]" @bind="_search" @bind:event="oninput" /></label>
+                <label><span class="ledger-sr">@L["Type"]</span><select @bind="_filter"><option value="all">@L["All types"]</option><option value="expense">@L["Expense"]</option><option value="income">@L["Income"]</option></select></label>
+            </div>
+            @if (!_loaded)
+            {
+                <p role="status">@L["Loading…"]</p>
+            }
+            else if (Filtered.Count == 0)
+            {
+                <div class="ledger-empty"><p>@L["A little ink, a little time."]</p></div>
+            }
+            else
+            {
+                <div @key="_month" class="ledger-table-wrap"><table><thead><tr><th>@L["Date"]</th><th>@L["Category / note"]</th><th>@L["Amount"]</th><th><span class="ledger-sr">@L["Actions"]</span></th></tr></thead><tbody>
+                @foreach (var entry in Filtered)
+                {
+                    <tr @key="entry.Id"><td><time datetime="@entry.Date.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)">@entry.Date.ToString("MM/dd", CultureInfo.CurrentCulture)</time><small>@L[entry.Kind.ToString()]</small></td>
+                        <td>
+                            <strong>@entry.Category</strong><small class="ledger-note">@entry.Note</small>
+                            @if (entry.RelatedEntryIds.Length > 0)
+                            {
+                                <small>@L["{0} related", entry.RelatedEntryIds.Length]</small>
+                            }
+                        </td>
+                        <td class="ledger-amount @(entry.Kind == EntryKind.Income ? "ledger-income" : "")">@(entry.Kind == EntryKind.Income ? "+" : "−")@Money(entry.Amount)</td>
+                        <td><div class="ledger-row-actions">
+                            @if (_canGetCalendar)
+                            {
+                                <button class="ledger-icon" title="@L["Linked calendar items"]" aria-label="@L["Linked calendar items"]" disabled="@_busy" @onclick="() => ViewCalendarLinks(entry)"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="2"/><path d="M7 3v4M17 3v4M3 11h18"/></svg></button>
+                            }
+                            <button class="ledger-icon" title="@L["Related entries"]" aria-label="@(L["Related entries"] + " " + entry.Category)" disabled="@_busy" @onclick="() => ViewRelated(entry)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m10 13 4-4M8 15l-2 2a3.54 3.54 0 0 1-5-5l5-5a3.54 3.54 0 0 1 5 0M16 9l2-2a3.54 3.54 0 0 1 5 5l-5 5a3.54 3.54 0 0 1-5 0" transform="translate(1 0) scale(.92)" /></svg></button>
+                            <button class="ledger-icon" title="@L["Edit"]" aria-label="@(L["Edit"] + " " + entry.Category)" disabled="@_busy" @onclick="() => Edit(entry)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 4 4M4 20l4-1L20 7a2.83 2.83 0 0 0-4-4L4 15z" /></svg></button>
+                            <button class="ledger-icon ledger-delete @(_deleting?.Id == entry.Id ? "confirm-delete" : null)" title="@(_deleting?.Id == entry.Id ? L["Click again to delete"] : L["Delete"])" aria-label="@((_deleting?.Id == entry.Id ? L["Click again to delete"] : L["Delete"]) + " " + entry.Category)" disabled="@_busy" @onclick="() => RequestDelete(entry)" @onclick:stopPropagation="true" @onblur="CancelDelete">
+                                <span @key="(_deleting?.Id == entry.Id)" class="ledger-action-symbol" aria-hidden="true">
+                                    @if (_deleting?.Id == entry.Id)
+                                    {
+                                        <span class="ledger-confirm-symbol">?</span>
+                                    }
+                                    else
+                                    {
+                                        <svg viewBox="0 0 24 24"><path d="M3 6h18M9 6V3h6v3M5 6l1 15h12l1-15M10 10v7M14 10v7" /></svg>
+                                    }
+                                </span>
+                            </button>
+                        </div></td></tr>
+                }
+                </tbody></table></div>
+            }
+        </main>
+        <aside class="ledger-breakdown"><header class="ledger-breakdown-heading"><h2>@L["Spending by category"]</h2><span>@Categories.Length</span></header><div class="ledger-category-list">
+            @if (Categories.Length == 0)
+            {
+                <div class="ledger-empty"><p>@L["A little ink, a little time."]</p></div>
+            }
+            @foreach (var category in Categories)
+            {
+                <div class="ledger-category"><div><strong>@category.Name</strong><span>@Money(category.Amount)</span></div><progress max="100" value="@Percent(category.Amount)" aria-label="@category.Name"></progress><small>@Percent(category.Amount).ToString("F1", CultureInfo.CurrentCulture)%</small></div>
+            }
+        </div></aside>
+    </div>
+    <dialog class="ledger-dialog" @ref="_dialog" aria-label="@DialogTitle">
+        @if (IsDialogOpen)
+        {
+            <button type="button" class="ledger-dialog-close ledger-icon" data-dialog-close aria-label="@L["Close"]" disabled="@_busy" @onclick="CloseDialog">×</button>
+            @if (_error is not null && !_editing)
+            {
+                <div class="ledger-alert" role="alert">@_error</div>
+            }
+        }
+        @if (_editing)
+        {
+            <section class="ledger-dialog-content">
+                <h2 id="ledger-editor-title">@L[_editId is null ? "Add entry" : "Edit entry"]</h2>
+                <form @onsubmit="Save" @onsubmit:preventDefault>
+                    <fieldset disabled="@_busy">
+                        <div class="ledger-kind-switch" role="group" aria-label="@L["Type"]">
+                            <button type="button" class="@(_kind == EntryKind.Expense ? "active" : null)" aria-pressed="@(_kind == EntryKind.Expense)" @onclick="() => _kind = EntryKind.Expense">@L["Expense"]</button>
+                            <button type="button" class="@(_kind == EntryKind.Income ? "active" : null)" aria-pressed="@(_kind == EntryKind.Income)" @onclick="() => _kind = EntryKind.Income">@L["Income"]</button>
+                        </div>
+                        <div class="ledger-form-row"><label>@L["Amount (CNY)"]<input type="number" min="0.01" max="999999999.99" step="0.01" required autofocus @bind="_amount" /></label><label>@L["Date"]<input type="date" min="1900-01-01" max="9998-12-31" required @bind="_date" /></label></div>
+                        <label>
+                            @L["Category"]<input maxlength="40" required list="ledger-categories" @bind="_category" />
+                            <datalist id="ledger-categories">
+                                @foreach (var name in SuggestedCategories)
+                                {
+                                    <option value="@L[name]"></option>
+                                }
+                            </datalist>
+                        </label>
+                        <label>@L["Note"]<textarea rows="3" maxlength="1000" @bind="_note"></textarea></label>
+                        <section class="ledger-relation-picker" aria-label="@L["Related entries"]">
+                            <div class="ledger-relation-heading"><h3>@L["Related entries"]</h3><span>@_selectedRelated.Count</span></div>
+                            <div class="ledger-form-row">
+                                <label>@L["Entry month"]<input type="month" min="1900-01" max="9998-12" value="@_candidateMonth.ToString("yyyy-MM", CultureInfo.InvariantCulture)" @onchange="SelectEntryMonth" /></label>
+                                <label>@L["Add relation"]<select value="" @onchange="AddRelatedEntry"><option value="">@L["Choose an entry"]</option>
+                                    @foreach (var candidate in RelationOptions)
+                                    {
+                                        <option value="@candidate.Id">@candidate.Date.ToString("MM-dd") · @L[candidate.Kind.ToString()] · @candidate.Category · @Money(candidate.Amount) · @candidate.Note</option>
+                                    }
+                                </select></label>
+                            </div>
+                            <div class="ledger-selected-relations">
+                                @foreach (var linked in _selectedRelated)
+                                {
+                                    <div @key="linked.Id" class="ledger-selected-relation">
+                                        <div><span>@linked.Date.ToString("yyyy-MM-dd") · @L[linked.Kind.ToString()]</span><strong>@linked.Category · @Money(linked.Amount)</strong></div>
+                                        <button type="button" class="ledger-icon" title="@L["Remove relation"]" aria-label="@(L["Remove relation"] + " " + linked.Category)" @onclick="() => _selectedRelated.Remove(linked)">×</button>
+                                    </div>
+                                }
+                            </div>
+                        </section>
+                        @if (_canListCalendar || _selectedCalendarIds.Count > 0)
+                        {
+                            <section class="ledger-relation-picker" aria-label="@L["Linked calendar items"]">
+                                <h3>@L["Linked calendar items"]</h3>
+                                @if (_canListCalendar)
+                                {
+                                    <label>@L["Month"]<input type="month" min="1900-01" max="9998-12" value="@_calendarMonth.ToString("yyyy-MM")" @onchange="SelectCalendarMonth" /></label>
+                                    <label>@L["Choose a calendar item"]<select value="" @onchange="AddCalendarLink"><option value="">@L["Choose a calendar item"]</option>
+                                        @foreach (var candidate in _calendarCandidates.Where(item => !_selectedCalendarIds.Contains(item.Id)))
+                                        {
+                                            <option value="@candidate.Id">@candidate.Date · @L[candidate.Kind == "Task" ? "Task" : "Event"] · @candidate.Title</option>
+                                        }
+                                    </select></label>
+                                }
+                                @foreach (var id in _selectedCalendarIds)
+                                {
+                                    <div class="ledger-selected-relation"><span>@(_calendarCandidates.FirstOrDefault(item => item.Id == id)?.Title ?? id.ToString())</span><button type="button" class="ledger-icon" title="@L["Remove relation"]" aria-label="@L["Remove relation"]" @onclick="() => _selectedCalendarIds.Remove(id)">×</button></div>
+                                }
+                            </section>
+                        }
+                        @if (_error is not null)
+                        {
+                            <p role="alert" class="ledger-form-error">@_error</p>
+                        }
+                        <div class="ledger-dialog-actions"><button type="button" @onclick="CloseDialog">@L["Cancel"]</button><button class="ledger-primary" type="submit">@L["Save"]</button></div>
+                    </fieldset>
+                </form>
+            </section>
+        }
+        @if (_calendarViewing is not null)
+        {
+            <section class="ledger-dialog-content">
+                <h2>@L["Linked calendar items"]</h2>
+                @if (_calendarLinks.Count == 0)
+                {
+                    <p>@L["No linked calendar items."]</p>
+                }
+                @foreach (var link in _calendarLinks)
+                {
+                    <article class="ledger-related-item">
+                        @if (link.Entry is { } item)
+                        {
+                            <strong>@item.Title</strong><p>@item.Date · @item.StartTime.ToString("HH:mm") · @L[item.Kind == "Task" ? (item.IsCompleted ? "Completed" : "Task") : "Event"]</p><p>@item.Notes</p>
+                        }
+                        else
+                        {
+                            <p>@L["Calendar item no longer exists."] · @link.Id</p>
+                        }
+                    </article>
+                }
+                <div class="ledger-dialog-actions"><button @onclick="CloseDialog">@L["Close"]</button></div>
+            </section>
+        }
+        @if (_viewing is not null)
+        {
+            <section class="ledger-dialog-content">
+                <h2 id="ledger-related-title">@L["Related entries"]</h2>
+                <p>@_viewing.Date.ToString("yyyy-MM-dd") · @_viewing.Category · @Money(_viewing.Amount)</p>
+                @if (_related.Count == 0)
+                {
+                    <p>@L["No related entries."]</p>
+                }
+                @foreach (var item in _related)
+                {
+                    <p class="ledger-related-item">@item.Date.ToString("yyyy-MM-dd") · @L[item.Kind.ToString()] · @item.Category · @Money(item.Amount)
+                        <small>@item.Note</small> <button class="ledger-icon" title="@L["Edit"]" aria-label="@(L["Edit"] + " " + item.Category)" disabled="@_busy" @onclick="() => Edit(item)"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m15 5 4 4M4 20l4-1L20 7a2.83 2.83 0 0 0-4-4L4 15z" /></svg></button></p>
+                }
+                <div class="ledger-dialog-actions"><button @onclick="CloseDialog">@L["Close"]</button></div>
+            </section>
+        }
+    </dialog>
+</section>

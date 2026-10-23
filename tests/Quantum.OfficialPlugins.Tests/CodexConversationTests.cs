@@ -1,7 +1,7 @@
 using Microsoft.Extensions.Logging.Abstractions;
 using NOF.Contract;
+using Quantum.OfficialPlugins.Codex;
 using Quantum.OfficialPlugins.Codex.Application;
-using Quantum.OfficialPlugins.Codex.Infrastructure;
 using Quantum.Plugin.Abstraction;
 using System.Text.Json;
 using System.Text.Json.Nodes;
@@ -61,18 +61,18 @@ public sealed class CodexConversationTests
     {
         var client = new FakeClient();
         await using var service = Service(client);
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ChangeModelAsync("gpt-5.6-sol"));
+        await Assert.ThrowsAsync<NOF.Domain.DomainException>(() => service.ChangeModelAsync("gpt-5.6-sol"));
         await service.ConnectAsync(Environment.CurrentDirectory, CodexRuntime.DefaultModel);
         var before = service.Snapshot;
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ChangeModelAsync("unknown-model"));
-        await Assert.ThrowsAsync<ArgumentException>(() => service.ChangeModelAsync(" "));
+        await Assert.ThrowsAsync<NOF.Domain.DomainException>(() => service.ChangeModelAsync("unknown-model"));
+        await Assert.ThrowsAsync<NOF.Domain.DomainException>(() => service.ChangeModelAsync(" "));
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => service.ChangeModelAsync("gpt-5.6-sol", cancelled.Token));
         Assert.Equal(before.SelectedModel, service.Snapshot.SelectedModel);
         Assert.Equal(before.Messages, service.Snapshot.Messages);
         await service.SendAsync("Active turn");
-        await Assert.ThrowsAsync<InvalidOperationException>(() => service.ChangeModelAsync("gpt-5.6-sol"));
+        await Assert.ThrowsAsync<NOF.Domain.DomainException>(() => service.ChangeModelAsync("gpt-5.6-sol"));
         Assert.Equal(before.SelectedModel, service.Snapshot.SelectedModel);
         Assert.Equal(before.ThreadId, service.Snapshot.ThreadId);
         Assert.Equal(1, client.ThreadStarts);
@@ -107,6 +107,7 @@ public sealed class CodexConversationTests
         {
             get; private set;
         }
+
         public List<(string ThreadId, string Model)> Turns { get; } = [];
         public Task StartAsync(CancellationToken cancellationToken) => Task.CompletedTask;
         public Task<IReadOnlyList<CodexModelOption>> ListModelsAsync(CancellationToken cancellationToken)
@@ -120,6 +121,7 @@ public sealed class CodexConversationTests
             {
             }));
         }
+
         public Task CompleteTurn() => NotificationReceived!("turn/completed", JsonSerializer.SerializeToElement(new { turn = new { status = "completed" } }));
         public ValueTask DisposeAsync() => ValueTask.CompletedTask;
     }

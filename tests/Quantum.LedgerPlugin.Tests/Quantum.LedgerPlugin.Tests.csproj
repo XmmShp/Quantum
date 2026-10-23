@@ -18,6 +18,9 @@
     <ProjectReference Include="../../Codex/Quantum.CodexPlugin.csproj" />
     <None Include="../../Ledger/migrations/*.sql" Link="%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
     <None Include="../../Calendar/migrations/*.sql" Link="calendar-migrations/%(Filename)%(Extension)" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../Calendar/plugin.json" Link="plugin-manifests/calendar.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../Ledger/plugin.json" Link="plugin-manifests/ledger.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Include="../../Codex/plugin.json" Link="plugin-manifests/codex.json" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
   <ItemGroup>
     <Using Include="Quantum.Plugin.Abstraction" />

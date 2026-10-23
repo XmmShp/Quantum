@@ -8,6 +8,7 @@ public sealed class LocalizationResourceTests
     [Theory]
     [InlineData("codex")]
     [InlineData("calendar")]
+    [InlineData("ledger")]
     public void EnglishNeutralResourceKeysHaveCompleteChineseTranslations(string plugin)
     {
         var directory = Path.Combine(AppContext.BaseDirectory, "localization", plugin);

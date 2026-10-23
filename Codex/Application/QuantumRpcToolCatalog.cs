@@ -1,3 +1,4 @@
+using NOF.Domain;
 using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
@@ -18,7 +19,7 @@ internal static class QuantumRpcToolCatalog
             foreach (var method in service.GetProperty("methods").EnumerateArray())
             {
                 var rpcName = method.GetProperty("qualifiedName").GetString()
-                    ?? throw new InvalidOperationException("The RPC catalog contains a method without a name.");
+                    ?? throw new DomainException("codex_invalid_state", "The RPC catalog contains a method without a name.");
                 // Keep control RPCs discoverable to external callers, but do not let
                 // a Codex turn recursively send to or disconnect its own session.
                 if (string.Equals(rpcName, "quantum.rpc.catalog", StringComparison.OrdinalIgnoreCase)
@@ -31,12 +32,14 @@ internal static class QuantumRpcToolCatalog
                 var description = method.TryGetProperty("description", out var descriptionElement)
                     ? descriptionElement.GetString()
                     : null;
-                tools.Add(new QuantumRpcTool(
-                    toolName,
-                    rpcName,
-                    BuildDescription(rpcName, description),
-                    method.GetProperty("returnsValue").GetBoolean(),
-                    NormalizeInputSchema(method.GetProperty("inputSchema"))));
+                tools.Add(new QuantumRpcTool
+                {
+                    ToolName = toolName,
+                    RpcName = rpcName,
+                    Description = BuildDescription(rpcName, description),
+                    ReturnsValue = method.GetProperty("returnsValue").GetBoolean(),
+                    InputSchema = NormalizeInputSchema(method.GetProperty("inputSchema"))
+                });
             }
         }
 

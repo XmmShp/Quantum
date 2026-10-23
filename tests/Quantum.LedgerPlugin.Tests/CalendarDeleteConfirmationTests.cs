@@ -1,4 +1,3 @@
-using System.Reflection;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
@@ -8,11 +7,12 @@ using NOF.Contract;
 using NOF.Hosting;
 using NOF.Infrastructure;
 using NOF.Infrastructure.EntityFrameworkCore;
+using Quantum.OfficialPlugins.Calendar;
 using Quantum.OfficialPlugins.Calendar.Application;
 using Quantum.OfficialPlugins.Calendar.Domain;
-using Quantum.OfficialPlugins.Calendar.Hosting;
+using System.Reflection;
 using Xunit;
-using CalendarPage = Quantum.OfficialPlugins.Calendar.Pages.Calendar;
+using CalendarPage = Quantum.OfficialPlugins.Calendar.UI.Pages.Calendar;
 
 namespace Quantum.LedgerPlugin.Tests;
 
@@ -45,28 +45,51 @@ public sealed class CalendarDeleteConfirmationTests
 
         await host.UseClient<ICalendarRpcServiceClient>(async client =>
         {
-            var created = await client.CreateEntryAsync(new("Confirmation fixture", "", CalendarEntryKind.Task,
-                DateOnly.FromDateTime(DateTime.Today), new(12, 0), null, "green"), Context.Empty);
+            var created = await client.CreateEntryAsync(new()
+            {
+                Title = "Confirmation fixture",
+                Notes = "",
+                Kind = CalendarEntryKind.Task,
+                Date = DateOnly.FromDateTime(DateTime.Today),
+                StartTime = new(12, 0),
+                EndTime = null,
+                Style = "green"
+            }, Context.Empty);
             Assert.True(created.IsSuccess);
             var id = created.Value!.Id;
             var page = new CalendarPage(client);
 
             await ClickDelete(page, id, isTaskList);
-            Assert.NotNull((await client.GetEntryAsync(new(id), Context.Empty)).Value!.Entry);
+            Assert.NotNull((await client.GetEntryAsync(new()
+            {
+                Id = id
+            }, Context.Empty)).Value!.Entry);
 
             typeof(CalendarPage).GetMethod("HandleKeyDown", BindingFlags.Instance | BindingFlags.NonPublic)!
                 .Invoke(page, [new KeyboardEventArgs { Key = "Escape" }]);
             await ClickDelete(page, id, isTaskList);
-            Assert.NotNull((await client.GetEntryAsync(new(id), Context.Empty)).Value!.Entry);
+            Assert.NotNull((await client.GetEntryAsync(new()
+            {
+                Id = id
+            }, Context.Empty)).Value!.Entry);
 
             // The same task in the other list must require its own confirmation.
             await ClickDelete(page, id, !isTaskList);
-            Assert.NotNull((await client.GetEntryAsync(new(id), Context.Empty)).Value!.Entry);
+            Assert.NotNull((await client.GetEntryAsync(new()
+            {
+                Id = id
+            }, Context.Empty)).Value!.Entry);
             await ClickDelete(page, id, isTaskList);
-            Assert.NotNull((await client.GetEntryAsync(new(id), Context.Empty)).Value!.Entry);
+            Assert.NotNull((await client.GetEntryAsync(new()
+            {
+                Id = id
+            }, Context.Empty)).Value!.Entry);
 
             await ClickDelete(page, id, isTaskList);
-            Assert.Null((await client.GetEntryAsync(new(id), Context.Empty)).Value!.Entry);
+            Assert.Null((await client.GetEntryAsync(new()
+            {
+                Id = id
+            }, Context.Empty)).Value!.Entry);
         });
     }
 

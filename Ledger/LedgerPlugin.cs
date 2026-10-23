@@ -10,16 +10,9 @@ public sealed class LedgerPlugin : IQuantumPlugin
     public static void ConfigureServices(IServiceCollection services)
     {
         services.AddSingleton<IDbContextModelCreatingContributor, LedgerModel>();
-        services.AddPluginRpcServer<LedgerRpcService>();
+        services.AddRpcServer<LedgerRpcService>();
+        services.AddMapping<LedgerEntry, LedgerEntryProjection>(LedgerMappings.Projection);
         services.AddScoped<ILedgerRpcServiceClient, LocalLedgerRpcServiceClient>();
-        services.AddTransient<LedgerRpcService.ListEntries, ListLedgerEntries>();
-        services.AddTransient<LedgerRpcService.GetEntry, GetLedgerEntry>();
-        services.AddTransient<LedgerRpcService.GetRelatedEntries, GetRelatedLedgerEntries>();
-        services.AddTransient<LedgerRpcService.ListByCalendarEntry, ListByCalendarEntry>();
-        services.AddTransient<LedgerRpcService.GetSummary, GetLedgerSummary>();
-        services.AddTransient<LedgerRpcService.CreateEntry, CreateLedgerEntry>();
-        services.AddTransient<LedgerRpcService.UpdateEntry, UpdateLedgerEntry>();
-        services.AddTransient<LedgerRpcService.DeleteEntry, DeleteLedgerEntry>();
     }
 
     public static Task StartAsync(IServiceProvider services, CancellationToken cancellationToken = default)

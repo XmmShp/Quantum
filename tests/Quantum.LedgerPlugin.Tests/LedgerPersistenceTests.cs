@@ -12,11 +12,16 @@ using Xunit;
 
 namespace Quantum.LedgerPlugin.Tests;
 
-public sealed class LedgerTestDb(DbContextOptions<LedgerTestDb> options) : NOFDbContext(options);
+public sealed class LedgerTestDb : NOFDbContext
+{
+    public LedgerTestDb(DbContextOptions<LedgerTestDb> options) : base(options)
+    {
+    }
+}
 
 public sealed class LedgerPersistenceTests
 {
-    public static IHostApplicationBuilder Configure(string connectionString, SaveChangesInterceptor? interceptor = null)
+    public static IHostApplicationBuilder Configure(string connectionString, SaveChangesInterceptor? interceptor = null, DbCommandInterceptor? queryInterceptor = null)
     {
         var builder = Host.CreateEmptyApplicationBuilder(new HostApplicationBuilderSettings());
         builder.Services.Clear();
@@ -31,7 +36,16 @@ public sealed class LedgerPersistenceTests
                 {
                     options.AddInterceptors(interceptor);
                 }
+                if (queryInterceptor is not null)
+                {
+                    options.AddInterceptors(queryInterceptor);
+                }
             });
+        Quantum.Plugins.PluginRpcServiceCollectionExtensions.AddQuantumPluginRpc(builder.Services);
+        foreach (var initializer in System.Reflection.CustomAttributeExtensions.GetCustomAttributes<NOF.Abstraction.AssemblyInitializeAttribute>(typeof(OfficialPlugins.Ledger.LedgerPlugin).Assembly))
+        {
+            initializer.Initialize(builder.Services);
+        }
         OfficialPlugins.Ledger.LedgerPlugin.ConfigureServices(builder.Services);
         builder.Services.AddSingleton(TimeProvider.System);
         builder.Services.AddLogging();
@@ -90,30 +104,92 @@ public sealed class LedgerPersistenceTests
         scope.ServiceProvider.ResolveDaemonServices();
         var client = scope.ServiceProvider.GetRequiredService<OfficialPlugins.Ledger.Rpc.ILedgerRpcServiceClient>();
         var context = NOF.Contract.Context.Empty;
-        var first = (await client.CreateEntryAsync(new(new(2026, 10, 1), EntryKind.Expense, .1m, "Food"), context)).Value!;
-        var second = await client.CreateEntryAsync(new(new(2026, 11, 1), EntryKind.Expense, .2m, "Transport", "", [first.Id]), context);
+        var first = (await client.CreateEntryAsync(new()
+        {
+            Date = new(2026, 10, 1),
+            Kind = EntryKind.Expense,
+            Amount = .1m,
+            Category = "Food"
+        }, context)).Value!;
+        var second = await client.CreateEntryAsync(new()
+        {
+            Date = new(2026, 11, 1),
+            Kind = EntryKind.Expense,
+            Amount = .2m,
+            Category = "Transport",
+            Note = "",
+            RelatedEntryIds = [first.Id]
+        }, context);
         Assert.True(second.IsSuccess, second.Message);
         Assert.Equal(first.Id, Assert.Single(second.Value!.RelatedEntryIds));
-        Assert.Equal(second.Value.Id, Assert.Single((await client.GetRelatedEntriesAsync(new(first.Id), context)).Value!).Id);
-        var invalid = await client.UpdateEntryAsync(new(first.Id, new(new(2026, 10, 2), EntryKind.Income, 5m, "Bad", "", [Guid.NewGuid()])), context);
+        Assert.Equal(second.Value.Id, Assert.Single((await client.GetRelatedEntriesAsync(new()
+        {
+            Id = first.Id
+        }, context)).Value!).Id);
+        var invalid = await client.UpdateEntryAsync(new()
+        {
+            Id = first.Id,
+            Entry = new()
+            {
+                Date = new(2026, 10, 2),
+                Kind = EntryKind.Income,
+                Amount = 5m,
+                Category = "Bad",
+                Note = "",
+                RelatedEntryIds = [Guid.NewGuid()]
+            }
+        }, context);
         Assert.False(invalid.IsSuccess);
-        var unchanged = (await client.GetEntryAsync(new(first.Id), context)).Value!.Entry!;
+        var unchanged = (await client.GetEntryAsync(new()
+        {
+            Id = first.Id
+        }, context)).Value!.Entry!;
         Assert.Equal(.1m, unchanged.Amount);
         Assert.Equal(EntryKind.Expense, unchanged.Kind);
         Assert.Equal(second.Value.Id, Assert.Single(unchanged.RelatedEntryIds));
-        var changed = await client.UpdateEntryAsync(new(first.Id, new(new(2026, 10, 2), EntryKind.Income, .3m, "Changed", "", [second.Value.Id])), context);
+        var changed = await client.UpdateEntryAsync(new()
+        {
+            Id = first.Id,
+            Entry = new()
+            {
+                Date = new(2026, 10, 2),
+                Kind = EntryKind.Income,
+                Amount = .3m,
+                Category = "Changed",
+                Note = "",
+                RelatedEntryIds = [second.Value.Id]
+            }
+        }, context);
         Assert.True(changed.IsSuccess, changed.Message);
         using var cancelled = new CancellationTokenSource();
         cancelled.Cancel();
         await Assert.ThrowsAnyAsync<OperationCanceledException>(() => client.CreateEntryAsync(
-            new(new(2026, 10, 1), EntryKind.Expense, 1m, "Cancelled"), context, cancelled.Token));
-        Assert.Single((await client.ListEntriesAsync(new(new(2026, 10, 1)), context)).Value!);
+            new()
+            {
+                Date = new(2026, 10, 1),
+                Kind = EntryKind.Expense,
+                Amount = 1m,
+                Category = "Cancelled"
+            }, context, cancelled.Token));
+        Assert.Single((await client.ListEntriesAsync(new()
+        {
+            Month = new(2026, 10, 1)
+        }, context)).Value!);
         await using var reopened = provider.CreateAsyncScope();
         reopened.ServiceProvider.ResolveDaemonServices();
         var reopenedClient = reopened.ServiceProvider.GetRequiredService<OfficialPlugins.Ledger.Rpc.ILedgerRpcServiceClient>();
-        Assert.Equal(.3m, (await reopenedClient.GetEntryAsync(new(first.Id), context)).Value!.Entry!.Amount);
-        Assert.True((await client.DeleteEntryAsync(new(first.Id), context)).IsSuccess);
-        var survivor = (await reopenedClient.GetEntryAsync(new(second.Value.Id), context)).Value!.Entry!;
+        Assert.Equal(.3m, (await reopenedClient.GetEntryAsync(new()
+        {
+            Id = first.Id
+        }, context)).Value!.Entry!.Amount);
+        Assert.True((await client.DeleteEntryAsync(new()
+        {
+            Id = first.Id
+        }, context)).IsSuccess);
+        var survivor = (await reopenedClient.GetEntryAsync(new()
+        {
+            Id = second.Value.Id
+        }, context)).Value!.Entry!;
         Assert.Equal(.2m, survivor.Amount);
         Assert.Empty(survivor.RelatedEntryIds);
         Assert.True(scopes.ContextIds.Count >= 4);

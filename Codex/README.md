@@ -82,7 +82,7 @@ of all commands through a controlled runtime substitute so automated tests never
 
 Both the page and global drawer constructor-inject generated `ICodexRpcServiceClient`, backed by
 `LocalCodexRpcServiceClient`. Business calls, including snapshot reads and automatic connection, enter the same
-handlers as host RPC. `Infrastructure/CodexRuntime` remains a singleton process/connection/streaming adapter;
+handlers as host RPC. `CodexRuntime` remains a singleton process/connection/streaming adapter;
 it is not a parallel application-service facade. The UI subscribes only to `ICodexRuntimeEvents.Changed` and
 refreshes snapshots through RPC. Local dispatch creates a fresh server scope while preserving the shared runtime.
 See [the official plugin development guide](../docs/plugin-development.md).

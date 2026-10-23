@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Calendar section" xml:space="preserve"><value>CALENDAR</value></data>
+  <data name="SELECTED DAY" xml:space="preserve"><value>SELECTED DAY</value></data>
+  <data name="Tasks section" xml:space="preserve"><value>TASKS</value></data>
+  <data name="New task section" xml:space="preserve"><value>NEW TASK</value></data>
+  <data name="Edit task section" xml:space="preserve"><value>EDIT TASK</value></data>
+  <data name="Calendar" xml:space="preserve"><value>Calendar</value></data>
+  <data name="Event" xml:space="preserve"><value>Event</value></data>
+  <data name="Task" xml:space="preserve"><value>Task</value></data>
+  <data name="Tasks" xml:space="preserve"><value>Tasks</value></data>
+  <data name="Keep events and tasks on one timeline." xml:space="preserve"><value>Keep events and tasks on one timeline.</value></data>
+  <data name="Make the next step clear, then finish one thing at a time." xml:space="preserve"><value>Make the next step clear, then finish one thing at a time.</value></data>
+  <data name="Month navigation" xml:space="preserve"><value>Month navigation</value></data>
+  <data name="Previous month" xml:space="preserve"><value>Previous month</value></data>
+  <data name="Next month" xml:space="preserve"><value>Next month</value></data>
+  <data name="Today" xml:space="preserve"><value>Today</value></data>
+  <data name="New" xml:space="preserve"><value>New</value></data>
+  <data name="Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Close editor" xml:space="preserve"><value>Close editor</value></data>
+  <data name="Cancel editing" xml:space="preserve"><value>Cancel editing</value></data>
+  <data name="Item type" xml:space="preserve"><value>Item type</value></data>
+  <data name="Title" xml:space="preserve"><value>Title</value></data>
+  <data name="What needs to be done?" xml:space="preserve"><value>What needs to be done?</value></data>
+  <data name="Date" xml:space="preserve"><value>Date</value></data>
+  <data name="Due date" xml:space="preserve"><value>Due date</value></data>
+  <data name="Due time" xml:space="preserve"><value>Due time</value></data>
+  <data name="Start time" xml:space="preserve"><value>Start time</value></data>
+  <data name="End time (optional)" xml:space="preserve"><value>End time (optional)</value></data>
+  <data name="Notes" xml:space="preserve"><value>Notes</value></data>
+  <data name="Add some details…" xml:space="preserve"><value>Add some details…</value></data>
+  <data name="Color" xml:space="preserve"><value>Color</value></data>
+  <data name="Cancel" xml:space="preserve"><value>Cancel</value></data>
+  <data name="Add" xml:space="preserve"><value>Add</value></data>
+  <data name="Save" xml:space="preserve"><value>Save</value></data>
+  <data name="Save changes" xml:space="preserve"><value>Save changes</value></data>
+  <data name="New item" xml:space="preserve"><value>New item</value></data>
+  <data name="Edit item" xml:space="preserve"><value>Edit item</value></data>
+  <data name="Edit" xml:space="preserve"><value>Edit</value></data>
+  <data name="Delete" xml:space="preserve"><value>Delete</value></data>
+  <data name="Restore" xml:space="preserve"><value>Restore</value></data>
+  <data name="Complete" xml:space="preserve"><value>Complete</value></data>
+  <data name="A quiet day, an unwritten page." xml:space="preserve"><value>A quiet day, an unwritten page.</value></data>
+  <data name="Events" xml:space="preserve"><value>Events</value></data>
+  <data name="Open tasks" xml:space="preserve"><value>Open tasks</value></data>
+  <data name="Free days" xml:space="preserve"><value>Free days</value></data>
+  <data name="New task" xml:space="preserve"><value>New task</value></data>
+  <data name="Filter tasks" xml:space="preserve"><value>Filter tasks</value></data>
+  <data name="{0} open" xml:space="preserve"><value>{0} open</value></data>
+  <data name="Mark as open" xml:space="preserve"><value>Mark as open</value></data>
+  <data name="Mark as complete" xml:space="preserve"><value>Mark as complete</value></data>
+  <data name="Overdue" xml:space="preserve"><value>Overdue</value></data>
+  <data name="Clouds drift by; the day is still." xml:space="preserve"><value>Clouds drift by; the day is still.</value></data>
+  <data name="Click again to delete" xml:space="preserve"><value>Click again to delete</value></data>
+  <data name="Plan the next step" xml:space="preserve"><value>Plan the next step</value></data>
+  <data name="Edit task" xml:space="preserve"><value>Edit task</value></data>
+  <data name="Add task" xml:space="preserve"><value>Add task</value></data>
+  <data name="Open" xml:space="preserve"><value>Open</value></data>
+  <data name="Completed" xml:space="preserve"><value>Completed</value></data>
+  <data name="All" xml:space="preserve"><value>All</value></data>
+  <data name="{0}, {1} items" xml:space="preserve"><value>{0}, {1} items</value></data>
+  <data name="Titles cannot exceed 120 characters." xml:space="preserve"><value>Titles cannot exceed 120 characters.</value></data>
+  <data name="Notes cannot exceed 1,000 characters." xml:space="preserve"><value>Notes cannot exceed 1,000 characters.</value></data>
+  <data name="The selected color is not supported." xml:space="preserve"><value>The selected color is not supported.</value></data>
+  <data name="End time must be later than start time." xml:space="preserve"><value>End time must be later than start time.</value></data>
+  <data name="End date cannot be earlier than start date." xml:space="preserve"><value>End date cannot be earlier than start date.</value></data>
+  <data name="Item '{0}' was not found." xml:space="preserve"><value>Item '{0}' was not found.</value></data>
+  <data name="Linked transactions" xml:space="preserve"><value>Linked transactions</value></data>
+  <data name="No linked transactions." xml:space="preserve"><value>No linked transactions.</value></data>
+  <data name="Ledger unavailable. Please refresh and try again." xml:space="preserve"><value>Ledger unavailable. Please refresh and try again.</value></data>
+  <data name="Title is required." xml:space="preserve"><value>Title is required.</value></data>
+  <data name="Notes are required." xml:space="preserve"><value>Notes are required.</value></data>
+  <data name="Style is required." xml:space="preserve"><value>Style is required.</value></data>
+  <data name="Entry is required." xml:space="preserve"><value>Entry is required.</value></data>
+  <data name="Invalid entry type." xml:space="preserve"><value>Invalid entry type.</value></data>
+  <data name="The calendar item was not found." xml:space="preserve"><value>The calendar item was not found.</value></data>
+  <data name="Internal server error" xml:space="preserve"><value>Internal server error</value></data>
+</root>

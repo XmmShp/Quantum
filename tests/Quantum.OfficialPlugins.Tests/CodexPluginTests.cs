@@ -1,6 +1,6 @@
+using Quantum.OfficialPlugins.Codex;
 using Quantum.OfficialPlugins.Codex.Application;
-using Quantum.OfficialPlugins.Codex.Infrastructure;
-using Quantum.OfficialPlugins.Codex.Pages;
+using Quantum.OfficialPlugins.Codex.UI.Pages;
 using System.Text;
 using System.Text.Json;
 using Xunit;
@@ -49,7 +49,7 @@ public sealed class CodexPluginTests
     [Fact]
     public void UnavailableModelIsRejectedBeforeStartingAThread()
     {
-        var exception = Assert.Throws<InvalidOperationException>(() =>
+        var exception = Assert.Throws<NOF.Domain.DomainException>(() =>
             CodexRuntime.ResolveModel("gpt-missing", CodexRuntime.InitialModels));
 
         Assert.Contains("not available", exception.Message, StringComparison.Ordinal);
@@ -65,8 +65,13 @@ public sealed class CodexPluginTests
         var message = CodexErrorMessages.Normalize(response);
 
         Assert.Contains("npm install -g @openai/codex@latest", message, StringComparison.Ordinal);
-        Assert.Contains("断开并重新连接", message, StringComparison.Ordinal);
+        Assert.Contains("disconnect and reconnect", message, StringComparison.Ordinal);
+        Assert.DoesNotContain(message, character => character is >= '\u4e00' and <= '\u9fff');
         Assert.DoesNotContain("invalid_request_error", message, StringComparison.Ordinal);
+        var resources = new System.Resources.ResourceManager(typeof(OfficialPlugins.Codex.UI.Localization.PluginStrings));
+        var localized = resources.GetString(message, System.Globalization.CultureInfo.GetCultureInfo("zh-CN"));
+        Assert.NotNull(localized);
+        Assert.Contains("断开并重新连接", localized, StringComparison.Ordinal);
     }
 
     [Fact]

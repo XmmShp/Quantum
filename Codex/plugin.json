@@ -8,7 +8,7 @@
     "routes": [
       {
         "path": "/plugins/codex",
-        "component": "Quantum.OfficialPlugins.Codex.Pages.Codex",
+        "component": "Quantum.OfficialPlugins.Codex.UI.Pages.Codex",
         "title": "Codex",
         "titles": { "en-US": "Codex" },
         "icon": "✦",
@@ -18,7 +18,7 @@
     ],
     "globalComponents": [
       {
-        "component": "Quantum.OfficialPlugins.Codex.Pages.CodexDrawer",
+        "component": "Quantum.OfficialPlugins.Codex.UI.Pages.CodexDrawer",
         "order": 110
       }
     ]

@@ -19,7 +19,4 @@
     <Content Include="migrations\**\*.sql" CopyToOutputDirectory="PreserveNewest" />
     <None Update="README.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
-  <ItemGroup>
-    <Compile Include="../Shared/*.cs" Link="%(Filename)%(Extension)" />
-  </ItemGroup>
 </Project>

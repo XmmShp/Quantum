@@ -1,7 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Localization;
 using Quantum.OfficialPlugins.Ledger;
-using Quantum.OfficialPlugins.Ledger.Localization;
+using Quantum.OfficialPlugins.Ledger.UI.Localization;
 using System.Globalization;
 using Xunit;
 
@@ -22,7 +22,11 @@ public sealed class LedgerTests
         Assert.Equal(0.3m, total.Expense);
         Assert.Equal(1m, total.Income);
         Assert.Equal(0.7m, total.Balance);
-        Assert.Equal(new(0, 0), LedgerTotals.From([]));
+        Assert.Equal(new()
+        {
+            Income = 0,
+            Expense = 0
+        }, LedgerTotals.From([]));
     }
 
     [Theory]
@@ -33,7 +37,7 @@ public sealed class LedgerTests
     public void InvalidMoneyIsRejectedWithoutChangingEntry(string amount)
     {
         var item = Entry();
-        Assert.Throws<ArgumentException>(() => item.Update(new(2026, 1, 1), EntryKind.Income,
+        Assert.Throws<NOF.Domain.DomainException>(() => item.Update(new(2026, 1, 1), EntryKind.Income,
             decimal.Parse(amount, CultureInfo.InvariantCulture), "Salary", "Changed"));
         Assert.Equal(25.50m, item.Amount);
         Assert.Equal("餐饮", item.Category);
@@ -55,15 +59,15 @@ public sealed class LedgerTests
     [InlineData("   ")]
     [InlineData("a\nb")]
     [InlineData("12345678901234567890123456789012345678901")]
-    public void InvalidCategoryIsRejected(string category) => Assert.Throws<ArgumentException>(() => Entry(category: category));
+    public void InvalidCategoryIsRejected(string category) => Assert.Throws<NOF.Domain.DomainException>(() => Entry(category: category));
 
     [Fact]
     public void InvalidDateKindIdAndLongNoteAreRejected()
     {
-        Assert.Throws<ArgumentException>(() => LedgerEntry.Create(Guid.Empty, new(2026, 1, 1), EntryKind.Income, 1, "X", ""));
-        Assert.Throws<ArgumentException>(() => LedgerEntry.Create(Guid.NewGuid(), new(1899, 1, 1), EntryKind.Income, 1, "X", ""));
-        Assert.Throws<ArgumentException>(() => Entry(kind: (EntryKind)99));
-        Assert.Throws<ArgumentException>(() => Entry(note: new string('x', 1001)));
+        Assert.Throws<NOF.Domain.DomainException>(() => LedgerEntry.Create(Guid.Empty, new(2026, 1, 1), EntryKind.Income, 1, "X", ""));
+        Assert.Throws<NOF.Domain.DomainException>(() => LedgerEntry.Create(Guid.NewGuid(), new(1899, 1, 1), EntryKind.Income, 1, "X", ""));
+        Assert.Throws<NOF.Domain.DomainException>(() => Entry(kind: (EntryKind)99));
+        Assert.Throws<NOF.Domain.DomainException>(() => Entry(note: new string('x', 1001)));
     }
 
     [Fact]
@@ -75,8 +79,8 @@ public sealed class LedgerTests
         var reverse = LedgerEntryLink.Create(second, first);
         Assert.Equal(forward.LeftEntryId, reverse.LeftEntryId);
         Assert.Equal(forward.RightEntryId, reverse.RightEntryId);
-        Assert.Throws<ArgumentException>(() => LedgerEntryLink.Create(first, first));
-        Assert.Throws<ArgumentException>(() => LedgerEntryLink.Create(first, Guid.Empty));
+        Assert.Throws<NOF.Domain.DomainException>(() => LedgerEntryLink.Create(first, first));
+        Assert.Throws<NOF.Domain.DomainException>(() => LedgerEntryLink.Create(first, Guid.Empty));
     }
 
     [Fact]

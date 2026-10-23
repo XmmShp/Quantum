@@ -7,10 +7,13 @@ namespace Quantum.OfficialPlugins.Calendar.Application;
 
 public sealed class GetCalendarEntry(IRepository<CalendarEntry> entries) : CalendarRpcService.GetEntry
 {
-    public override Task<Result<CalendarEntryLookup>> HandleAsync(CalendarEntryRequest request, Context context, CancellationToken cancellationToken)
-        => CalendarRpcExecution.RunAsync(async () =>
+    public override async Task<Result<CalendarEntryLookup>> HandleAsync(CalendarEntryRequest request, Context context, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var item = await entries.AsNoTracking().Where(item => item.Id == request.Id).ProjectTo<CalendarEntryDetails>().SingleOrDefaultAsync(cancellationToken);
+        return new CalendarEntryLookup
         {
-            var item = await entries.AsNoTracking().Where(item => item.Id == request.Id).SingleOrDefaultAsync(cancellationToken);
-            return new CalendarEntryLookup(item is null ? null : CalendarEntryDetails.From(item));
-        });
+            Entry = item
+        };
+    }
 }

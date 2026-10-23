@@ -8,8 +8,8 @@ using Quantum.OfficialPlugins.Ledger.Rpc;
 using System.Reflection;
 using System.Text.Json;
 using Xunit;
-using CalendarPage = Quantum.OfficialPlugins.Calendar.Pages.Calendar;
-using LedgerPage = Quantum.OfficialPlugins.Ledger.Pages.Ledger;
+using CalendarPage = Quantum.OfficialPlugins.Calendar.UI.Pages.Calendar;
+using LedgerPage = Quantum.OfficialPlugins.Ledger.UI.Pages.Ledger;
 
 namespace Quantum.LedgerPlugin.Tests;
 
@@ -28,13 +28,34 @@ public sealed class CalendarLedgerIntegrationTests
         Guid id = default;
         await host.UseClient<ILedgerRpcServiceClient>(async client =>
         {
-            var saved = await client.CreateEntryAsync(new(new(2026, 9, 1), EntryKind.Expense, 12m, "Food", CalendarEntryIds: [eventId, taskId, eventId]), Context.Empty);
+            var saved = await client.CreateEntryAsync(new()
+            {
+                Date = new(2026, 9, 1),
+                Kind = EntryKind.Expense,
+                Amount = 12m,
+                Category = "Food",
+                CalendarEntryIds = [eventId, taskId, eventId]
+            }, Context.Empty);
             Assert.True(saved.IsSuccess);
             id = saved.Value!.Id;
             Assert.Equal(2, saved.Value.CalendarEntryIds!.Length);
-            var invalid = await client.UpdateEntryAsync(new(id, new(new(2026, 10, 1), EntryKind.Income, 30m, "Changed", CalendarEntryIds: [Guid.Empty])), Context.Empty);
+            var invalid = await client.UpdateEntryAsync(new()
+            {
+                Id = id,
+                Entry = new()
+                {
+                    Date = new(2026, 10, 1),
+                    Kind = EntryKind.Income,
+                    Amount = 30m,
+                    Category = "Changed",
+                    CalendarEntryIds = [Guid.Empty]
+                }
+            }, Context.Empty);
             Assert.False(invalid.IsSuccess);
-            var unchanged = (await client.GetEntryAsync(new(id), Context.Empty)).Value!.Entry!;
+            var unchanged = (await client.GetEntryAsync(new()
+            {
+                Id = id
+            }, Context.Empty)).Value!.Entry!;
             Assert.Equal(12m, unchanged.Amount);
             Assert.Equal(2, unchanged.CalendarEntryIds!.Length);
         });
@@ -56,12 +77,39 @@ public sealed class CalendarLedgerIntegrationTests
         await host.UseClient<ILedgerRpcServiceClient>(async client =>
         {
             // Old clients omitting the optional field preserve links.
-            Assert.True((await client.UpdateEntryAsync(new(id, new(new(2026, 11, 1), EntryKind.Income, 15m, "Salary")), Context.Empty)).IsSuccess);
-            Assert.Single((await client.ListByCalendarEntryAsync(new(taskId), Context.Empty)).Value!);
+            Assert.True((await client.UpdateEntryAsync(new()
+            {
+                Id = id,
+                Entry = new()
+                {
+                    Date = new(2026, 11, 1),
+                    Kind = EntryKind.Income,
+                    Amount = 15m,
+                    Category = "Salary"
+                }
+            }, Context.Empty)).IsSuccess);
+            Assert.Single((await client.ListByCalendarEntryAsync(new()
+            {
+                CalendarEntryId = taskId
+            }, Context.Empty)).Value!);
             using var cancelled = new CancellationTokenSource();
             cancelled.Cancel();
-            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => client.UpdateEntryAsync(new(id, new(new(2026, 11, 1), EntryKind.Income, 15m, "Salary", CalendarEntryIds: [])), Context.Empty, cancelled.Token));
-            Assert.Single((await client.ListByCalendarEntryAsync(new(taskId), Context.Empty)).Value!);
+            await Assert.ThrowsAnyAsync<OperationCanceledException>(() => client.UpdateEntryAsync(new()
+            {
+                Id = id,
+                Entry = new()
+                {
+                    Date = new(2026, 11, 1),
+                    Kind = EntryKind.Income,
+                    Amount = 15m,
+                    Category = "Salary",
+                    CalendarEntryIds = []
+                }
+            }, Context.Empty, cancelled.Token));
+            Assert.Single((await client.ListByCalendarEntryAsync(new()
+            {
+                CalendarEntryId = taskId
+            }, Context.Empty)).Value!);
         });
         OfficialRpcHarness.Value(await host.Call("ledger.update", new
         {
@@ -81,9 +129,26 @@ public sealed class CalendarLedgerIntegrationTests
         })).EnumerateArray());
         await host.UseClient<ILedgerRpcServiceClient>(async client =>
         {
-            await client.UpdateEntryAsync(new(id, new(new(2026, 11, 1), EntryKind.Income, 15m, "Salary", CalendarEntryIds: [eventId])), Context.Empty);
-            await client.DeleteEntryAsync(new(id), Context.Empty);
-            Assert.Empty((await client.ListByCalendarEntryAsync(new(eventId), Context.Empty)).Value!);
+            await client.UpdateEntryAsync(new()
+            {
+                Id = id,
+                Entry = new()
+                {
+                    Date = new(2026, 11, 1),
+                    Kind = EntryKind.Income,
+                    Amount = 15m,
+                    Category = "Salary",
+                    CalendarEntryIds = [eventId]
+                }
+            }, Context.Empty);
+            await client.DeleteEntryAsync(new()
+            {
+                Id = id
+            }, Context.Empty);
+            Assert.Empty((await client.ListByCalendarEntryAsync(new()
+            {
+                CalendarEntryId = eventId
+            }, Context.Empty)).Value!);
         });
     }
 
@@ -107,19 +172,34 @@ public sealed class CalendarLedgerIntegrationTests
         Assert.Equal("[]", reader.GetString(2));
     }
 
-    [Fact]
-    public async Task OptionalDiscoveryRequiresAllCapabilitiesAndToleratesMissingProvider()
+    [Theory]
+    [InlineData("calendar.list", true, false)]
+    [InlineData("calendar.get", false, true)]
+    public async Task OptionalCapabilitiesAreIndependentAndDisappearWhenProviderStops(string method, bool canList, bool canGet)
     {
-        var helper = typeof(LedgerPage).Assembly.GetType("Quantum.OfficialPlugins.OptionalRpc")!;
-        var discover = helper.GetMethod("DiscoverAsync")!;
-        var rpc = new IntegrationInvoker("partial.calendar", "calendar.list");
-        var task = (Task<Dictionary<string, string>>)discover.Invoke(null, [rpc, new[] { "calendar.list", "calendar.get" }])!;
-        Assert.Empty(await task);
+        var rpc = new IntegrationInvoker("partial.calendar", method);
+        var page = new LedgerPage(null!, rpc);
+        await Invoke(page, "RefreshCalendarCapabilitiesAsync");
+        Assert.Equal(canList, Field(page, "_canListCalendar"));
+        Assert.Equal(canGet, Field(page, "_canGetCalendar"));
         rpc.Available = false;
-        task = (Task<Dictionary<string, string>>)discover.Invoke(null, [rpc, new[] { "calendar.list" }])!;
-        Assert.Empty(await task);
-        task = (Task<Dictionary<string, string>>)discover.Invoke(null, [null, new[] { "calendar.list" }])!;
-        Assert.Empty(await task);
+        await Invoke(page, "RefreshCalendarCapabilitiesAsync");
+        Assert.Equal(false, Field(page, "_canListCalendar"));
+        Assert.Equal(false, Field(page, "_canGetCalendar"));
+        await Invoke(new LedgerPage(null!), "RefreshCalendarCapabilitiesAsync");
+    }
+
+    [Fact]
+    public async Task OptionalCatalogFailureHidesActionsButCancellationPropagates()
+    {
+        var rpc = new IntegrationInvoker("partial.calendar", "calendar.list") { CatalogException = new InvalidOperationException("Offline") };
+        var page = new LedgerPage(null!, rpc);
+        await Invoke(page, "RefreshCalendarCapabilitiesAsync");
+        Assert.Equal(false, Field(page, "_canListCalendar"));
+        rpc.CatalogException = new OperationCanceledException();
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Invoke(page, "RefreshCalendarCapabilitiesAsync"));
+        var calendar = new CalendarPage(null!, rpc);
+        await Assert.ThrowsAnyAsync<OperationCanceledException>(() => Invoke(calendar, "RefreshLedgerCapabilityAsync"));
     }
 
     [Fact]
@@ -133,8 +213,22 @@ public sealed class CalendarLedgerIntegrationTests
         var eventId = Guid.NewGuid();
         await host.UseClient<ILedgerRpcServiceClient>(async client =>
         {
-            await client.CreateEntryAsync(new(new(2026, 10, 20), EntryKind.Expense, 12m, "Food", CalendarEntryIds: [eventId]), Context.Empty);
-            await client.CreateEntryAsync(new(new(2026, 10, 20), EntryKind.Income, 30m, "Refund", CalendarEntryIds: [eventId]), Context.Empty);
+            await client.CreateEntryAsync(new()
+            {
+                Date = new(2026, 10, 20),
+                Kind = EntryKind.Expense,
+                Amount = 12m,
+                Category = "Food",
+                CalendarEntryIds = [eventId]
+            }, Context.Empty);
+            await client.CreateEntryAsync(new()
+            {
+                Date = new(2026, 10, 20),
+                Kind = EntryKind.Income,
+                Amount = 30m,
+                Category = "Refund",
+                CalendarEntryIds = [eventId]
+            }, Context.Empty);
         });
         var invoker = host.CreateInvoker();
         var wire = await invoker.InvokeAsync<JsonElement>("replacement.ledger.ledger.by-calendar-entry", new
@@ -151,8 +245,19 @@ public sealed class CalendarLedgerIntegrationTests
         Assert.Equal("rpc_invalid_result", incompatible.ErrorCode);
         Assert.Equal("The RPC result does not match the requested response type.", incompatible.Message);
         var page = new CalendarPage(null!, invoker);
-        SetLocalizer<OfficialPlugins.Calendar.Localization.PluginStrings>(page);
-        var item = new OfficialPlugins.Calendar.Application.CalendarEntryDetails(eventId, "Trip", "", OfficialPlugins.Calendar.Domain.CalendarEntryKind.Event, new(2026, 10, 20), new(9, 0), null, false, "blue");
+        SetLocalizer<OfficialPlugins.Calendar.UI.Localization.PluginStrings>(page);
+        var item = new OfficialPlugins.Calendar.Application.CalendarEntryDetails
+        {
+            Id = eventId,
+            Title = "Trip",
+            Notes = "",
+            Kind = OfficialPlugins.Calendar.Domain.CalendarEntryKind.Event,
+            Date = new(2026, 10, 20),
+            StartTime = new(9, 0),
+            EndTime = null,
+            IsCompleted = false,
+            Style = "blue"
+        };
         await Invoke(page, "ViewLedgerAsync", item);
         Assert.Null(Field(page, "_errorMessage"));
         Assert.NotNull(Field(page, "_ledgerViewing"));
@@ -161,47 +266,75 @@ public sealed class CalendarLedgerIntegrationTests
         Assert.Equal(new[] { 12m, 30m }, entries.EnumerateArray().Select(entry => entry.GetProperty("Amount").GetDecimal()).Order().ToArray());
     }
 
-    [Theory]
-    [InlineData(false)]
-    [InlineData(true)]
-    public async Task CalendarUsesReplacementLedgerQualifiedCapabilityAndHandlesProviderRemoval(bool legacyNumbers)
+    [Fact]
+    public async Task CalendarUsesCanonicalLedgerCapabilityAndHandlesProviderRemoval()
     {
-        var rpc = new IntegrationInvoker("alternative.finance", "ledger.by-calendar-entry") { LegacyNumbers = legacyNumbers };
+        var rpc = new IntegrationInvoker("alternative.finance", "ledger.by-calendar-entry");
         var page = new CalendarPage(null!, rpc);
-        SetLocalizer<OfficialPlugins.Calendar.Localization.PluginStrings>(page);
-        var item = new OfficialPlugins.Calendar.Application.CalendarEntryDetails(Guid.NewGuid(), "Trip", "", OfficialPlugins.Calendar.Domain.CalendarEntryKind.Event, new(2026, 10, 20), new(9, 0), null, false, "blue");
+        SetLocalizer<OfficialPlugins.Calendar.UI.Localization.PluginStrings>(page);
+        var item = new OfficialPlugins.Calendar.Application.CalendarEntryDetails
+        {
+            Id = Guid.NewGuid(),
+            Title = "Trip",
+            Notes = "",
+            Kind = OfficialPlugins.Calendar.Domain.CalendarEntryKind.Event,
+            Date = new(2026, 10, 20),
+            StartTime = new(9, 0),
+            EndTime = null,
+            IsCompleted = false,
+            Style = "blue"
+        };
         await Invoke(page, "ViewLedgerAsync", item);
-        Assert.Equal("alternative.finance.ledger.by-calendar-entry", rpc.LastCall);
+        Assert.Equal("ledger.by-calendar-entry", rpc.LastCall);
         Assert.NotNull(Field(page, "_ledgerViewing"));
-        var linked = JsonSerializer.SerializeToElement(Field(page, "_linkedLedgerEntries"), new JsonSerializerOptions(JsonSerializerDefaults.Web));
+        var linked = JsonSerializer.SerializeToElement(Field(page, "_linkedLedgerEntries"), JsonSerializerOptions.NOF);
         Assert.Equal(12m, Assert.Single(linked.EnumerateArray()).GetProperty("amount").GetDecimal());
         rpc.Available = false;
         await Invoke(page, "ViewLedgerAsync", item);
-        Assert.Empty((Dictionary<string, string>)Field(page, "_ledgerMethods")!);
+        Assert.Equal(false, Field(page, "_canViewLedger"));
         Assert.NotNull(Field(page, "_errorMessage"));
     }
 
-    [Fact]
-    public async Task LedgerReadsCalendarStringKindsAndDatesOverJsonAndShowsDeletedReferences()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task LedgerReadsCalendarCapabilitiesFromSameOrSeparateProviders(bool separateProviders)
     {
-        var rpc = new IntegrationInvoker("alternative.calendar", "calendar.list", "calendar.get");
+        var rpc = new IntegrationInvoker("alternative.calendar", "calendar.list", "calendar.get") { SeparateProviders = separateProviders };
         var page = new LedgerPage(null!, rpc);
-        SetLocalizer<OfficialPlugins.Ledger.Localization.PluginStrings>(page);
-        var helper = typeof(LedgerPage).Assembly.GetType("Quantum.OfficialPlugins.OptionalRpc")!;
-        var discovery = (Task<Dictionary<string, string>>)helper.GetMethod("DiscoverAsync")!.Invoke(null, [rpc, new[] { "calendar.list", "calendar.get" }])!;
-        SetField(page, "_calendarMethods", await discovery);
+        SetLocalizer<OfficialPlugins.Ledger.UI.Localization.PluginStrings>(page);
         SetField(page, "_candidateMonth", new DateOnly(2026, 10, 1));
         await Invoke(page, "LoadCalendarCandidates");
+        Assert.Equal("calendar.list", rpc.LastCall);
+        Assert.Equal(true, Field(page, "_canListCalendar"));
+        Assert.Equal(true, Field(page, "_canGetCalendar"));
         Assert.Equal("2026-10-01", rpc.LastPayload.GetProperty("startDate").GetString());
         Assert.Equal("2026-10-31", rpc.LastPayload.GetProperty("endDate").GetString());
         Assert.Single((Array)Field(page, "_calendarCandidates")!);
-        var entry = new LedgerEntryDetails(Guid.NewGuid(), new(2026, 10, 1), EntryKind.Expense, 5, "Food", "", [], [Guid.NewGuid()]);
+        var entry = new LedgerEntryDetails
+        {
+            Id = Guid.NewGuid(),
+            Date = new(2026, 10, 1),
+            Kind = EntryKind.Expense,
+            Amount = 5,
+            Category = "Food",
+            Note = "",
+            RelatedEntryIds = [],
+            CalendarEntryIds = [Guid.NewGuid()]
+        };
         await Invoke(page, "ViewCalendarLinks", entry);
+        Assert.Equal("calendar.get", rpc.LastCall);
         Assert.NotNull(Field(page, "_calendarViewing"));
         Assert.Single((System.Collections.IEnumerable)Field(page, "_calendarLinks")!);
     }
 
-    private sealed record NumericLedgerProjection(int Kind);
+    private sealed record NumericLedgerProjection
+    {
+        public required int Kind
+        {
+            get; set;
+        }
+    }
 
     private static object? Field(object page, string name) => page.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.GetValue(page);
     private static void SetField(object page, string name, object value) => page.GetType().GetField(name, BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(page, value);
@@ -212,23 +345,44 @@ public sealed class CalendarLedgerIntegrationTests
         page.GetType().GetProperty("L", BindingFlags.Instance | BindingFlags.NonPublic)!.SetValue(page, new StringLocalizer<T>(factory));
     }
 
-    private sealed class IntegrationInvoker(string provider, params string[] methods) : IRpcInvoker
+    private sealed class IntegrationInvoker : IRpcInvoker
     {
-        public bool Available { get; set; } = true;
-        public bool LegacyNumbers
+        private readonly string _provider;
+        private readonly string[] _methods;
+
+        public IntegrationInvoker(string provider, params string[] methods)
         {
-            get; init;
+            _provider = provider;
+            _methods = methods;
         }
+
+        public bool Available { get; set; } = true;
+        public bool SeparateProviders
+        {
+            get; set;
+        }
+        public Exception? CatalogException
+        {
+            get; set;
+        }
+
         public string? LastCall
         {
             get; private set;
         }
+
         public JsonElement LastPayload
         {
             get; private set;
         }
+
         public Task<Result<T>> InvokeAsync<T>(string rpcName, object payload, Context context, CancellationToken cancellationToken = default)
         {
+            cancellationToken.ThrowIfCancellationRequested();
+            if (rpcName == "quantum.rpc.catalog" && CatalogException is not null)
+            {
+                throw CatalogException;
+            }
             if (!Available)
             {
                 return Task.FromResult<Result<T>>(Result.Fail("unavailable", "Provider stopped"));
@@ -240,24 +394,30 @@ public sealed class CalendarLedgerIntegrationTests
                 {
                     schemaVersion = 1,
                     catalogRpcName = rpcName,
-                    services = new[] { new { pluginId = provider, serviceName = methods[0].Split('.')[0], methods = methods.Select(name => new { canonicalName = name, qualifiedName = provider + "." + name }) } }
+                    services = _methods.Select((name, index) => new
+                    {
+                        pluginId = SeparateProviders ? _provider + index : _provider,
+                        serviceName = name.Split('.')[0],
+                        methods = new[] { new { canonicalName = name, qualifiedName = (SeparateProviders ? _provider + index : _provider) + "." + name } }
+                    })
                 };
             }
             else
             {
                 LastCall = rpcName;
-                LastPayload = JsonSerializer.SerializeToElement(payload, new JsonSerializerOptions(JsonSerializerDefaults.Web));
+                LastPayload = JsonSerializer.SerializeToElement(payload, JsonSerializerOptions.NOF);
                 response = rpcName.EndsWith("calendar.list", StringComparison.Ordinal)
                     ? new[] { new { id = Guid.NewGuid(), title = "Task", date = "2026-10-20", kind = "Task", notes = "", startTime = "09:00:00", endTime = (string?)null, isCompleted = false } }
                     : rpcName.EndsWith("calendar.get", StringComparison.Ordinal) ? new
                     {
                         entry = (object?)null
                     }
-                    : new[] { new { id = Guid.NewGuid(), date = "2026-09-01", kind = JsonSerializer.SerializeToElement(LegacyNumbers ? (object)0 : "Expense"), amount = 12m, category = "Food", note = "Lunch" } };
+                    : new[] { new { id = Guid.NewGuid(), date = "2026-09-01", kind = JsonSerializer.SerializeToElement("Expense"), amount = 12m, category = "Food", note = "Lunch" } };
             }
-            Result<T> result = JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(response), new JsonSerializerOptions(JsonSerializerDefaults.Web))!;
+            Result<T> result = JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(response, JsonSerializerOptions.NOF), JsonSerializerOptions.NOF)!;
             return Task.FromResult(result);
         }
+
         public Task<Result> InvokeAsync(string rpcName, object payload, Context context, CancellationToken cancellationToken = default)
             => Task.FromResult(Result.Success());
     }

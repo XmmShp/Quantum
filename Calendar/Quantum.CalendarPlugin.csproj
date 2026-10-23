@@ -39,7 +39,4 @@
           DestinationFiles="$(CalendarScopedCssBundleTarget)"
           SkipUnchangedFiles="true" />
   </Target>
-  <ItemGroup>
-    <Compile Include="../Shared/*.cs" Link="%(Filename)%(Extension)" />
-  </ItemGroup>
 </Project>

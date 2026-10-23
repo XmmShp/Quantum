@@ -26,6 +26,7 @@ csharp_style_var_when_type_is_apparent = true:silent
 csharp_style_var_elsewhere = true:silent
 csharp_style_expression_bodied_methods = when_on_single_line:suggestion
 csharp_style_expression_bodied_constructors = false:suggestion
+csharp_style_prefer_primary_constructors = false:warning
 csharp_style_expression_bodied_properties = true:suggestion
 csharp_style_expression_bodied_accessors = true:suggestion
 csharp_prefer_braces = true:warning
@@ -44,3 +45,9 @@ csharp_space_after_keywords_in_control_flow_statements = true
 csharp_space_around_binary_operators = before_and_after
 csharp_preserve_single_line_statements = false
 csharp_preserve_single_line_blocks = false
+
+[**/Contract/**/*.cs]
+csharp_preserve_single_line_blocks = true
+
+[**/Application/Handlers/*.cs]
+csharp_style_prefer_primary_constructors = true:warning

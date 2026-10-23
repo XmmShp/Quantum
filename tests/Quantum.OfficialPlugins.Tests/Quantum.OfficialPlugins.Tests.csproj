@@ -10,6 +10,7 @@
 
   <ItemGroup>
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="Microsoft.Extensions.Hosting" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio">
       <PrivateAssets>all</PrivateAssets>
@@ -25,11 +26,14 @@
     <None Include="..\..\Codex\plugin.json"
           Link="plugin-manifests\codex.json"
           CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\Codex\Localization\PluginStrings*.resx"
+    <None Include="..\..\Codex\UI\Localization\PluginStrings*.resx"
           Link="localization\codex\%(Filename)%(Extension)"
           CopyToOutputDirectory="PreserveNewest" />
-    <None Include="..\..\Calendar\Localization\PluginStrings*.resx"
+    <None Include="..\..\Calendar\UI\Localization\PluginStrings*.resx"
           Link="localization\calendar\%(Filename)%(Extension)"
+          CopyToOutputDirectory="PreserveNewest" />
+    <None Include="..\..\Ledger\UI\Localization\PluginStrings*.resx"
+          Link="localization\ledger\%(Filename)%(Extension)"
           CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
 </Project>

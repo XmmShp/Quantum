@@ -1,15 +1,18 @@
 using NOF.Contract;
-using Quantum.OfficialPlugins.Codex.Infrastructure;
+using NOF.Domain;
 
 namespace Quantum.OfficialPlugins.Codex.Application;
 
 public sealed class SendCodexPrompt(ICodexRuntime codex) : CodexRpcService.Send
 {
-    public override Task<Result<CodexIntegrationSnapshot>> HandleAsync(CodexSendRequest request, Context context, CancellationToken cancellationToken)
-        => CodexRpcExecution.RunAsync(async () =>
+    public override async Task<Result<CodexIntegrationSnapshot>> HandleAsync(CodexSendRequest request, Context context, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (string.IsNullOrWhiteSpace(request.Prompt))
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(request.Prompt);
-            await codex.SendAsync(request.Prompt, cancellationToken);
-            return codex.Snapshot;
-        }, cancellationToken);
+            throw new DomainException("codex_invalid_request", "Prompt is required.");
+        }
+        await codex.SendAsync(request.Prompt, cancellationToken);
+        return codex.Snapshot;
+    }
 }

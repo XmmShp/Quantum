@@ -1,15 +1,18 @@
 using NOF.Contract;
-using Quantum.OfficialPlugins.Codex.Infrastructure;
+using NOF.Domain;
 
 namespace Quantum.OfficialPlugins.Codex.Application;
 
 public sealed class ChangeCodexModel(ICodexRuntime codex) : CodexRpcService.ChangeModel
 {
-    public override Task<Result<CodexIntegrationSnapshot>> HandleAsync(CodexChangeModelRequest request, Context context, CancellationToken cancellationToken)
-        => CodexRpcExecution.RunAsync(async () =>
+    public override async Task<Result<CodexIntegrationSnapshot>> HandleAsync(CodexChangeModelRequest request, Context context, CancellationToken cancellationToken)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        if (string.IsNullOrWhiteSpace(request.Model))
         {
-            ArgumentException.ThrowIfNullOrWhiteSpace(request.Model);
-            await codex.ChangeModelAsync(request.Model, cancellationToken);
-            return codex.Snapshot;
-        }, cancellationToken);
+            throw new DomainException("codex_invalid_request", "Model is required.");
+        }
+        await codex.ChangeModelAsync(request.Model, cancellationToken);
+        return codex.Snapshot;
+    }
 }

@@ -17,6 +17,19 @@ internal sealed class OfficialRpcHarness : IAsyncDisposable
 
     public OfficialRpcHarness(IServiceCollection services, string pluginId, Assembly assembly)
     {
+        services.AddQuantumPluginRpc();
+        foreach (var initializer in assembly.GetCustomAttributes<NOF.Abstraction.AssemblyInitializeAttribute>())
+        {
+            initializer.Initialize(services);
+        }
+        foreach (var server in assembly.GetTypes().Where(type => !type.IsAbstract && typeof(IRpcServer).IsAssignableFrom(type)))
+        {
+            var mappings = (IReadOnlyDictionary<string, RpcHandlerMapping>)server.GetProperty("HandlerMappings", BindingFlags.Public | BindingFlags.Static | BindingFlags.FlattenHierarchy)!.GetValue(null)!;
+            foreach (var mapping in mappings.Values)
+            {
+                Assert.Single(services, descriptor => descriptor.ServiceType == mapping.HandlerType);
+            }
+        }
         _provider = services.BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
         _runtime = PluginRpcRuntime.Create(PluginId.Of(pluginId), Guid.NewGuid(), assembly,
             _provider.GetRequiredService<IServiceScopeFactory>(), _serializer, NullLogger.Instance);
@@ -26,7 +39,7 @@ internal sealed class OfficialRpcHarness : IAsyncDisposable
 
     public async Task<JsonElement> Call(string method, object request, bool expectsValue = true, CancellationToken cancellationToken = default)
     {
-        var response = await _registry.InvokeAsync(method, JsonSerializer.SerializeToElement(request, new JsonSerializerOptions(JsonSerializerDefaults.Web) { Converters = { new System.Text.Json.Serialization.JsonStringEnumConverter() } }),
+        var response = await _registry.InvokeAsync(method, JsonSerializer.SerializeToElement(request, JsonSerializerOptions.NOF),
             new PluginRpcCallContext("quantum.plugin.audit", Guid.NewGuid().ToString("N"), new Dictionary<string, JsonElement>()), expectsValue, cancellationToken);
         Assert.Null(response.Failure);
         Assert.True(response.SerializedResult.HasValue);
@@ -49,6 +62,29 @@ internal sealed class OfficialRpcHarness : IAsyncDisposable
             Assert.StartsWith(pluginId + "." + serviceName + ".", method.GetProperty("qualifiedName").GetString());
             Assert.False(string.IsNullOrWhiteSpace(method.GetProperty("description").GetString()));
             Assert.Equal("object", method.GetProperty("inputSchema").GetProperty("type").GetString());
+            AssertEnglishMetadata(method);
+        }
+    }
+
+    private static void AssertEnglishMetadata(JsonElement value)
+    {
+        switch (value.ValueKind)
+        {
+            case JsonValueKind.String:
+                Assert.DoesNotContain(value.GetString()!, character => character is >= '\u4e00' and <= '\u9fff');
+                break;
+            case JsonValueKind.Object:
+                foreach (var property in value.EnumerateObject())
+                {
+                    AssertEnglishMetadata(property.Value);
+                }
+                break;
+            case JsonValueKind.Array:
+                foreach (var item in value.EnumerateArray())
+                {
+                    AssertEnglishMetadata(item);
+                }
+                break;
         }
     }
 

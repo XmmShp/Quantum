@@ -1,5 +1,5 @@
 # Host RPC integration fixture
 
-These five C# files are unmodified snapshots of Quantum's actual RPC discovery, catalog, serialization and dispatch implementation. They compile only into the test assembly and are never packaged with a plugin. `provenance.json` records the upstream repository, commit and SHA-256 of each source file.
+These C# files are unmodified copies of Quantum's actual RPC implementation. They compile only into the test assembly and are never packaged with a plugin. `provenance.json` records the repository, base commit, source state and SHA-256 hashes. The snapshot is pinned to Quantum commit [af08cd0](https://github.com/XmmShp/Quantum/commit/af08cd08dc29a007cccae3c4f853ee5f2b40fc18); all files match that committed source byte for byte.
 
-This keeps the official plugins repository independently buildable while testing the host's JSON boundary against the built Ledger DLL. When host RPC/ABI behavior changes, update these files from one pinned upstream commit, update the hashes, and rerun catalog/invocation tests. Do not customize the fixture to make a plugin pass.
+Copy framework files verbatim when host behavior changes; never customize this fixture to make a plugin pass. Tests execute the NOF generated assembly initializers and the host's inbound pipeline, including JSON defaults, failure handling and cancellation.
