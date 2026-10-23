@@ -11,7 +11,7 @@ $delivery = "artifacts/mobile-delivery/$Target"
 New-Item -ItemType Directory -Force $delivery | Out-Null
 if ($Target -eq 'android') {
     if (!$env:MOBILE_ANDROID_KEYSTORE_PATH -or !$env:MOBILE_ANDROID_KEYSTORE_PASSWORD) { throw 'Persistent Android signing credentials are required.' }
-    dotnet publish $project -c Release -f net10.0-android -o $publish `
+    dotnet publish $project -c Release -f net10.0-android -p:QuantumMobileTargetFramework=net10.0-android -o $publish `
         -p:ApplicationDisplayVersion=$Version -p:ApplicationVersion=$BuildNumber `
         -p:AndroidPackageFormats=apk -p:AndroidKeyStore=true `
         -p:AndroidSigningKeyStore=$env:MOBILE_ANDROID_KEYSTORE_PATH -p:AndroidSigningKeyAlias=quantum-mobile `
@@ -25,7 +25,7 @@ if ($Target -eq 'android') {
     & $signer.FullName verify --verbose --print-certs $apk[0].FullName
     Copy-Item -LiteralPath $apk[0].FullName -Destination "$delivery/Quantum-Mobile-$Version-android.apk"
 } else {
-    dotnet publish $project -c Release -f net10.0-windows10.0.19041.0 -r win-x64 --self-contained true `
+    dotnet publish $project -c Release -f net10.0-windows10.0.19041.0 -p:QuantumMobileTargetFramework=net10.0-windows10.0.19041.0 -r win-x64 --self-contained true `
         -p:ApplicationDisplayVersion=$Version -p:ApplicationVersion=$BuildNumber `
         -p:WindowsPackageType=None -p:WindowsAppSDKSelfContained=true -o $publish
     $metadata = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes((Resolve-Path "$publish/Quantum.Mobile.dll")))
