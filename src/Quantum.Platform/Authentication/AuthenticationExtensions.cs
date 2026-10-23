@@ -20,10 +20,7 @@ public static class AuthenticationExtensions
         options.Validate();
         var oidc = builder.Configuration.GetSection(QuantumPlatformOidcOptions.SectionName)
             .Get<QuantumPlatformOidcOptions>() ?? new();
-        if (!Uri.TryCreate(oidc.Issuer, UriKind.Absolute, out _) || !oidc.PathBase.StartsWith('/'))
-        {
-            throw new InvalidOperationException("QuantumPlatform:OidcServer Issuer and PathBase are invalid.");
-        }
+        oidc.Validate(builder.Environment.IsDevelopment());
 
         if (!builder.Environment.IsDevelopment() && string.IsNullOrWhiteSpace(oidc.SigningKeyEncryptionKey))
         {

@@ -7,6 +7,7 @@
     <IsTestProject>true</IsTestProject>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="..\..\src\Quantum.Platform\Authentication\QuantumPlatformOidcOptions.cs" Link="Host\Authentication\QuantumPlatformOidcOptions.cs" />
     <ProjectReference Include="..\ManagedReviewFixture\ManagedReviewFixture.csproj" />
     <ProjectReference Include="..\..\src\Quantum.Platform.Cli\Quantum.Platform.Cli.csproj" />
     <ProjectReference Include="..\..\src\Quantum.Platform.Application\Quantum.Platform.Application.csproj" />
