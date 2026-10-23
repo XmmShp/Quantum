@@ -13,7 +13,7 @@ public sealed class AgentFnAutomatedReviewOptions
     public bool IsWorkerEnabled => Enabled || DevelopmentAutoApprove;
 
     [Url]
-    public string BaseUrl { get; set; } = "https://agentfn.io-vii.com";
+    public string BaseUrl { get; set; } = string.Empty;
 
     public string ClientId { get; set; } = "quantum-platform-review";
 

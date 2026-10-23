@@ -7,6 +7,9 @@ RUN dotnet publish src/Quantum.Platform/Quantum.Platform.csproj \
     --no-restore \
     --output /app/publish
 
+# Configuration is injected by the service config resource, never baked into runtime layers.
+RUN find /app/publish -maxdepth 1 -type f -name 'appsettings*.json' -delete
+
 FROM mcr.microsoft.com/dotnet/aspnet:10.0 AS final
 WORKDIR /app
 COPY --from=build /app/publish .
