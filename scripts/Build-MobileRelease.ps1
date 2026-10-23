@@ -11,7 +11,10 @@ $delivery = "artifacts/mobile-delivery/$Target"
 New-Item -ItemType Directory -Force $delivery | Out-Null
 if ($Target -eq 'android') {
     if (!$env:MOBILE_ANDROID_KEYSTORE_PATH -or !$env:MOBILE_ANDROID_KEYSTORE_PASSWORD) { throw 'Persistent Android signing credentials are required.' }
-    dotnet publish $project -c Release -f net10.0-android -p:QuantumMobileTargetFramework=net10.0-android -o $publish `
+    # Android emits a universal APK from its Android RuntimeIdentifiers; the build
+    # machine's RID must not be added by the SDK's default publish RID inference.
+    dotnet publish $project -c Release -f net10.0-android -p:QuantumMobileTargetFramework=net10.0-android `
+        -p:UseDefaultPublishRuntimeIdentifier=false -o $publish `
         -p:ApplicationDisplayVersion=$Version -p:ApplicationVersion=$BuildNumber `
         -p:AndroidPackageFormats=apk -p:AndroidKeyStore=true `
         -p:AndroidSigningKeyStore=$env:MOBILE_ANDROID_KEYSTORE_PATH -p:AndroidSigningKeyAlias=quantum-mobile `
