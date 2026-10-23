@@ -38,6 +38,7 @@
 
   <ItemGroup>
     <PackageReference Include="Velopack" />
+    <ProjectReference Include="../Quantum.Mobile.Internal/Quantum.Mobile.Internal.csproj" />
     <PackageReference Include="Quantum.Plugin.Abstraction" />
   </ItemGroup>
 

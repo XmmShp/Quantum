@@ -2,20 +2,14 @@ using System.Runtime.CompilerServices;
 using System.Text.Json;
 using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
-using System.Text.Json.Serialization;
 using System.Text.Json.Serialization.Metadata;
 
 namespace Quantum.Plugins;
 
 internal sealed class PluginRpcSerializer : IDisposable
 {
-    private readonly JsonSerializerOptions _options = new(JsonSerializerDefaults.Web)
-    {
-        TypeInfoResolver = new DefaultJsonTypeInfoResolver(),
-        RespectRequiredConstructorParameters = true,
-        RespectNullableAnnotations = true,
-        Converters = { new JsonStringEnumConverter(allowIntegerValues: false) }
-    };
+    private readonly JsonSerializerOptions _options = QuantumJsonDefaults.CreatePluginOptions();
+    internal JsonSerializerOptions Options => _options;
     private int _disposed;
 
     public JsonNode GetSchema(Type type, JsonSchemaExporterOptions exporterOptions)

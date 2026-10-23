@@ -2,7 +2,7 @@
 
 当前版本建议使用 .NET 作为主要的插件开发方式。本篇介绍 .NET 插件；JavaScript/TypeScript 插件支持仍处于实验阶段，许多能力暂不可用，不建议作为主要开发方式，相关实验性功能见 [TypeScript 插件开发](web-plugin-development.md)。NOF `AutoInject` 元数据会注册到每代 .NET 插件独立的 DI 容器，使容器和程序集能在运行时一起释放。
 
-**必须注意：凡是需要让 Quantum、其他插件或 AI 工具发现和调用的业务能力，都必须通过 NOF RPC 暴露。** Razor 页面可用、应用服务注册到 DI、或方法标记为 `public`，均不等于接口已经进入 Quantum RPC 目录。插件应提供带 `[TransportOverQuantum]` 的 `IRpcService` 合约、启用 NOF 源生成器生成 `RpcServer<T>` 的元数据，并注册每个生成的处理器基类与具体实现。发布前必须验证 `quantum.rpc.catalog` 能发现接口，并按完整 RPC 名称跨 JSON 边界实际调用；仅验证页面或直接调用应用服务不够。
+**必须注意：凡是需要让 Quantum、其他插件或 AI 工具发现和调用的业务能力，都必须通过 NOF RPC 暴露。** Razor 页面可用、应用服务注册到 DI、或方法标记为 `public`，均不等于接口已经进入 Quantum RPC 目录。插件应提供带 `[TransportOverQuantum]` 的 `IRpcService` 合约、启用 NOF 源生成器生成 `RpcServer<T>` 的元数据，通过 NOF 原生 `services.AddRpcServer<TServer>()` 注册服务及生成的处理器。发布前必须验证 `quantum.rpc.catalog` 能发现接口，并按完整 RPC 名称跨 JSON 边界实际调用；仅验证页面或直接调用应用服务不够。
 
 ## 1. 创建项目
 
@@ -169,7 +169,7 @@ var result = await services.GetRequiredService<IRpcInvoker>().InvokeAsync<string
 目标插件 scope，并在 Handler 完成且结果序列化后释放。`dependencies` 仍用于确保提供方先启动、后停止，但不作为 RPC
 访问权限；没有依赖或 integration 声明的已加载插件也可以被调用。
 
-开发时不要只添加合约文件：还需要声明 `partial class ... : RpcServer<I...>`，从生成的处理器基类派生实现，并在插件 DI 中注册，例如 `services.AddTransient<ExampleRpcService.CreateGreeting, CreateGreeting>()`。宿主依赖生成的 `ServiceType` 和 `HandlerMappings` 发现方法；缺失 `[TransportOverQuantum]`、禁用所需源生成器或漏注册处理器，都会导致目录不可发现或调用失败。为服务、方法和请求属性补充 `DescriptionAttribute`，让调用方能理解业务含义、金额单位、枚举值及副作用。
+开发时不要只添加合约文件：还需要声明 `partial class ... : RpcServer<I...>`，从生成的处理器基类派生实现，并在插件 DI 中调用 NOF 原生 `services.AddRpcServer<ExampleRpcService>()`；生成的程序集初始化器会注册处理器，不应重复手写 AddTransient。宿主依赖生成的 `ServiceType` 和 `HandlerMappings` 发现方法；缺失 `[TransportOverQuantum]`、禁用所需源生成器或漏注册处理器，都会导致目录不可发现或调用失败。为服务、方法和请求属性补充 `DescriptionAttribute`，让调用方能理解业务含义、金额单位、枚举值及副作用。
 
 Host 还内置 `quantum.rpc.catalog`，用于发现当前所有可用 RPC，插件无需声明依赖即可读取：
 

@@ -1,5 +1,7 @@
 # Quantum Roadmap
 
+> 移动端方向更新（2026-10-19，待评审）：新的[需求稿](docs/mobile-requirements.md)与[技术设计稿](docs/mobile-technical-design.md)采用桌面执行、移动端渲染声明式 UI、平台双向轮询中转。本文件下方“第二阶段”中移动端运行 Web 插件的方案已被新设计方向替代，保留作为历史规划，当前不据此启动实现。
+
 Quantum 的下一阶段按以下顺序推进：
 
 1. 先完成远程插件下发，让 Quantum Platform 与桌面宿主形成安全、可恢复的安装和更新闭环。

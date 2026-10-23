@@ -12,6 +12,22 @@ namespace Quantum.Tests;
 
 public sealed class WebPluginInteropBridgeTests
 {
+    [Fact]
+    public async Task MobileDeclarationsAreOwnedByWebRuntimeAndReleasedWithIt()
+    {
+        await using var host = CreateHost();
+        var runtimeId = Guid.NewGuid();
+        var plugin = LoadedWebPlugin(runtimeId);
+        var catalog = new PluginCatalog([plugin]);
+        using var router = new PluginRpcRouter(catalog, NullLogger<PluginRpcRouter>.Instance);
+        using var bridge = CreateBridge(catalog, router, host, new RejectingEventDeliveryJavaScriptRuntime());
+        var page = Quantum.Plugin.Abstraction.Mobile.Page("status", "Status", Quantum.Plugin.Abstraction.Mobile.Text("text", "Hello"));
+        await bridge.InvokeAsync(PluginId, runtimeId.ToString("N"), "publish", "mobile", "publish", JsonSerializer.SerializeToElement(new { page }, Quantum.Mobile.Internal.MobileJson.Options));
+        Assert.Single(plugin.MobilePages.Snapshot());
+        await Assert.ThrowsAsync<InvalidOperationException>(() => bridge.InvokeAsync(PluginId, Guid.NewGuid().ToString("N"), "stale", "mobile", "remove", JsonSerializer.SerializeToElement(new { pageId = "status" })));
+        await bridge.ReleaseRuntimeAsync(PluginId, runtimeId.ToString("N"));
+        Assert.Empty(plugin.MobilePages.Snapshot());
+    }
     private const string PluginId = "quantum.plugin.web";
     private const string TargetPluginId = "quantum.plugin.target";
     private const string Topic = "example.web.status";
@@ -228,6 +244,7 @@ public sealed class WebPluginInteropBridgeTests
 
     private static ServiceProvider CreateHost()
         => new ServiceCollection()
+            .AddQuantumPluginRpc()
             .AddQuantumPluginEventBus()
             .AddTransient<WebBridgeTestRpcService.Echo, WebBridgeEcho>()
             .AddSingleton<JsonContractCounter>()

@@ -10,17 +10,37 @@ namespace Quantum.Tests;
 public sealed class PluginPersistenceRegistrationTests
 {
     [Fact]
+    public void AddPersistence_PreservesPluginMappingsAndAmbientProjection()
+    {
+        var services = new ServiceCollection();
+        services.AddMapping<OrderingRequest, OrderingRequest>(request => new OrderingRequest(request.Value));
+        var registry = services.GetOrAddSingleton<MappingRegistry>();
+
+        services.AddQuantumPluginPersistence(Path.Combine(Path.GetTempPath(), "quantum-mapping-registration.db"));
+
+        using var provider = services.BuildServiceProvider();
+        using var scope = provider.CreateScope();
+        scope.ServiceProvider.ResolveDaemonServices();
+        Assert.Same(registry, provider.GetRequiredService<MappingRegistry>());
+        Assert.Single(services, descriptor => descriptor.ServiceType == typeof(MappingRegistry));
+        var result = new[] { new OrderingRequest("mapped") }.AsQueryable().ProjectTo<OrderingRequest>().Single();
+        Assert.Equal("mapped", result.Value);
+    }
+
+    [Fact]
     public void AddPersistence_PreservesPluginRpcServerRegistry()
     {
         var services = new ServiceCollection();
-        var registry = new RpcServerRegistry();
-        services.AddSingleton(registry);
+        services.AddRpcServer<OrderingRpcServer>();
+        var registry = services.GetOrAddSingleton<RpcServerRegistry>();
 
         services.AddQuantumPluginPersistence(Path.Combine(Path.GetTempPath(), "quantum-registration.db"));
 
         using var provider = services.BuildServiceProvider();
         Assert.Same(registry, provider.GetRequiredService<RpcServerRegistry>());
         Assert.Single(services, descriptor => descriptor.ServiceType == typeof(RpcServerRegistry));
+        Assert.True(registry.TryGetImplementationType(typeof(IOrderingRpcService), out var server));
+        Assert.Equal(typeof(OrderingRpcServer), server);
     }
 
     [Fact]
@@ -28,9 +48,7 @@ public sealed class PluginPersistenceRegistrationTests
     {
         var services = new ServiceCollection();
         services.AddNOFApplication();
-        var registry = services.GetOrAddSingleton<RpcServerRegistry>();
-        registry.Add(new RpcServerRegistration(typeof(IOrderingRpcService), typeof(OrderingRpcServer)));
-        services.AddScoped<OrderingRpcServer>();
+        services.AddRpcServer<OrderingRpcServer>();
         services.AddScoped<RpcServerInvocationResolver>();
         services.AddScoped<RequestInboundPipelineExecutor>();
         services.AddScoped<IRequestOutboundPipelineExecutor, RequestOutboundPipelineExecutor>();

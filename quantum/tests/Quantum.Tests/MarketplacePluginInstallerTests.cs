@@ -1,17 +1,15 @@
 using System.Reflection;
-using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using Microsoft.Extensions.DependencyInjection;
 using Quantum.Marketplace;
 using Quantum.Plugins;
-using Quantum.Plugin.Abstraction;
 
 namespace Quantum.Tests;
 
 public sealed class MarketplacePluginInstallerTests
 {
     private const string Id = "quantum.plugin.calendar";
-    private static readonly MarketplaceRelease Release = new("1.1.1", ">=0.1.0", "", 2, 86220, new string('a',64), DateTime.UtcNow, 0);
+    private static readonly MarketplaceRelease Release = new("1.1.1", ">=0.1.0", "", 2, 86220, new string('a', 64), DateTime.UtcNow, 0);
     private static readonly MarketplacePlugin Plugin = new(Id, "Calendar", "Calendar", "Shoming", [], Release);
 
     [Fact]
@@ -22,7 +20,7 @@ public sealed class MarketplacePluginInstallerTests
         Assert.True(result.Succeeded);
         Assert.Equal(1, market.Downloads);
         Assert.Equal(new[] { "PrepareInstallAsync", "InstallAsync", "CancelInstallAsync" }, runtime.Calls);
-        Assert.Equal(new byte[] { 1,2,3 }, runtime.PreparedBytes);
+        Assert.Equal(new byte[] { 1, 2, 3 }, runtime.PreparedBytes);
     }
 
     [Fact]
@@ -51,7 +49,7 @@ public sealed class MarketplacePluginInstallerTests
     public async Task PreflightFailureShowsReasonAndDoesNotInstall()
     {
         var (installer, _, runtime) = Create();
-        runtime.Preview = runtime.Preview with { Issues = [new(Id,"Missing dependency")] };
+        runtime.Preview = runtime.Preview with { Issues = [new(Id, "Missing dependency")] };
         var result = await installer.InstallAsync(Plugin);
         Assert.False(result.Succeeded);
         Assert.Equal("Missing dependency", result.Message);
@@ -137,7 +135,7 @@ public sealed class MarketplacePluginInstallerTests
         {
             if (method!.Name == "get_BaseAddress") return new Uri("https://quantum.io-vii.com");
             if (method!.Name == "CheckCompatibilityAsync") return Task.FromResult(Compatibility);
-            if (method.Name == "DownloadAsync") { Downloads++; return Task.FromResult(new MarketplaceDownload("calendar.zip", "application/zip", [1,2,3], 3, "hash")); }
+            if (method.Name == "DownloadAsync") { Downloads++; return Task.FromResult(new MarketplaceDownload("calendar.zip", "application/zip", [1, 2, 3], 3, "hash")); }
             if (method.Name == "ListPluginsAsync") return Task.FromResult<IReadOnlyList<MarketplacePlugin>>([ListedPlugin]);
             throw new NotSupportedException(method.Name);
         }
@@ -149,7 +147,7 @@ public sealed class MarketplacePluginInstallerTests
         public List<string> Calls = [];
         public byte[]? PreparedBytes;
         public bool CancelDuringInstall;
-        public PluginInstallPreview Preview = new("preview", "calendar.zip", [new(Id,"1.1.1",null,PluginInstallAction.Install)], []);
+        public PluginInstallPreview Preview = new("preview", "calendar.zip", [new(Id, "1.1.1", null, PluginInstallAction.Install)], []);
         protected override object? Invoke(MethodInfo? method, object?[]? args)
         {
             Calls.Add(method!.Name);

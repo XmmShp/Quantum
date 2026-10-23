@@ -9,6 +9,27 @@ namespace Quantum.Tests;
 
 public sealed class PluginRpcRegistryTests
 {
+    [Theory]
+    [InlineData("ordering.ping", true, "domain", "probe_invalid")]
+    [InlineData("ordering.ping", true, "unexpected", "500")]
+    [InlineData("ordering.Reset", false, "domain", "probe_invalid")]
+    [InlineData("ordering.Reset", false, "unexpected", "500")]
+    public async Task NativeInboundPipelineReturnsFailuresAndRecovers(string operation, bool expectsValue, string trigger, string errorCode)
+    {
+        await using var fixture = CreateRuntime("quantum.plugin.a");
+        var registry = PluginRpcRegistry.Create([fixture.Runtime], NullLogger.Instance);
+        var callContext = new PluginRpcCallContext("quantum.plugin.caller", Guid.NewGuid().ToString("N"), new Dictionary<string, System.Text.Json.JsonElement>());
+        var response = await registry.InvokeAsync(operation,
+            System.Text.Json.JsonSerializer.SerializeToElement(new OrderingRequest(trigger)), callContext,
+            expectsValue, CancellationToken.None);
+        Assert.Null(response.Failure);
+        var failure = fixture.Serializer.Deserialize<Result>(response.SerializedResult!.Value)!;
+        Assert.False(failure.IsSuccess);
+        Assert.Equal(errorCode, failure.ErrorCode);
+        Assert.Equal(trigger == "domain" ? "Invalid probe." : "Internal server error", failure.Message);
+        Assert.True((await InvokeAsync(registry, "ordering.ping", fixture.Serializer)).IsSuccess);
+    }
+
     [Fact]
     public async Task ShortNameAndAliasSelectLexicographicallySmallestPluginId()
     {
@@ -160,6 +181,7 @@ public sealed class PluginRpcRegistryTests
     private static RpcRuntimeFixture CreateRuntime(string pluginId)
     {
         var services = new ServiceCollection()
+            .AddQuantumPluginRpc()
             .AddSingleton(new RpcProviderMarker(pluginId))
             .AddTransient<OrderingRpcServer.Ping, OrderingPing>()
             .AddTransient<OrderingRpcServer.Reset, OrderingReset>()
@@ -234,6 +256,14 @@ public sealed class OrderingPing(RpcProviderMarker provider) : OrderingRpcServer
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (request.Value == "domain")
+        {
+            throw new NOF.Domain.DomainException("probe_invalid", "Invalid probe.");
+        }
+        if (request.Value == "unexpected")
+        {
+            throw new InvalidOperationException("Private implementation detail.");
+        }
         return Task.FromResult<Result<string>>(provider.PluginId);
     }
 }
@@ -246,6 +276,14 @@ public sealed class OrderingReset : OrderingRpcServer.Reset
         CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
+        if (request.Value == "domain")
+        {
+            throw new NOF.Domain.DomainException("probe_invalid", "Invalid probe.");
+        }
+        if (request.Value == "unexpected")
+        {
+            throw new InvalidOperationException("Private implementation detail.");
+        }
         return Task.FromResult(Result.Success());
     }
 }

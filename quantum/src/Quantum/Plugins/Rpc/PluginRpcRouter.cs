@@ -44,6 +44,11 @@ public sealed class PluginRpcRouter : IDisposable
         }
     }
 
+    internal Guid ResolveMobileTarget(string name) => Volatile.Read(ref _registry).ResolveMobileTarget(name);
+    internal Task<PluginRpcDispatchResult> InvokeMobileAsync(string name, Guid runtimeId, JsonElement payload,
+        PluginRpcCallContext context, CancellationToken cancellationToken)
+        => Volatile.Read(ref _registry).InvokeMobileAsync(name, runtimeId, payload, context, cancellationToken);
+
     private void HandleCatalogChanged(object? sender, EventArgs arguments)
         => Volatile.Write(ref _registry, CreateRegistry());
 

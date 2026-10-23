@@ -299,4 +299,12 @@
   <data name="InstallingPlugin" xml:space="preserve"><value>Installing…</value></data>
   <data name="MarketplacePluginIncompatible" xml:space="preserve"><value>{0} is not compatible with Quantum {1}.</value></data>
   <data name="MarketplacePackageIdentityMismatch" xml:space="preserve"><value>The package does not match the selected plugin and version. Nothing was installed.</value></data>
+  <data name="MobileAccess" xml:space="preserve"><value>Mobile access</value></data>
+  <data name="MobileAccessDescription" xml:space="preserve"><value>Share selected plugin pages with your approved phones through Quantum Platform. Plugins execute on this computer.</value></data>
+  <data name="MobileSignInFirst" xml:space="preserve"><value>Sign in to Quantum Platform in Marketplace first.</value></data>
+  <data name="MobileStartSharing" xml:space="preserve"><value>Start sharing</value></data>
+  <data name="MobileStopSharing" xml:space="preserve"><value>Stop sharing</value></data>
+  <data name="MobileDevices" xml:space="preserve"><value>Phone access requests</value></data>
+  <data name="MobileApprove" xml:space="preserve"><value>Approve</value></data>
+  <data name="MobileRevoke" xml:space="preserve"><value>Revoke</value></data>
 </root>

@@ -133,6 +133,29 @@ internal sealed class PluginRpcRegistry
         return endpoint.Runtime.InvokeAsync(endpoint.Method, payload, context, cancellationToken);
     }
 
+    internal Guid ResolveMobileTarget(string qualifiedName)
+    {
+        var endpoint = FindQualified(qualifiedName);
+        return endpoint.Runtime.RuntimeId;
+    }
+
+    internal Task<PluginRpcDispatchResult> InvokeMobileAsync(string name, Guid runtimeId, JsonElement payload,
+        PluginRpcCallContext context, CancellationToken cancellationToken)
+    {
+        var endpoint = FindQualified(name);
+        if (endpoint.Runtime.RuntimeId != runtimeId) throw new InvalidOperationException("The mobile RPC target changed. Refresh the page.");
+        return endpoint.Runtime.InvokeAsync(endpoint.Method, payload, context, cancellationToken);
+    }
+
+    private PluginRpcEndpoint FindQualified(string name)
+    {
+        var normalized = NormalizeName(name);
+        if (!_routes.TryGetValue(normalized, out var candidates)) throw new InvalidOperationException("Mobile RPC endpoint was not found.");
+        return candidates.SingleOrDefault(e => e.Runtime.IsActive && string.Equals(
+            $"{e.Runtime.PluginId}.{e.Method.ServiceName}.{e.Method.MethodName}", name, StringComparison.OrdinalIgnoreCase))
+            ?? throw new InvalidOperationException("Mobile actions require an active, fully qualified RPC endpoint.");
+    }
+
     private PluginRpcCatalogDocument CreateCatalog()
     {
         var pluginServices = _endpoints

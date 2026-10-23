@@ -1,3 +1,66 @@
+// node_modules/@io7/quantum-plugin-sdk/dist/mobile.js
+var NodeBuilder = class _NodeBuilder {
+  type;
+  id;
+  text;
+  placeholder;
+  style;
+  maxLength;
+  enabled;
+  action;
+  children;
+  constructor(node) {
+    Object.assign(this, node);
+    this.type = node.type;
+    this.id = node.id;
+  }
+  label(text) {
+    return new _NodeBuilder({ ...this, text });
+  }
+  hint(placeholder) {
+    return new _NodeBuilder({ ...this, placeholder });
+  }
+  limit(maxLength) {
+    return new _NodeBuilder({ ...this, maxLength });
+  }
+  appearance(style) {
+    return new _NodeBuilder({ ...this, style });
+  }
+  onClick(action) {
+    return new _NodeBuilder({ ...this, action });
+  }
+};
+var ActionBuilder = class _ActionBuilder {
+  rpcName;
+  constants;
+  inputs;
+  constructor(rpcName, constants = {}, inputs = {}) {
+    this.rpcName = rpcName;
+    this.constants = constants;
+    this.inputs = inputs;
+  }
+  constant(field, value) {
+    return new _ActionBuilder(this.rpcName, { ...this.constants, [field]: value }, this.inputs);
+  }
+  input(field, nodeId) {
+    return new _ActionBuilder(this.rpcName, this.constants, { ...this.inputs, [field]: nodeId });
+  }
+};
+var Mobile = Object.freeze({
+  page: (id, title, root) => ({ schemaVersion: 1, id, title, root }),
+  vStack: (id, ...children) => new NodeBuilder({ type: "VStack", id, children }),
+  hStack: (id, ...children) => new NodeBuilder({ type: "HStack", id, children }),
+  scroll: (id, child) => new NodeBuilder({ type: "Scroll", id, children: [child] }),
+  text: (id, text) => new NodeBuilder({ type: "Text", id, text }),
+  textField: (id) => new NodeBuilder({ type: "TextField", id }),
+  toggle: (id, text) => new NodeBuilder({ type: "Toggle", id, text }),
+  button: (id, text) => new NodeBuilder({ type: "Button", id, text }),
+  divider: (id) => new NodeBuilder({ type: "Divider", id }),
+  spacer: (id) => new NodeBuilder({ type: "Spacer", id }),
+  progress: (id) => new NodeBuilder({ type: "Progress", id }),
+  rpc: (name) => new ActionBuilder(name)
+});
+
 // node_modules/@io7/quantum-plugin-sdk/dist/index.js
 var PluginId = Object.freeze({
   maximumLength: 128,
@@ -259,6 +322,11 @@ var QuantumTopic = Object.freeze({
     }
     return value;
   }
+});
+var QuantumMobileContextKeys = Object.freeze({
+  deviceId: "quantum.mobile.deviceId",
+  requestId: "quantum.mobile.requestId",
+  viewId: "quantum.mobile.viewId"
 });
 function definePlugin(definition) {
   return definition;

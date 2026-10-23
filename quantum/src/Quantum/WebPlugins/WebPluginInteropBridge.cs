@@ -68,6 +68,7 @@ public sealed class WebPluginInteropBridge(
                 "log" => InvokeLog(pluginId, method, arguments),
                 "environment" => InvokeEnvironment(plugin, method),
                 "navigation" => InvokeNavigation(method, arguments),
+                "mobile" => InvokeMobile(plugin, method, arguments),
                 "eventBus" => await InvokeEventBusAsync(
                         plugin,
                         runtimeId,
@@ -123,6 +124,8 @@ public sealed class WebPluginInteropBridge(
     [JSInvokable]
     public async ValueTask ReleaseRuntimeAsync(string pluginId, string runtimeId)
     {
+        var plugin = catalog.FindPlugin(pluginId);
+        if (plugin?.RuntimeId.ToString("N") == runtimeId) plugin.MobilePages.Clear();
         if (_eventBuses.TryRemove(CreateRuntimeKey(pluginId, runtimeId), out var runtime)
             && runtime.IsValueCreated)
         {
@@ -160,6 +163,17 @@ public sealed class WebPluginInteropBridge(
         }
 
         _eventBuses.Clear();
+    }
+
+    private JsonElement InvokeMobile(LoadedPlugin plugin, string method, JsonElement arguments)
+    {
+        switch (method)
+        {
+            case "publish": plugin.MobilePages.Publish(Quantum.Mobile.Internal.MobileJson.Read<Quantum.Plugin.Abstraction.MobilePage>(arguments.GetProperty("page"))); break;
+            case "remove": plugin.MobilePages.Remove(RequireString(arguments, "pageId")); break;
+            default: throw new InvalidOperationException("Unknown mobile method.");
+        }
+        return Serialize(null);
     }
 
     private JsonElement InvokeLog(string pluginId, string method, JsonElement arguments)

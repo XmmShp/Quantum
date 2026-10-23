@@ -194,6 +194,8 @@ public sealed class LoadedPlugin
     public IServiceProvider? Services { get; }
 
     internal PluginRpcRuntime? RpcRuntime { get; init; }
+
+    internal Quantum.Mobile.MobilePagePublisher MobilePages { get; init; } = new();
 }
 
 public sealed record PluginGlobalComponentRegistration(

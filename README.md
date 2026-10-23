@@ -4,6 +4,8 @@ Quantum 是基于 .NET 10、NOF 与 .NET MAUI Blazor Hybrid 的本地优先插�
 
 ## 核心能力
 
+移动伴随客户端现提供 Android/Windows 开发预览，含基础原生 Renderer、SDK 模拟器和平台轮询中转，见[构建与联调说明](mobile/README.md)。
+
 - `NOFMauiAppBuilder` 驱动 MAUI 应用和 NOF 初始化管线。
 - 插件按 `plugin.json` 发现；`dependencies` 提供强前置约束，`integrations` 只提供声明性软排序提示，不限制联动逻辑或跨插件调用。
 - 每个 .NET 插件使用独立、可回收的 `AssemblyLoadContext` 和 DI 容器；入口 DLL 从影子目录以流方式加载，源文件可随时替换。

@@ -417,9 +417,13 @@ internal sealed class PluginRuntime
             serviceCollection.AddSingleton<IQuantumEventBus>(
                 _ => new PluginEventBus(pluginInfo, eventHub));
             serviceCollection.AddSingleton<IRpcInvoker>(rpcInvoker);
+            var mobilePages = new Quantum.Mobile.MobilePagePublisher();
+            serviceCollection.AddSingleton<IQuantumMobilePages>(mobilePages);
 
             CopyHostService<ILoggerFactory>(hostServices, serviceCollection);
             serviceCollection.AddSingleton(typeof(ILogger<>), typeof(Logger<>));
+            serviceCollection.AddQuantumPluginRpc();
+            serviceCollection.AddSingleton<NOF.Infrastructure.IObjectSerializer>(new NOF.Infrastructure.JsonObjectSerializer(rpcSerializer.Options));
             InitializePluginServices(assembly, serviceCollection);
             ConfigurePluginServices(bootstraps, serviceCollection);
             var usesDatabase = serviceCollection.Any(static descriptor =>
@@ -453,7 +457,8 @@ internal sealed class PluginRuntime
                 ownedScope.ServiceProvider,
                 globalComponents)
             {
-                RpcRuntime = rpcRuntime
+                RpcRuntime = rpcRuntime,
+                MobilePages = mobilePages
             };
             logger.LogInformation(
                 "Prepared .NET plugin {PluginId} runtime {RuntimeId}; assembly: {EntryAssembly}; "

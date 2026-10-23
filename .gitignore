@@ -62,3 +62,6 @@ node_modules/
 # Operating-system files
 .DS_Store
 Thumbs.db
+
+# Local mobile validation evidence
+/docs/mobile-live-validation.md

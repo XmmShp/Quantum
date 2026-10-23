@@ -4,6 +4,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using NOF.Application;
 using NOF.Contract;
+using NOF.Infrastructure;
 
 namespace Quantum.Plugins;
 
@@ -39,6 +40,17 @@ internal sealed class PluginRpcRuntime : IAsyncDisposable
     public IReadOnlyList<PluginRpcMethodDefinition> Methods => _methods;
 
     public bool IsActive => Volatile.Read(ref _state) == (int)RpcRuntimeState.Active;
+
+    internal IDisposable AcquireMobileOwnerLease()
+    {
+        if (!TryBeginInvocation()) throw new InvalidOperationException("The mobile page owner is stopping.");
+        return new MobileOwnerLease(this);
+    }
+
+    private sealed class MobileOwnerLease(PluginRpcRuntime runtime) : IDisposable
+    {
+        public void Dispose() => runtime.EndInvocation();
+    }
 
     public static PluginRpcRuntime Create(
         PluginId pluginId,
@@ -153,12 +165,11 @@ internal sealed class PluginRpcRuntime : IAsyncDisposable
             {
                 await using var scope = _scopeFactory.CreateAsyncScope();
                 scope.ServiceProvider.ResolveDaemonServices();
-                var handler = (RpcHandler)scope.ServiceProvider.GetRequiredService(
-                    method.Mapping.HandlerType);
-                var context = CreateTargetContext(callContext);
-                result = await handler
-                    .HandleAsync(request!, context, cancellationToken)
-                    .ConfigureAwait(false);
+                scope.ServiceProvider.GetRequiredService<PluginRpcContextInboundMiddleware>().CallerContext = CreateTargetContext(callContext);
+                var execution = await scope.ServiceProvider.GetRequiredService<RequestInboundPipelineExecutor>()
+                    .ExecuteAsync(request, method.Mapping.HandlerType, method.Mapping.ReturnType,
+                        method.ServiceType, method.OperationName, null, cancellationToken).ConfigureAwait(false);
+                result = execution.Response ?? throw new InvalidOperationException("The NOF request pipeline returned no response.");
 
                 try
                 {
@@ -317,6 +328,8 @@ internal sealed class PluginRpcRuntime : IAsyncDisposable
                     ? contractMethod.ReturnType.GetGenericArguments()[0]
                     : null;
                 definitions.Add(new PluginRpcMethodDefinition(
+                    serviceType,
+                    contractMethod.Name,
                     serviceName,
                     methodName,
                     aliases,
@@ -379,6 +392,8 @@ internal sealed class PluginRpcRuntime : IAsyncDisposable
 }
 
 internal sealed record PluginRpcMethodDefinition(
+    Type ServiceType,
+    string OperationName,
     string ServiceName,
     string MethodName,
     IReadOnlyList<string> Aliases,

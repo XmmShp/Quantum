@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 1,
+  "id": "quick-note",
+  "title": "Quick note",
+  "root": {
+    "type": "VStack",
+    "id": "root",
+    "children": [
+      { "type": "Text", "id": "title", "text": "A thought worth keeping.", "style": "title" },
+      { "type": "TextField", "id": "content", "placeholder": "What's on your mind?", "maxLength": 500 },
+      { "type": "Toggle", "id": "pinned", "text": "Pin this note" },
+      {
+        "type": "Button", "id": "save", "text": "Save to desktop",
+        "action": {
+          "rpcName": "quantum.plugin.notes.notes.create",
+          "constants": { "notebookId": "inbox" },
+          "inputs": { "text": "content", "pinned": "pinned" }
+        }
+      }
+    ]
+  }
+}

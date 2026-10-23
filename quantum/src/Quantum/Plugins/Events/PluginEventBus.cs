@@ -12,12 +12,7 @@ internal sealed class PluginEventBus(
     QuantumPluginInfo plugin,
     PluginEventHub hub) : IQuantumEventBus, IDisposable, IAsyncDisposable
 {
-    private readonly JsonSerializerOptions _serializerOptions = new(JsonSerializerDefaults.Web)
-    {
-        // A per-runtime resolver prevents System.Text.Json's default shared reflection resolver
-        // from caching message types that belong to a collectible plugin load context.
-        TypeInfoResolver = new DefaultJsonTypeInfoResolver()
-    };
+    private readonly JsonSerializerOptions _serializerOptions = QuantumJsonDefaults.CreatePluginOptions();
     private readonly object _gate = new();
     private readonly Dictionary<Guid, IDisposable> _subscriptions = [];
     private int _state;

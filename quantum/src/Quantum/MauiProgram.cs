@@ -89,6 +89,15 @@ public static class MauiProgram
             }));
         builder.Services.AddSingleton<IQuantumMarketplaceClient, QuantumMarketplaceClient>();
         builder.Services.AddSingleton<MarketplacePluginInstaller>();
+        builder.Services.AddSingleton<Quantum.Mobile.MobileActionGateway>();
+        builder.Services.AddSingleton(services => new Quantum.Mobile.MobileDesktopBridge(
+            services.GetRequiredService<HttpClient>(),
+            services.GetRequiredService<QuantumMarketplaceSession>(), marketplaceOptions,
+            services.GetRequiredService<Quantum.Mobile.MobileActionGateway>(),
+            Path.Combine(FileSystem.AppDataDirectory, "MobileBridgeJournal"),
+            () => SecureStorage.Default.GetAsync("quantum.mobile.desktop." + marketplaceOptions.BaseAddress.Host),
+            value => SecureStorage.Default.SetAsync("quantum.mobile.desktop." + marketplaceOptions.BaseAddress.Host, value),
+            () => SecureStorage.Default.Remove("quantum.mobile.desktop." + marketplaceOptions.BaseAddress.Host)));
         builder.Services.AddSingleton<PluginStaticAssetFileProvider>();
         builder.Services.AddScoped<WebPluginInteropBridge>();
         builder.Services.AddSingleton<MainPage>();

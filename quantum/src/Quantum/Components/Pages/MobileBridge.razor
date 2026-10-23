@@ -1,0 +1,73 @@
+@page "/mobile"
+@implements IDisposable
+@using Quantum.Mobile
+@using Quantum.Marketplace
+@inject MobileDesktopBridge Bridge
+@inject PluginCatalog Catalog
+@inject QuantumMarketplaceSession Session
+@inject IQuantumMarketplaceClient Marketplace
+@inject IStringLocalizer<AppStrings> L
+
+<PageTitle>@L["MobileAccess"]</PageTitle>
+<section class="settings-page">
+    <h1>@L["MobileAccess"]</h1>
+    <p>@L["MobileAccessDescription"]</p>
+    @if (!Session.IsAuthenticated)
+    {
+        <p><a href="/marketplace">@L["MobileSignInFirst"]</a></p>
+    }
+    else
+    {
+        <p>@Session.User?.Username · @Bridge.Status</p>
+        @foreach (var plugin in Catalog.Plugins.Where(p => p.MobilePages.Snapshot().Length > 0))
+        {
+            var id = plugin.Manifest.Id.ToString();
+            <label style="display:block;margin:12px 0">
+                <input type="checkbox" checked="@_selected.Contains(id)" disabled="@Bridge.IsRunning" @onchange="e => Select(id, e.Value is true)" />
+                @id (@plugin.MobilePages.Snapshot().Length)
+            </label>
+        }
+        @if (Bridge.IsRunning)
+        {
+            <button @onclick="StopAsync">@L["MobileStopSharing"]</button>
+        }
+        else
+        {
+            <button disabled="@(_selected.Count == 0 || _busy)" @onclick="StartAsync">@L["MobileStartSharing"]</button>
+        }
+        <h2>@L["MobileDevices"]</h2>
+        @foreach (var binding in Bridge.Bindings)
+        {
+            <div style="margin:12px 0">
+                <span>@binding.MobileName · @binding.MobileId[..8]</span>
+                <button @onclick="() => ApproveAsync(binding.MobileId, !binding.Approved)">
+                    @(binding.Approved ? L["MobileRevoke"] : L["MobileApprove"])
+                </button>
+            </div>
+        }
+    }
+    @if (_error is not null) { <p role="alert">@_error</p> }
+</section>
+
+@code {
+    private readonly HashSet<string> _selected = [];
+    private string? _error;
+    private bool _busy;
+    protected override async Task OnInitializedAsync()
+    {
+        Bridge.Changed += Changed;
+        await Session.InitializeAsync(Marketplace);
+    }
+    private void Select(string id, bool value) { if (value) _selected.Add(id); else _selected.Remove(id); }
+    private async Task Run(Func<Task> operation)
+    {
+        _busy = true; _error = null;
+        try { await operation(); } catch (Exception exception) { _error = exception.Message; }
+        finally { _busy = false; }
+    }
+    private Task StartAsync() => Run(() => Bridge.StartAsync(_selected));
+    private Task StopAsync() => Run(Bridge.StopAsync);
+    private Task ApproveAsync(string id, bool approved) => Run(() => Bridge.ApproveAsync(id, approved));
+    private void Changed() => _ = InvokeAsync(StateHasChanged);
+    public void Dispose() => Bridge.Changed -= Changed;
+}

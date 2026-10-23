@@ -198,6 +198,10 @@
           runtimeId: metadata.runtimeId
         }),
         signal: lifecycleController.signal,
+        mobile: Object.freeze({
+          publish: page => hostRpc("mobile", "publish", { page }),
+          remove: pageId => hostRpc("mobile", "remove", { pageId })
+        }),
         rpc: Object.freeze({
           invoke: (rpcName, payload, context = {}, options) => {
             if (payload === undefined) {

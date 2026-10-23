@@ -1,6 +1,5 @@
 using System.ComponentModel;
 using System.Text.Json;
-using System.Text.Json.Nodes;
 using System.Text.Json.Schema;
 using System.Text.Json.Serialization;
 using Microsoft.Extensions.DependencyInjection;
@@ -13,6 +12,18 @@ namespace Quantum.Tests;
 
 public sealed class PluginRpcJsonContractTests
 {
+    [Fact]
+    public void NOFDefaultsAndObjectSerializerUseTheHostStringEnumContract()
+    {
+        Assert.Equal("\"Income\"", JsonSerializer.Serialize(JsonContractKind.Income, JsonSerializerOptions.NOF));
+        Assert.Equal(JsonContractKind.Income, JsonSerializer.Deserialize<JsonContractKind>("\"Income\"", JsonSerializerOptions.NOF));
+        Assert.Throws<JsonException>(() => JsonSerializer.Deserialize<JsonContractKind>("1", JsonSerializerOptions.NOF));
+        var serializer = new NOF.Infrastructure.JsonObjectSerializer();
+        var payload = serializer.Serialize(JsonContractKind.Income);
+        Assert.Equal("\"Income\"", System.Text.Encoding.UTF8.GetString(payload.Span));
+        Assert.Equal(JsonContractKind.Income, serializer.Deserialize(payload, typeof(JsonContractKind)));
+    }
+
     [Fact]
     public async Task CatalogAndDispatchAgreeOnStringEnumsAndOptionalConstructorDefaults()
     {
@@ -136,7 +147,7 @@ public sealed class PluginRpcJsonContractTests
 
     private static Fixture CreateFixture()
     {
-        var services = new ServiceCollection().AddSingleton<JsonContractCounter>()
+        var services = new ServiceCollection().AddQuantumPluginRpc().AddSingleton<JsonContractCounter>()
             .AddTransient<JsonContractRpcService.Create, JsonContractCreate>()
             .BuildServiceProvider(new ServiceProviderOptions { ValidateOnBuild = true, ValidateScopes = true });
         var serializer = new PluginRpcSerializer();

@@ -183,7 +183,8 @@ internal sealed class PluginRpcInvoker(
 
     internal static bool IsReservedContextKey(string key)
         => string.Equals(key, QuantumRpcContextKeys.CallerPluginId, StringComparison.OrdinalIgnoreCase)
-            || string.Equals(key, QuantumRpcContextKeys.CallerRuntimeId, StringComparison.OrdinalIgnoreCase);
+            || string.Equals(key, QuantumRpcContextKeys.CallerRuntimeId, StringComparison.OrdinalIgnoreCase)
+            || key.StartsWith("quantum.mobile.", StringComparison.OrdinalIgnoreCase);
 
     private sealed record PreparedRpcRequest(
         Result? Failure,

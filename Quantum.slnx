@@ -1,4 +1,5 @@
 <Solution>
+  <Project Path="quantum/src/Quantum.Mobile.Internal/Quantum.Mobile.Internal.csproj" />
   <Folder Name="/Solution Items/">
     <File Path=".editorconfig" />
     <File Path=".gitattributes" />
@@ -8,6 +9,7 @@
     <File Path="NuGet.config" />
   </Folder>
   <Project Path="quantum/src/Quantum/Quantum.csproj" />
+  <Project Path="mobile/Quantum.Mobile/Quantum.Mobile.csproj" />
   <Project Path="quantum/src/Quantum.UpdateAgent/Quantum.UpdateAgent.csproj" />
   <Project Path="quantum/tests/Quantum.Tests/Quantum.Tests.csproj" />
   <Project Path="samples/Quantum.ExampleDependentPlugin/Quantum.ExampleDependentPlugin.csproj" />

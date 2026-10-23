@@ -3,7 +3,6 @@ using System.Globalization;
 using System.Resources;
 using Microsoft.Extensions.Localization;
 using Quantum.Localization;
-using Quantum.Plugins;
 
 namespace Quantum.Tests;
 

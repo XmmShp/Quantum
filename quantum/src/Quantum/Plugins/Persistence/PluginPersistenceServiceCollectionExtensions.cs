@@ -43,8 +43,9 @@ internal static class PluginPersistenceServiceCollectionExtensions
 
         foreach (var descriptor in builder.Services)
         {
-            // Keep servers registered by plugin initializers when adding persistence defaults.
-            if (descriptor.ServiceType == typeof(RpcServerRegistry))
+            // Keep plugin server and mapping registrations when adding persistence defaults.
+            if (descriptor.ServiceType == typeof(RpcServerRegistry)
+                || descriptor.ServiceType == typeof(MappingRegistry))
             {
                 services.TryAdd(descriptor);
             }

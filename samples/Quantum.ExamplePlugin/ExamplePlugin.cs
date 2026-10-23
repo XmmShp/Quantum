@@ -1,5 +1,6 @@
 using Microsoft.Extensions.DependencyInjection;
 using Quantum.Plugin.Abstraction;
+using MobileUi = Quantum.Plugin.Abstraction.Mobile;
 
 namespace Quantum.ExamplePlugin;
 
@@ -31,6 +32,12 @@ public sealed class ExamplePlugin : IQuantumPlugin
             DateTimeOffset.Now,
             environment.IsPluginLoaded(PluginId.Of("quantum.plugin.example-web")));
 
+        services.GetRequiredService<IQuantumMobilePages>().Publish(MobileUi.Page("hello", "Quantum on your phone",
+            MobileUi.VStack("root",
+                MobileUi.Text("title", "Connected to your desktop").Appearance("title"),
+                MobileUi.Text("description", "This button invokes the existing desktop plugin RPC."),
+                MobileUi.Button("greet", "Say hello").OnClick(MobileUi.Rpc("quantum.plugin.example.example.greet")))));
+
         return Task.CompletedTask;
     }
 
@@ -40,6 +47,7 @@ public sealed class ExamplePlugin : IQuantumPlugin
     {
         cancellationToken.ThrowIfCancellationRequested();
         services.GetRequiredService<ExamplePluginState>().Stop();
+        services.GetRequiredService<IQuantumMobilePages>().Remove("hello");
         return Task.CompletedTask;
     }
 }
