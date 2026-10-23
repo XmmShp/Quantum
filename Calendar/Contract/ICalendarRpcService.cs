@@ -36,4 +36,7 @@ public interface ICalendarRpcService : IRpcService
     [Description("Permanently delete a calendar item.")]
     [RpcInvocationName("delete")]
     Result DeleteEntry(CalendarEntryRequest request);
+    [Description("Refresh the published mobile page from current desktop data. Reopen or refresh the mobile view afterwards to display the new snapshot.")]
+    [RpcInvocationName("mobile-refresh")]
+    Result RefreshMobilePage(RefreshCalendarMobilePageRequest request);
 }

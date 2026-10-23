@@ -83,14 +83,13 @@ jobs:
           echo "directory=$directory" >> "$GITHUB_OUTPUT"
           echo "version=$manifest_version" >> "$GITHUB_OUTPUT"
           echo "id=$expected_id" >> "$GITHUB_OUTPUT"
+          echo 'quantum_support=>=0.1.9' >> "$GITHUB_OUTPUT"
           if [[ "$directory" == Calendar ]]; then
-            echo 'quantum_support=>=0.1.5' >> "$GITHUB_OUTPUT"
-            echo 'release_notes=修复 Quantum 0.1.8 下查看关联收支时的 RPC 返回类型不匹配错误，兼容字符串及旧版数字收支类型；保持基于能力发现的可选联动。' >> "$GITHUB_OUTPUT"
+            echo 'release_notes=新增移动端今日事项、待办创建与完成；使用已发布 SDK 和 NOF 原生 RPC，保留按独立能力路由的记账可选联动。需要 Quantum 0.1.9 或更新版本。' >> "$GITHUB_OUTPUT"
           elif [[ "$directory" == Ledger ]]; then
-            echo 'quantum_support=>=0.1.7' >> "$GITHUB_OUTPUT"
-            echo 'release_notes=新增日历可选联动：收支支持跨月关联日程和待办，并通过小按钮查看关联事项；新增 ledger.by-calendar-entry 能力，支持兼容记账提供方替换，保留离线关联及原有数据。需要 Quantum 0.1.7 或更新版本。' >> "$GITHUB_OUTPUT"
+            echo 'release_notes=新增移动端本月收支、最近记录和快速记账；统一 SDK、NOF RPC 与 Contract 风格，保留日历可选联动。需要 Quantum 0.1.9 或更新版本。' >> "$GITHUB_OUTPUT"
           else
-            echo 'quantum_support=>=0.1.0' >> "$GITHUB_OUTPUT"
+            echo 'release_notes=新增移动端会话状态、最近消息和继续发送；移动页面不自动连接或启动推理，需先在桌面完成 Codex 配置。需要 Quantum 0.1.9 或更新版本。' >> "$GITHUB_OUTPUT"
           fi
           if [[ "$directory" == Codex ]]; then
             echo "client_id_secret=QUANTUM_CODEX_CLIENT_ID" >> "$GITHUB_OUTPUT"

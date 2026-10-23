@@ -40,4 +40,10 @@ public interface ILedgerRpcService : IRpcService
     [Description("Permanently delete an entry and its links without deleting linked entries. Confirm the user intends to delete it before calling. A missing entry is treated as success.")]
     [RpcInvocationName("delete")]
     Result DeleteEntry(LedgerEntryRequest request);
+    [Description("Refresh the published mobile page from current desktop data. Reopen or refresh the mobile view afterwards to display the new snapshot.")]
+    [RpcInvocationName("mobile-refresh")]
+    Result RefreshMobilePage(RefreshLedgerMobilePageRequest request);
+    [Description("Create an entry for the desktop's current local date from mobile text inputs. Parses a dot decimal amount then delegates to the standard ledger create use case.")]
+    [RpcInvocationName("mobile-create")]
+    Result<LedgerEntryDetails> CreateMobileEntry(CreateMobileLedgerEntryRequest request);
 }

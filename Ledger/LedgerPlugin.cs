@@ -1,6 +1,7 @@
 using Microsoft.Extensions.DependencyInjection;
 using NOF.Infrastructure;
 using Quantum.OfficialPlugins.Ledger.Rpc;
+using Quantum.OfficialPlugins.Ledger.UI.Mobile;
 using Quantum.Plugin.Abstraction;
 
 namespace Quantum.OfficialPlugins.Ledger;
@@ -11,18 +12,23 @@ public sealed class LedgerPlugin : IQuantumPlugin
     {
         services.AddSingleton<IDbContextModelCreatingContributor, LedgerModel>();
         services.AddRpcServer<LedgerRpcService>();
+        services.AddScoped<ILedgerMobilePages, LedgerMobilePages>();
         services.AddMapping<LedgerEntry, LedgerEntryProjection>(LedgerMappings.Projection);
         services.AddScoped<ILedgerRpcServiceClient, LocalLedgerRpcServiceClient>();
     }
 
-    public static Task StartAsync(IServiceProvider services, CancellationToken cancellationToken = default)
+    public static async Task StartAsync(IServiceProvider services, CancellationToken cancellationToken = default)
     {
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.CompletedTask;
+        if (services.GetService<IQuantumMobilePages>() is not null)
+        {
+            await services.GetRequiredService<ILedgerMobilePages>().PublishAsync(cancellationToken);
+        }
     }
 
     public static Task StopAsync(IServiceProvider services, CancellationToken cancellationToken = default)
     {
+        services.GetService<IQuantumMobilePages>()?.Remove("ledger");
         cancellationToken.ThrowIfCancellationRequested();
         return Task.CompletedTask;
     }

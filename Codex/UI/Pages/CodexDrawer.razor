@@ -29,7 +29,7 @@
             <aside id="quantum-codex-drawer" class="drawer-panel" role="dialog" aria-modal="true" aria-label="Codex">
                 <header class="drawer-header">
                     <div><span aria-hidden="true">✦</span><strong>Codex</strong></div>
-                    <a href="/plugins/codex" aria-label="@L["Open Codex on its full page"]" title="@L["Open full page"]">↗</a>
+                    <a href="/plugins/codex" aria-label="@L["Open Codex on its full page"]" title="@L["Open full page"]"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6m0-6L10 14M10 4H4v16h16v-6" /></svg></a>
                     <button type="button" autofocus aria-label="@L["Close Codex"]" @onclick="CloseDrawer">×</button>
                 </header>
 
@@ -82,7 +82,7 @@
                                     <option value="@model.Id">@model.DisplayName</option>
                                 }
                             </select>
-                            <button type="button" title="@L["New conversation"]" aria-label="@L["New conversation"]" disabled="@_snapshot.IsBusy" @onclick="NewThreadAsync">＋</button>
+                            <button type="button" title="@L["New conversation"]" aria-label="@L["New conversation"]" disabled="@_snapshot.IsBusy" @onclick="NewThreadAsync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg></button>
                         </header>
 
                         <div class="drawer-conversation" aria-live="polite" aria-busy="@_snapshot.IsBusy">
@@ -119,7 +119,7 @@
                                       disabled="@_snapshot.IsBusy"
                                       @bind="_prompt"
                                       @onkeydown="HandleComposerKeyDownAsync"></textarea>
-                            <button type="button" class="drawer-primary" disabled="@(!CanSend)" @onclick="SendAsync">@L["Send"] <span>↗</span></button>
+                            <button type="button" class="drawer-primary" disabled="@(!CanSend)" @onclick="SendAsync">@L["Send"]<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg></button>
                         </footer>
                     }
                 </section>

@@ -79,4 +79,14 @@
   <data name="Invalid entry type." xml:space="preserve"><value>Invalid entry type.</value></data>
   <data name="The calendar item was not found." xml:space="preserve"><value>The calendar item was not found.</value></data>
   <data name="Internal server error" xml:space="preserve"><value>Internal server error</value></data>
+  <data name="Add a task for today" xml:space="preserve"><value>Add a task for today</value></data>
+  <data name="After changes, prepare latest data, then use the phone's Refresh button." xml:space="preserve"><value>After changes, prepare latest data, then use the phone's Refresh button.</value></data>
+  <data name="Desktop date" xml:space="preserve"><value>Desktop date</value></data>
+  <data name="Mark complete" xml:space="preserve"><value>Mark complete</value></data>
+  <data name="No items to display." xml:space="preserve"><value>No items to display.</value></data>
+  <data name="Only a limited number of recent items are shown. Open the desktop for the full list." xml:space="preserve"><value>Only a limited number of recent items are shown. Open the desktop for the full list.</value></data>
+  <data name="Prepare latest data" xml:space="preserve"><value>Prepare latest data</value></data>
+  <data name="The task date is the displayed desktop date; its due time is 12:00. Refresh the data if the date has changed." xml:space="preserve"><value>The task date is the displayed desktop date; its due time is 12:00. Refresh the data if the date has changed.</value></data>
+  <data name="Today's items" xml:space="preserve"><value>Today's items</value></data>
+  <data name="Unable to load data. Prepare latest data to retry." xml:space="preserve"><value>Unable to load data. Prepare latest data to retry.</value></data>
 </root>

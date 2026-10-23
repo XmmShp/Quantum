@@ -54,4 +54,15 @@
   <data name="Model is required." xml:space="preserve"><value>Model is required.</value></data>
   <data name="Prompt is required." xml:space="preserve"><value>Prompt is required.</value></data>
   <data name="Internal server error" xml:space="preserve"><value>Internal server error</value></data>
+  <data name="A turn is running. Prepare latest data later to read progress." xml:space="preserve"><value>A turn is running. Prepare latest data later to read progress.</value></data>
+  <data name="After changes, prepare latest data, then use the phone's Refresh button." xml:space="preserve"><value>After changes, prepare latest data, then use the phone's Refresh button.</value></data>
+  <data name="Connect Codex and choose its working directory on the desktop first. Opening this page never starts a process." xml:space="preserve"><value>Connect Codex and choose its working directory on the desktop first. Opening this page never starts a process.</value></data>
+  <data name="Failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="Message" xml:space="preserve"><value>Message</value></data>
+  <data name="Prepare latest data" xml:space="preserve"><value>Prepare latest data</value></data>
+  <data name="Send to desktop Codex" xml:space="preserve"><value>Send to desktop Codex</value></data>
+  <data name="Sending starts a model turn and may consume usage or run Quantum tools on the desktop." xml:space="preserve"><value>Sending starts a model turn and may consume usage or run Quantum tools on the desktop.</value></data>
+  <data name="Thread" xml:space="preserve"><value>Thread</value></data>
+  <data name="Unable to load data. Prepare latest data to retry." xml:space="preserve"><value>Unable to load data. Prepare latest data to retry.</value></data>
+  <data name="Showing the latest 10 messages, with long messages shortened. Open the desktop for full history." xml:space="preserve"><value>Showing the latest 10 messages, with long messages shortened. Open the desktop for full history.</value></data>
 </root>

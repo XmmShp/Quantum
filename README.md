@@ -27,3 +27,7 @@ For local development, use each plugin's `plugin.json` manifest and the
 [official plugin development guide](docs/plugin-development.md) to prepare a
 package for testing in Quantum. Host-side packaging details are documented in the
 [Quantum plugin development guide](https://github.com/XmmShp/Quantum/blob/main/docs/plugin-development.md).
+
+## Mobile preview
+
+Calendar, Ledger and Codex now declare mobile companion pages on compatible desktop hosts. See [setup and current limitations](docs/mobile.md). These changes require building the adapted plugin packages; existing marketplace versions do not gain mobile pages automatically.

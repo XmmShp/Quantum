@@ -36,10 +36,14 @@ See [the official plugin RPC guide](../docs/plugin-development.md), [host JSON t
 
 ## Optional calendar integration (0.4.0)
 
-No dependency or integration manifest entry is required. The page discovers `calendar.list` and `calendar.get` from one active provider in `quantum.rpc.catalog`, then invokes its qualified names through `IRpcInvoker`. Create/edit an entry to select events or tasks by month; the calendar button displays linked items and identifies deleted items. With no calendar provider the ledger remains usable and existing IDs are preserved.
+No dependency or integration manifest entry is required. The page checks `calendar.list` and `calendar.get` independently in `quantum.rpc.catalog`, then invokes canonical capability names through `IRpcInvoker`; they need not share a provider. Create/edit an entry to select events or tasks by month; the calendar button displays linked items and identifies deleted items. With no calendar provider the ledger remains usable and existing IDs are preserved.
 
 Create/update requests accept `calendarEntryIds: ["<guid>"]`, and every entry response includes this array. IDs are deduplicated and may span months and event/task kinds. At most 100 non-empty GUIDs are accepted. Updates omitting or passing null preserve existing IDs; an empty array removes them. Links and entry changes commit atomically. References may be saved while calendar is offline; they do not imply foreign keys to another plugin's tables. Calendar deletion leaves a reference which can be removed in the ledger editor. Deleting a ledger entry deletes its references.
 
 `ledger.by-calendar-entry` takes `{ "calendarEntryId": "<guid>" }` and returns all matching entry details across months, sorted by date descending and ID. Missing targets or no links return `[]`; an empty GUID returns `ledger_invalid_request`. Cancellation propagates. Migration `004_calendar_links.sql` adds a default empty JSON array to existing entries without changing their content or amounts.
 
 A replacement ledger must provide the `ledger.by-calendar-entry` capability with this request/result contract for calendar-side viewing. Returned fields used by calendar are `id`, `date`, `kind` (`"Expense"` / `"Income"` on Quantum 0.1.8; 0 / 1 on earlier hosts), `amount` (CNY yuan), `category`, and `note`. The provider owns persistent linkage and offers its own editing UI/API. No official plugin ID, CLR type, assembly reference, or route is required.
+
+## Mobile preview
+
+This build publishes a mobile page on compatible Quantum hosts. See [mobile setup, supported workflows, refresh behavior and new RPC methods](../docs/mobile.md). The desktop remains responsible for business execution; these mobile adaptations are not yet a marketplace release.

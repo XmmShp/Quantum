@@ -34,7 +34,7 @@
     @if (_snapshot.ConnectionState != CodexConnectionState.Connected)
     {
         <section class="connect-card">
-            <div class="codex-mark" aria-hidden="true">⌘</div>
+            <div class="codex-mark" aria-hidden="true">✦</div>
             <div>
                 <h2>@L["Connect local Codex"]</h2>
                 <p>@L["Automatically connects to local Codex. Connection errors appear here; you can retry."]</p>
@@ -61,7 +61,7 @@
     {
         <section class="workspace">
             <header class="workspace-toolbar">
-                <div>
+                <div class="tool-summary">
                     <strong>@_snapshot.ToolCount</strong>
                     <span>@L["Quantum tools"]</span>
                 </div>
@@ -76,7 +76,7 @@
                 </label>
                 <span class="session-label" title="@_snapshot.ThreadId">@L["Current conversation"]</span>
                 <div class="toolbar-actions">
-                    <button type="button" disabled="@_snapshot.IsBusy" @onclick="NewThreadAsync">＋ @L["New conversation"]</button>
+                    <button type="button" disabled="@_snapshot.IsBusy" @onclick="NewThreadAsync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>@L["New conversation"]</button>
                     <button type="button" @onclick="DisconnectAsync">@L["Disconnect"]</button>
                 </div>
             </header>
@@ -115,7 +115,7 @@
                           disabled="@_snapshot.IsBusy"
                           @bind="_prompt"
                           @onkeydown="HandleKeyDownAsync"></textarea>
-                <button type="button" class="send-button" disabled="@(!CanSend)" @onclick="SendAsync">@L["Send"] <span>↗</span></button>
+                <button type="button" class="send-button" disabled="@(!CanSend)" @onclick="SendAsync">@L["Send"]<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg></button>
             </footer>
         </section>
     }

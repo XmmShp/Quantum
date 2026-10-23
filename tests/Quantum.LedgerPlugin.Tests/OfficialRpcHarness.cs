@@ -102,6 +102,13 @@ internal sealed class OfficialRpcHarness : IAsyncDisposable
         await action(scope.ServiceProvider.GetRequiredService<TClient>());
     }
 
+    public async Task UseServices(Func<IServiceProvider, CancellationToken, Task> action)
+    {
+        await using var scope = _provider.CreateAsyncScope();
+        scope.ServiceProvider.ResolveDaemonServices();
+        await action(scope.ServiceProvider, default);
+    }
+
     public static JsonElement Value(JsonElement result)
     {
         Assert.True(result.GetProperty("isSuccess").GetBoolean(), result.ToString());

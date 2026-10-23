@@ -66,10 +66,14 @@ dotnet build .\official-plugins\Calendar\Quantum.CalendarPlugin.csproj
 
 日程卡片和待办列表在发现 `ledger.by-calendar-entry` 后显示「关联收支」小按钮，点击在对话框中展示该事项跨月关联的收入、支出、日期、分类和备注；无关联时显示空状态。关联在记账插件的新增/编辑表单中选择和解除。
 
-页面从 `quantum.rpc.catalog` 按能力选择提供方，并通过 `IRpcInvoker` 调用目录中的完整名称；没有写死官方记账插件 ID、程序集或页面路由。替换记账插件只需实现 `ledger.by-calendar-entry({ calendarEntryId: guid })`，返回账单数组（字段和规则见 [记账能力契约](../Ledger/README.md#optional-calendar-integration-040)）。多个提供方按插件 ID ordinal 字典序选择。每次查看重新发现提供方，未安装、停止或能力缺失时不影响日历自身的读写。
+页面从 `quantum.rpc.catalog` 检查所需能力，并通过 `IRpcInvoker` 直接调用 canonical 能力名 `ledger.by-calendar-entry`；没有写死官方记账插件 ID、程序集或页面路由。替换记账插件只需实现 `ledger.by-calendar-entry({ calendarEntryId: guid })`，返回账单数组（字段和规则见 [记账能力契约](../Ledger/README.md#optional-calendar-integration-040)）。多个提供方按插件 ID ordinal 字典序选择。每次查看重新检查能力，未安装、停止或能力缺失时不影响日历自身的读写。
 
 关联只存储于记账提供方，不修改日程或待办，也不跨插件读写数据库。双方 manifest 的 `dependencies` / `integrations` 保持为空。另见 [官方插件开发指南](../docs/plugin-development.md)。
 
 ## 1.3.1 兼容性修复
 
 修复 Quantum 0.1.8 下查看关联收支出现 `The RPC result does not match the requested response type.`。日历侧接收收支类型的字符串枚举 `Expense` / `Income`，同时兼容旧提供方的数字枚举 0 / 1。联动测试使用 Quantum 0.1.8 的原始宿主序列化、目录、调度和 `IRpcInvoker` 实现，覆盖真实跨插件 JSON 边界。
+
+## Mobile preview
+
+This build publishes a mobile page on compatible Quantum hosts. See [mobile setup, supported workflows, refresh behavior and new RPC methods](../docs/mobile.md). The desktop remains responsible for business execution; these mobile adaptations are not yet a marketplace release.

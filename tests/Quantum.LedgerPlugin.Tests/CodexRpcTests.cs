@@ -9,9 +9,13 @@ namespace Quantum.LedgerPlugin.Tests;
 
 public sealed class CodexRpcTests
 {
-    private static OfficialRpcHarness Host(ICodexRuntime? fake = null)
+    private static OfficialRpcHarness Host(ICodexRuntime? fake = null, CapturedMobilePages? pages = null)
     {
         var services = new ServiceCollection();
+        if (pages is not null)
+        {
+            services.AddSingleton<IQuantumMobilePages>(pages);
+        }
         services.AddLogging();
         services.AddNOFApplication();
         services.AddSingleton<IRpcInvoker, UnavailableInvoker>();
@@ -22,6 +26,52 @@ public sealed class CodexRpcTests
         }
 
         return new(services, "quantum.plugin.codex", typeof(ICodexRpcService).Assembly);
+    }
+
+    [Fact]
+    public async Task MobileHistoryIsBoundedWithoutStartingProcesses()
+    {
+        var fake = new FakeCodex();
+        fake.SetMessages(Enumerable.Range(0, 40).Select(index => new CodexChatMessage
+        {
+            Id = Guid.NewGuid(),
+            Role = CodexMessageRole.Assistant,
+            Text = new string('x', 3000),
+            CreatedAt = DateTimeOffset.UtcNow
+        }).ToArray());
+        var pages = new CapturedMobilePages();
+        await using var host = Host(fake, pages);
+        Assert.True((await host.Call("codex.mobile-refresh", new RefreshCodexMobilePageRequest(), expectsValue: false)).GetProperty("isSuccess").GetBoolean());
+        var nodes = MobileUiValidator.Validate(pages.Pages["codex"]);
+        Assert.Equal(10, nodes.Values.Count(node => node.Id.StartsWith("message-")));
+        Assert.All(nodes.Values, node => Assert.True(node.Text is null || node.Text.Length <= 2000));
+        Assert.Empty(fake.Commands);
+        Assert.Equal(0, fake.AutomaticCalls);
+    }
+
+    [Fact]
+    public async Task MobilePageOnlyReadsStateUntilAnExplicitSendAndCleansUpOnStop()
+    {
+        var fake = new FakeCodex();
+        var pages = new CapturedMobilePages();
+        await using var host = Host(fake, pages);
+        await host.UseServices(OfficialPlugins.Codex.CodexPlugin.StartAsync);
+        Assert.Single(pages.Pages);
+        Assert.Empty(fake.Commands);
+        Assert.Equal(0, fake.AutomaticCalls);
+        Assert.DoesNotContain(MobileUiValidator.Validate(pages.Pages["codex"]).Keys, key => key == "send");
+        OfficialRpcHarness.Value(await host.Call("codex.connect", new CodexConnectRequest { WorkingDirectory = "workspace", Model = "model-a" }));
+        Assert.True((await pages.Click(host, "codex", "refresh")).GetProperty("isSuccess").GetBoolean());
+        var response = await pages.Click(host, "codex", "send", new()
+        {
+            ["prompt"] = System.Text.Json.JsonSerializer.SerializeToElement("来自手机的消息")
+        });
+        Assert.True(response.GetProperty("isSuccess").GetBoolean());
+        Assert.Equal("来自手机的消息", fake.LastPrompt);
+        await pages.Click(host, "codex", "refresh");
+        Assert.DoesNotContain(MobileUiValidator.Validate(pages.Pages["codex"]).Keys, key => key == "send");
+        await host.UseServices(OfficialPlugins.Codex.CodexPlugin.StopAsync);
+        Assert.Empty(pages.Pages);
     }
 
     [Fact]
@@ -71,7 +121,7 @@ public sealed class CodexRpcTests
     public async Task ProductionHandlersAreDiscoverableAndReadOnlyCallsNeedNoAppServer()
     {
         await using var host = Host();
-        await host.AssertCatalog("quantum.plugin.codex", "codex", ["snapshot", "models", "connect", "new-thread", "change-model", "send", "disconnect", "ensure-auto-connected"]);
+        await host.AssertCatalog("quantum.plugin.codex", "codex", ["snapshot", "models", "connect", "new-thread", "change-model", "send", "disconnect", "ensure-auto-connected", "mobile-refresh"]);
         var snapshot = OfficialRpcHarness.Value(await host.Call("quantum.plugin.codex.codex.snapshot", new
         {
         }));
@@ -190,6 +240,8 @@ public sealed class CodexRpcTests
         {
             get; private set;
         }
+
+        public void SetMessages(IReadOnlyList<CodexChatMessage> messages) => Snapshot = Snapshot with { Messages = messages };
 
         public Task EnsureAutoConnectedAsync()
         {

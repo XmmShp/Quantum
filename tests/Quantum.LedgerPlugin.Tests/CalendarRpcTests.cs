@@ -35,7 +35,7 @@ public sealed class CalendarRpcTests
         builder.Services.AddLogging();
         builder.Services.AddSingleton(TimeProvider.System);
         await using var host = new OfficialRpcHarness(builder.Services, "quantum.plugin.calendar", typeof(ICalendarRpcService).Assembly);
-        await host.AssertCatalog("quantum.plugin.calendar", "calendar", ["list", "list-tasks", "get", "create", "update", "set-completed", "delete"]);
+        await host.AssertCatalog("quantum.plugin.calendar", "calendar", ["list", "list-tasks", "get", "create", "update", "set-completed", "delete", "mobile-refresh"]);
         var request = new SaveCalendarEntryRequest
         {
             Title = "RPC task",

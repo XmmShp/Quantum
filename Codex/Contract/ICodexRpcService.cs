@@ -40,4 +40,7 @@ public interface ICodexRpcService : IRpcService
     [Description("Disconnect and stop the App Server process owned by this plugin. May interrupt a running model task. A disconnected state is treated as success.")]
     [RpcInvocationName("disconnect")]
     Result<CodexIntegrationSnapshot> Disconnect(CodexDisconnectRequest request);
+    [Description("Refresh the published mobile page from current desktop data. Reopen or refresh the mobile view afterwards to display the new snapshot.")]
+    [RpcInvocationName("mobile-refresh")]
+    Result RefreshMobilePage(RefreshCodexMobilePageRequest request);
 }

@@ -221,4 +221,17 @@
   <data name="Note is required." xml:space="preserve"><value>备注不能为 null。</value></data>
   <data name="Entry is required." xml:space="preserve"><value>账单内容不能为空。</value></data>
   <data name="Internal server error" xml:space="preserve"><value>服务器内部错误，请稍后重试。</value></data>
+  <data name="After changes, prepare latest data, then use the phone's Refresh button." xml:space="preserve"><value>操作后先点“准备最新数据”，再点手机顶部“刷新”查看新页面。</value></data>
+  <data name="Amount, for example 12.50" xml:space="preserve"><value>金额，例如 12.50</value></data>
+  <data name="Balance" xml:space="preserve"><value>结余</value></data>
+  <data name="Enter an amount using a dot decimal separator without grouping or currency symbols." xml:space="preserve"><value>请输入使用小数点的金额，不含千分位或货币符号。</value></data>
+  <data name="No items to display." xml:space="preserve"><value>暂无记录。</value></data>
+  <data name="Notes" xml:space="preserve"><value>备注</value></data>
+  <data name="Prepare latest data" xml:space="preserve"><value>准备最新数据</value></data>
+  <data name="Quick entry" xml:space="preserve"><value>快速记账</value></data>
+  <data name="Recent entries" xml:space="preserve"><value>最近记录</value></data>
+  <data name="Record as income" xml:space="preserve"><value>记为收入</value></data>
+  <data name="Save entry" xml:space="preserve"><value>保存记录</value></data>
+  <data name="Saved for today's desktop local date. Unchecked means expense." xml:space="preserve"><value>使用保存时电脑的本地日期；不开启收入开关即为支出。</value></data>
+  <data name="Unable to load data. Prepare latest data to retry." xml:space="preserve"><value>无法加载数据，请准备最新数据后重试。</value></data>
 </root>

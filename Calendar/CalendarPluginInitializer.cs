@@ -2,6 +2,7 @@ using Microsoft.Extensions.DependencyInjection;
 using NOF.Abstraction;
 using NOF.Infrastructure;
 using Quantum.OfficialPlugins.Calendar.Application;
+using Quantum.OfficialPlugins.Calendar.UI.Mobile;
 
 namespace Quantum.OfficialPlugins.Calendar;
 
@@ -11,6 +12,7 @@ public sealed class CalendarPluginInitializer : IAssemblyInitializer
     {
         services.AddSingleton<IDbContextModelCreatingContributor, CalendarDbContextModelCreatingContributor>();
         services.AddRpcServer<CalendarRpcService>();
+        services.AddScoped<ICalendarMobilePages, CalendarMobilePages>();
         services.AddScoped<ICalendarRpcServiceClient, LocalCalendarRpcServiceClient>();
     }
 }

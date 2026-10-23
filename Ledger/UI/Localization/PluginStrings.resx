@@ -221,4 +221,17 @@
   <data name="Note is required." xml:space="preserve"><value>Note is required.</value></data>
   <data name="Entry is required." xml:space="preserve"><value>Entry is required.</value></data>
   <data name="Internal server error" xml:space="preserve"><value>Internal server error</value></data>
+  <data name="After changes, prepare latest data, then use the phone's Refresh button." xml:space="preserve"><value>After changes, prepare latest data, then use the phone's Refresh button.</value></data>
+  <data name="Amount, for example 12.50" xml:space="preserve"><value>Amount, for example 12.50</value></data>
+  <data name="Balance" xml:space="preserve"><value>Balance</value></data>
+  <data name="Enter an amount using a dot decimal separator without grouping or currency symbols." xml:space="preserve"><value>Enter an amount using a dot decimal separator without grouping or currency symbols.</value></data>
+  <data name="No items to display." xml:space="preserve"><value>No items to display.</value></data>
+  <data name="Notes" xml:space="preserve"><value>Notes</value></data>
+  <data name="Prepare latest data" xml:space="preserve"><value>Prepare latest data</value></data>
+  <data name="Quick entry" xml:space="preserve"><value>Quick entry</value></data>
+  <data name="Recent entries" xml:space="preserve"><value>Recent entries</value></data>
+  <data name="Record as income" xml:space="preserve"><value>Record as income</value></data>
+  <data name="Save entry" xml:space="preserve"><value>Save entry</value></data>
+  <data name="Saved for today's desktop local date. Unchecked means expense." xml:space="preserve"><value>Saved for today's desktop local date. Unchecked means expense.</value></data>
+  <data name="Unable to load data. Prepare latest data to retry." xml:space="preserve"><value>Unable to load data. Prepare latest data to retry.</value></data>
 </root>

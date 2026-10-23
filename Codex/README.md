@@ -86,3 +86,7 @@ handlers as host RPC. `CodexRuntime` remains a singleton process/connection/stre
 it is not a parallel application-service facade. The UI subscribes only to `ICodexRuntimeEvents.Changed` and
 refreshes snapshots through RPC. Local dispatch creates a fresh server scope while preserving the shared runtime.
 See [the official plugin development guide](../docs/plugin-development.md).
+
+## Mobile preview
+
+This build publishes a mobile page on compatible Quantum hosts. See [mobile setup, supported workflows, refresh behavior and new RPC methods](../docs/mobile.md). The desktop remains responsible for business execution; these mobile adaptations are not yet a marketplace release.
