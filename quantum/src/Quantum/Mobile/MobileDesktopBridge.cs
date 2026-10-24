@@ -35,7 +35,7 @@ public sealed class MobileDesktopBridge(
             {
                 _client.Registration = JsonSerializer.Deserialize<BridgeRegistration>(saved, MobileJson.Options);
                 try { await _client.CallAsync<JsonElement>("heartbeat", cancellationToken: cancellationToken); }
-                catch (BridgeException) { _client.Registration = null; }
+                catch (BridgeException exception) when (exception.Code == "mobile_device_revoked") { _client.Registration = null; }
             }
             if (_client.Registration is null)
             {
@@ -75,7 +75,7 @@ public sealed class MobileDesktopBridge(
             if (_client?.Registration is not null)
             {
                 try { using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5)); await _client.CallAsync<JsonElement>("revoke", cancellationToken: timeout.Token); }
-                catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or BridgeException or InvalidOperationException) { }
+                catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or BridgeException or PlatformAuthenticationException or InvalidOperationException) { }
             }
             clearRegistration();
             _client = null; Bindings = []; Status = "Stopped"; Changed?.Invoke();
