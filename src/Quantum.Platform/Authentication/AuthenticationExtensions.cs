@@ -45,6 +45,7 @@ public static class AuthenticationExtensions
         builder.Services.AddHttpContextAccessor();
         builder.Services.AddScoped<IPlatformCallerContext, HttpPlatformCallerContext>();
         builder.Services.AddSingleton<IPlatformTokenIssuer, JwtPlatformTokenIssuer>();
+        builder.Services.AddSingleton<IRefreshTokenCodec, RefreshTokenCodec>();
         builder.Services.AddAuthentication(SelectorScheme)
             .AddPolicyScheme(SelectorScheme, SelectorScheme, policy =>
             {

@@ -26,6 +26,14 @@ public interface IQuantumPlatformService : IRpcService
     [Category("Users")]
     Result<LoginResponse> Login(LoginRequest request);
 
+    [Summary("Rotate a persistent login session and issue a fresh access token")]
+    [Category("Users")]
+    Result<LoginResponse> RefreshLogin(RefreshLoginRequest request);
+
+    [Summary("Revoke the login session identified by its refresh token")]
+    [Category("Users")]
+    Result Logout(LogoutRequest request);
+
     [Summary("Create a private-key Credential Client for unattended CI publishing")]
     [Category("Credential Clients")]
     Result<CreateCredentialClientResponse> CreateCredentialClient(CreateCredentialClientRequest request);

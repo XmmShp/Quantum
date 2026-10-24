@@ -39,9 +39,12 @@ public sealed record UserSummary
 
 public sealed record LoginResponse
 {
+    public string? RefreshToken { get; init; }
+    public DateTime? RefreshExpiresAtUtc { get; init; }
     public required string AccessToken { get; init; }
     public required DateTime ExpiresAtUtc { get; init; }
     public required UserSummary User { get; init; }
+    public override string ToString() => "[REDACTED]";
 }
 
 public sealed record CredentialClientSummary

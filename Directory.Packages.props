@@ -13,6 +13,7 @@
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.Server" Version="10.0.7" />
     <PackageVersion Include="Microsoft.EntityFrameworkCore.Design" Version="10.0.7" />
     <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageVersion Include="Microsoft.AspNetCore.TestHost" Version="10.0.7" />
     <PackageVersion Include="NOF.Application" Version="$(NofVersion)" />
     <PackageVersion Include="NOF.Contract" Version="$(NofVersion)" />
     <PackageVersion Include="NOF.Domain" Version="$(NofVersion)" />

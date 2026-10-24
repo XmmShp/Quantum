@@ -6,6 +6,7 @@ public interface IPlatformCallerContext
 {
     string? UserId { get; }
     string? CredentialClientId { get; }
+    string? LoginSessionId => null;
     bool HasPermission(string permission);
 }
 
@@ -42,7 +43,18 @@ public interface IPlatformPasswordHasher
 
 public interface IPlatformTokenIssuer
 {
-    IssuedAccessToken Issue(PlatformUser user);
+    IssuedAccessToken Issue(PlatformUser user, Guid? sessionId = null);
+}
+
+public interface ILoginSessionValidator
+{
+    Task<bool> IsActiveAsync(PlatformUser user, string sessionId, CancellationToken cancellationToken);
+}
+
+public interface IRefreshTokenCodec
+{
+    string Create(Guid sessionId);
+    string Rotate(string token, Guid requestId);
 }
 
 public interface IPlatformEmailSender

@@ -6,7 +6,8 @@ namespace Quantum.Platform.Application;
 
 public sealed class PlatformCallerResolver(
     IPlatformCallerContext callerContext,
-    IRepository<PlatformUser> users)
+    IRepository<PlatformUser> users,
+    ILoginSessionValidator? sessions = null)
 {
     public bool IsCredentialClient => callerContext.CredentialClientId is not null;
 
@@ -38,6 +39,12 @@ public sealed class PlatformCallerResolver(
             return PlatformCallerResolution.Fail("user_not_found", "The authenticated user no longer exists.");
         }
 
+        if (callerContext.LoginSessionId is { } sessionId &&
+            (sessions is null || !await sessions.IsActiveAsync(user, sessionId, cancellationToken)))
+        {
+            return PlatformCallerResolution.Fail("authentication_required", "The login session is no longer valid.");
+        }
+
         if (requiredRoles != PlatformUserRole.None && !user.HasAnyRole(requiredRoles))
         {
             return PlatformCallerResolution.Fail("forbidden", "The authenticated user does not have the required role.");
@@ -53,9 +60,11 @@ public sealed class PlatformCallerResolver(
             return null;
         }
 
-        return await users
+        var user = await users
             .Where(candidate => candidate.Id == userId)
             .SingleOrDefaultAsync(cancellationToken);
+        return user is not null && (callerContext.LoginSessionId is not { } sessionId ||
+            sessions is not null && await sessions.IsActiveAsync(user, sessionId, cancellationToken)) ? user : null;
     }
 
     public static PlatformUserId? TryParseId(string? value)

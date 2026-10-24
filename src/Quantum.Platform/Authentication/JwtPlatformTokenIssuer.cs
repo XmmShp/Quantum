@@ -15,7 +15,7 @@ public sealed class JwtPlatformTokenIssuer(
 {
     private readonly PlatformJwtOptions options = options.Value;
 
-    public IssuedAccessToken Issue(PlatformUser user)
+    public IssuedAccessToken Issue(PlatformUser user, Guid? sessionId = null)
     {
         var now = timeProvider.GetUtcNow();
         var expiresAt = now.AddMinutes(options.LifetimeMinutes);
@@ -32,6 +32,8 @@ public sealed class JwtPlatformTokenIssuer(
                 claims.Add(new Claim(ClaimTypes.Role, role.ToString()));
             }
         }
+
+        if (sessionId is { } id) claims.Add(new Claim("sid", id.ToString("N")));
 
         var token = new JwtSecurityToken(
             options.Issuer,

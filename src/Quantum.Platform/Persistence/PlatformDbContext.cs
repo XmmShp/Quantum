@@ -12,6 +12,23 @@ public sealed class PlatformDbContext(DbContextOptions<PlatformDbContext> option
     {
         base.OnModelCreating(modelBuilder);
 
+        modelBuilder.Entity<PlatformLoginSession>(entity =>
+        {
+            entity.ToTable(nameof(PlatformLoginSession));
+            entity.IsHostOnly();
+            entity.HasKey(session => session.Id);
+            entity.Property(session => session.Id).ValueGeneratedNever();
+            entity.Property(session => session.TokenHash).HasMaxLength(64).IsRequired();
+            entity.Property(session => session.PasswordStamp).HasMaxLength(64).IsRequired();
+            entity.Property(session => session.UsedTokensJson).HasColumnType("text").IsRequired();
+            entity.Property(session => session.CreatedAtUtc).HasColumnType("timestamp with time zone");
+            entity.Property(session => session.ExpiresAtUtc).HasColumnType("timestamp with time zone");
+            entity.Property(session => session.RotatedAtUtc).HasColumnType("timestamp with time zone");
+            entity.Property(session => session.RevokedAtUtc).HasColumnType("timestamp with time zone");
+            entity.HasIndex(session => session.ExpiresAtUtc);
+            entity.HasIndex(session => session.UserId);
+        });
+
         modelBuilder.Entity<MobileBridgeAccount>(entity =>
         {
             entity.ToTable(nameof(MobileBridgeAccount));

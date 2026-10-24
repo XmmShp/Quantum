@@ -177,6 +177,8 @@ public sealed class RegisterUser(
 
 public sealed class Login(
     IRepository<PlatformUser> users,
+    IRepository<PlatformLoginSession> sessions,
+    IRefreshTokenCodec refreshTokens,
     IPlatformPasswordHasher passwordHasher,
     IPlatformTokenIssuer tokenIssuer,
     AuditWriter auditWriter,
@@ -212,7 +214,11 @@ public sealed class Login(
         }
 
         user.RecordLogin(timeProvider);
-        var issuedToken = tokenIssuer.Issue(user);
+        var sessionId = Guid.NewGuid();
+        var refreshToken = refreshTokens.Create(sessionId);
+        var session = PlatformLoginSession.Create(user, sessionId, refreshToken, timeProvider.GetUtcNow().UtcDateTime);
+        await sessions.AddAsync(session, cancellationToken);
+        var issuedToken = tokenIssuer.Issue(user, sessionId);
         await auditWriter.WriteAsync(
             "user.logged_in",
             user.Id,
@@ -223,6 +229,8 @@ public sealed class Login(
         await dbContext.SaveChangesAsync(cancellationToken);
         return new LoginResponse
         {
+            RefreshToken = refreshToken,
+            RefreshExpiresAtUtc = session.ExpiresAtUtc,
             AccessToken = issuedToken.AccessToken,
             ExpiresAtUtc = issuedToken.ExpiresAtUtc,
             User = user.ToSummary()

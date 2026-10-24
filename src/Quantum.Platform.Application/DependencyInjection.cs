@@ -8,6 +8,7 @@ public static class DependencyInjection
     {
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<PlatformCallerResolver>();
+        services.AddScoped<ILoginSessionValidator, LoginSessionValidator>();
         services.AddScoped<AuditWriter>();
         return services;
     }
