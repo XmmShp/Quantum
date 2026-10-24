@@ -57,7 +57,7 @@
     {
         Bridge.Changed += Changed;
         Session.Changed += Changed;
-        await Session.InitializeAsync(Marketplace);
+        await Run(() => Session.InitializeAsync(Marketplace));
     }
     private void Select(string id, bool value) { if (value) _selected.Add(id); else _selected.Remove(id); }
     private async Task Run(Func<Task> operation)
