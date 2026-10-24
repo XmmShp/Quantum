@@ -1,4 +1,5 @@
 using System.Net.Http.Json;
+using Quantum.Mobile.Internal;
 using System.Security.Cryptography;
 using System.Text.Json;
 
@@ -20,6 +21,7 @@ public sealed class QuantumMarketplaceClient : IQuantumMarketplaceClient
         _httpClient = httpClient;
         _session = session;
         BaseAddress = options.BaseAddress;
+        _session?.Configure(httpClient, BaseAddress);
     }
 
     public Uri BaseAddress { get; }
@@ -139,6 +141,16 @@ public sealed class QuantumMarketplaceClient : IQuantumMarketplaceClient
         AuthenticationMode authenticationMode,
         CancellationToken cancellationToken)
     {
+        if (authenticationMode != AuthenticationMode.None && _session?.IsAuthenticated == true)
+        {
+            return await _session.Authentication.ExecuteAsync((token, ct) => InvokeCoreAsync<T>(method, parameters, token, ct), cancellationToken);
+        }
+        if (authenticationMode == AuthenticationMode.Required) throw new PlatformAuthenticationException();
+        return await InvokeCoreAsync<T>(method, parameters, null, cancellationToken);
+    }
+
+    private async Task<T> InvokeCoreAsync<T>(string method, object parameters, string? accessToken, CancellationToken cancellationToken)
+    {
         var request = new
         {
             jsonrpc = "2.0",
@@ -150,18 +162,9 @@ public sealed class QuantumMarketplaceClient : IQuantumMarketplaceClient
         {
             Content = JsonContent.Create(request, options: JsonOptions)
         };
-        var accessToken = _session?.AccessToken;
-        if (authenticationMode == AuthenticationMode.Required && string.IsNullOrWhiteSpace(accessToken))
-        {
-            throw new MarketplaceException("Marketplace authentication is required.");
-        }
-
-        if (!string.IsNullOrWhiteSpace(accessToken) && authenticationMode != AuthenticationMode.None)
-        {
-            requestMessage.Headers.Authorization = new("Bearer", accessToken);
-        }
-
+        if (!string.IsNullOrWhiteSpace(accessToken)) requestMessage.Headers.Authorization = new("Bearer", accessToken);
         using var response = await _httpClient.SendAsync(requestMessage, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized) throw new PlatformAuthenticationException();
         if (!response.IsSuccessStatusCode)
         {
             throw new MarketplaceException(
@@ -185,6 +188,7 @@ public sealed class QuantumMarketplaceClient : IQuantumMarketplaceClient
         if (TryGetProperty(result, "isSuccess", out var isSuccess)
             && isSuccess.ValueKind is JsonValueKind.False)
         {
+            if (TryGetProperty(result, "errorCode", out var code) && code.GetString() is "authentication_required" or "user_not_found") throw new PlatformAuthenticationException();
             throw new MarketplaceException(GetErrorMessage(result));
         }
 

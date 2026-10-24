@@ -141,7 +141,7 @@ public sealed class QuantumMarketplaceClientTests
         var responses = new Queue<HttpResponseMessage>(
         [
             JsonResponse("""
-                {"jsonrpc":"2.0","id":"1","result":{"isSuccess":true,"value":{"accessToken":"secret-token","expiresAtUtc":"2026-09-15T00:00:00Z","user":{"userId":"1","username":"developer","email":"developer@example.com","roles":3}}}}
+                {"jsonrpc":"2.0","id":"1","result":{"isSuccess":true,"value":{"accessToken":"secret-token","expiresAtUtc":"2099-09-15T00:00:00Z","user":{"userId":"1","username":"developer","email":"developer@example.com","roles":3}}}}
                 """),
             JsonResponse("""
                 {"jsonrpc":"2.0","id":"2","result":{"isSuccess":true,"value":[]}}
@@ -166,7 +166,7 @@ public sealed class QuantumMarketplaceClientTests
         await session.LoginAsync(client, "developer@example.com", "password");
         await client.ListManagedPluginsAsync();
 
-        Assert.Equal("secret-token", storedToken);
+        Assert.Equal("secret-token", JsonDocument.Parse(storedToken!).RootElement.GetProperty("accessToken").GetString());
         Assert.Equal("Bearer secret-token", authorization);
         Assert.Equal("developer@example.com", session.User!.Email);
     }
@@ -179,7 +179,7 @@ public sealed class QuantumMarketplaceClientTests
         var responses = new Queue<HttpResponseMessage>(
         [
             JsonResponse("""
-                {"jsonrpc":"2.0","id":"1","result":{"isSuccess":true,"value":{"accessToken":"pending-token","expiresAtUtc":"2026-09-15T00:00:00Z","user":{"userId":"1","username":"developer","email":"developer@example.com","roles":3}}}}
+                {"jsonrpc":"2.0","id":"1","result":{"isSuccess":true,"value":{"accessToken":"pending-token","expiresAtUtc":"2099-09-15T00:00:00Z","user":{"userId":"1","username":"developer","email":"developer@example.com","roles":3}}}}
                 """),
             JsonResponse($$"""
                 {

@@ -37,7 +37,7 @@ public sealed partial class MainPage : ContentPage
 
     private BridgeClient? _client;
 
-    private string? _token;
+    private PlatformSession? _authentication;
 
     private string _storageKey = "";
 
@@ -126,46 +126,18 @@ public sealed partial class MainPage : ContentPage
 
         var uri = PlatformAddress.Parse(_baseUrl);
 
-        using var response = await _http.PostAsJsonAsync(new Uri(uri, "rpc"), new
-
-        {
-
-            jsonrpc = "2.0",
-            id = Guid.NewGuid().ToString("N"),
-            method = "Login",
-
-            @params = new { email = _email.Text?.Trim(), password = _password.Text }
-
-        });
-
-        _password.Text = "";
-
-        response.EnsureSuccessStatusCode();
-
-        using var document = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
-
-        if (document.RootElement.TryGetProperty("error", out var rpcError) && rpcError.ValueKind != JsonValueKind.Null)
-        {
-            throw new BridgeException("login_service_unavailable", "Login service unavailable.");
-        }
-
-        var result = document.RootElement.GetProperty("result");
-
-        if (!result.GetProperty("isSuccess").GetBoolean())
-        {
-            throw new BridgeException(result.GetProperty("errorCode").GetString() ?? "login_failed",
-                result.GetProperty("message").GetString() ?? "Sign in failed.");
-        }
+        _authentication = CreateAuthentication(uri);
+        try { await _authentication.LoginAsync(_email.Text ?? "", _password.Text ?? ""); }
+        finally { _password.Text = ""; }
         _accountAccepted = true;
+        await ConnectSessionAsync(uri);
+    }
 
-        _token = result.GetProperty("value").GetProperty("accessToken").GetString();
-
-        var userId = result.GetProperty("value").GetProperty("user").GetProperty("userId").GetString()!;
-
+    private async Task ConnectSessionAsync(Uri uri)
+    {
+        var userId = _authentication!.User!.UserId;
         _storageKey = "quantum.mobile." + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(uri.AbsoluteUri + userId)));
-
-        _client = new(_http, uri, () => _token);
-
+        _client = new(_http, uri, () => _authentication.AccessToken) { Authentication = _authentication };
         var saved = await SecureStorage.Default.GetAsync(_storageKey);
 
         if (saved is not null)
@@ -176,7 +148,7 @@ public sealed partial class MainPage : ContentPage
 
             try { await _client.CallAsync<JsonElement>("heartbeat"); }
 
-            catch (BridgeException) { _client.Registration = null; }
+            catch (BridgeException e) when (e.Code == "mobile_device_revoked") { _client.Registration = null; }
 
         }
 
@@ -210,6 +182,8 @@ public sealed partial class MainPage : ContentPage
         var devices = await _client!.CallAsync<BridgeDevice[]>("devices");
 
         var bindings = await _client.CallAsync<BridgeBinding[]>("bindings");
+        var online = devices.Where(d => d.Kind == "desktop" && d.SeenAt > _client.UtcNow.AddSeconds(-45))
+            .OrderByDescending(d => d.SeenAt).ToArray();
 
         _isSignIn = false;
         _status.IsVisible = true;
@@ -225,7 +199,7 @@ public sealed partial class MainPage : ContentPage
             TextColor = MobileTheme.Muted,
             FontSize = 14
         });
-        if (!devices.Any(d => d.Kind == "desktop"))
+        if (online.Length == 0)
         {
             _body.Children.Add(MobileTheme.Card(new VerticalStackLayout
             {
@@ -237,13 +211,13 @@ public sealed partial class MainPage : ContentPage
                 }
             }));
         }
-        foreach (var device in devices.Where(d => d.Kind == "desktop"))
+        foreach (var device in online)
 
         {
 
             var approved = bindings.Any(b => b.DesktopId == device.Id && b.Approved);
 
-            _body.Children.Add(Button(device.Name + " · " + (approved ? T("已授权", "Approved") : T("申请连接", "Request access")), async () =>
+            _body.Children.Add(Button(device.Name + " · " + device.Id[..8] + " · " + (approved ? T("已授权", "Approved") : T("申请连接", "Request access")), async () =>
 
             {
 
@@ -463,7 +437,8 @@ public sealed partial class MainPage : ContentPage
 
     {
 
-        if (_client is null || _preview) return;
+        if (_preview) return;
+        if (_client is null) { _ = RestoreLoginAsync(true); return; }
 
         _ = ResumeAsync();
 
@@ -562,6 +537,11 @@ public sealed partial class MainPage : ContentPage
                 }
 
                 catch (OperationCanceledException) when (token.IsCancellationRequested) { break; }
+                catch (BridgeException exception) when (exception.Code == "mobile_device_revoked")
+                {
+                    ShowExpiredDevice();
+                    break;
+                }
 
                 catch (Exception exception)
 
@@ -597,7 +577,8 @@ public sealed partial class MainPage : ContentPage
 
         if (_storageKey.Length > 0) { SecureStorage.Default.Remove(_storageKey); Preferences.Default.Remove(_storageKey + ".pending"); }
 
-        _client = null; _token = null; _snapshot = null; _renderer = null; _pendingId = null; _uncertain = false;
+        if (_authentication is not null) await _authentication.LogoutAsync();
+        _client = null; _snapshot = null; _renderer = null; _pendingId = null; _uncertain = false;
 
         _status.Text = ""; _desktopStatus.Text = ""; ShowSignIn();
 

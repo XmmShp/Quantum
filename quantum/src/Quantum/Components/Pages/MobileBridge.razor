@@ -56,6 +56,7 @@
     protected override async Task OnInitializedAsync()
     {
         Bridge.Changed += Changed;
+        Session.Changed += Changed;
         await Session.InitializeAsync(Marketplace);
     }
     private void Select(string id, bool value) { if (value) _selected.Add(id); else _selected.Remove(id); }
@@ -69,5 +70,5 @@
     private Task StopAsync() => Run(Bridge.StopAsync);
     private Task ApproveAsync(string id, bool approved) => Run(() => Bridge.ApproveAsync(id, approved));
     private void Changed() => _ = InvokeAsync(StateHasChanged);
-    public void Dispose() => Bridge.Changed -= Changed;
+    public void Dispose() { Bridge.Changed -= Changed; Session.Changed -= Changed; }
 }

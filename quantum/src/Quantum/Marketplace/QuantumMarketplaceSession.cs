@@ -1,3 +1,5 @@
+using Quantum.Mobile.Internal;
+
 namespace Quantum.Marketplace;
 
 public sealed class QuantumMarketplaceSession(
@@ -5,67 +7,32 @@ public sealed class QuantumMarketplaceSession(
     Func<string, Task> writeToken,
     Func<Task> clearToken)
 {
-    private readonly SemaphoreSlim _gate = new(1, 1);
+    private PlatformSession? _authentication;
+    private Uri? _platform;
+    internal PlatformSession Authentication => _authentication ?? throw new InvalidOperationException("Create the marketplace client before using its session.");
+    public event Action? Changed;
+    public string? AccessToken => _authentication?.AccessToken;
+    public MarketplaceUser? User => _authentication?.User is { } user
+        ? new(user.UserId, user.Username, user.Email, (MarketplaceUserRoles)user.Roles) : null;
+    public bool IsAuthenticated => _authentication?.IsAuthenticated == true;
 
-    public string? AccessToken { get; private set; }
-    public MarketplaceUser? User { get; private set; }
-    public bool IsAuthenticated => AccessToken is not null && User is not null;
-
-    public async Task InitializeAsync(
-        IQuantumMarketplaceClient client,
-        CancellationToken cancellationToken = default)
+    internal void Configure(HttpClient http, Uri platform)
     {
-        await _gate.WaitAsync(cancellationToken);
-        try
+        if (_authentication is not null)
         {
-            if (AccessToken is not null)
-            {
-                return;
-            }
-
-            AccessToken = await readToken();
-            if (AccessToken is null)
-            {
-                return;
-            }
-
-            try
-            {
-                User = await client.GetCurrentUserAsync(cancellationToken);
-            }
-            catch (OperationCanceledException)
-            {
-                throw;
-            }
-            catch
-            {
-                AccessToken = null;
-                User = null;
-                await clearToken();
-            }
+            if (_platform != platform) throw new InvalidOperationException("A login session cannot be shared across platforms.");
+            return;
         }
-        finally
-        {
-            _gate.Release();
-        }
+        _platform = platform;
+        _authentication = new(http, platform, readToken, writeToken, clearToken);
+        _authentication.Changed += () => Changed?.Invoke();
     }
 
-    public async Task LoginAsync(
-        IQuantumMarketplaceClient client,
-        string email,
-        string password,
-        CancellationToken cancellationToken = default)
-    {
-        var login = await client.LoginAsync(email, password, cancellationToken);
-        AccessToken = login.AccessToken;
-        User = login.User;
-        await writeToken(login.AccessToken);
-    }
+    public async Task InitializeAsync(IQuantumMarketplaceClient client, CancellationToken cancellationToken = default)
+        => await Authentication.RestoreAsync(cancellationToken);
 
-    public async Task LogoutAsync()
-    {
-        AccessToken = null;
-        User = null;
-        await clearToken();
-    }
+    public Task LoginAsync(IQuantumMarketplaceClient client, string email, string password, CancellationToken cancellationToken = default)
+        => Authentication.LoginAsync(email, password, cancellationToken);
+
+    public Task LogoutAsync() => Authentication.LogoutAsync();
 }

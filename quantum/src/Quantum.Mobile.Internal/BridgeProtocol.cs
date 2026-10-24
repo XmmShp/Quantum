@@ -23,12 +23,17 @@ public sealed record BridgeAck(string Id, string Lease);
 /// <summary>Only platform control RPC is available here. This client cannot invoke plugin RPC names.</summary>
 public sealed class BridgeClient(HttpClient http, Uri platform, Func<string?> accessToken)
 {
+    public PlatformSession? Authentication { get; init; }
     public BridgeRegistration? Registration { get; set; }
     private TimeSpan _serverOffset;
     public DateTimeOffset UtcNow => DateTimeOffset.UtcNow + _serverOffset;
-    public async Task<T> CallAsync<T>(string operation, object? body = null, CancellationToken cancellationToken = default)
+    public Task<T> CallAsync<T>(string operation, object? body = null, CancellationToken cancellationToken = default)
+        => Authentication is { } session
+            ? session.ExecuteAsync((token, ct) => CallCoreAsync<T>(operation, body, token, ct), cancellationToken)
+            : CallCoreAsync<T>(operation, body, accessToken(), cancellationToken);
+
+    private async Task<T> CallCoreAsync<T>(string operation, object? body, string? token, CancellationToken cancellationToken)
     {
-        var token = accessToken();
         if (string.IsNullOrWhiteSpace(token)) throw new InvalidOperationException("Sign in to Quantum Platform first.");
         if (platform.Scheme != "https" && !(platform.IsLoopback && platform.Scheme == "http"))
             throw new ArgumentException("HTTPS is required outside localhost.");
@@ -42,6 +47,7 @@ public sealed class BridgeClient(HttpClient http, Uri platform, Func<string?> ac
             @params = new BridgeRequest(operation, Registration?.Device.Id, Registration?.Secret, MobileJson.Element(body ?? new { }))
         });
         using var response = await http.SendAsync(request, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        if (response.StatusCode == System.Net.HttpStatusCode.Unauthorized) throw new PlatformAuthenticationException();
         response.EnsureSuccessStatusCode();
         if (response.Headers.Date is { } serverTime) _serverOffset = serverTime - DateTimeOffset.UtcNow;
         await response.Content.LoadIntoBufferAsync(1024 * 1024, cancellationToken);
@@ -50,7 +56,10 @@ public sealed class BridgeClient(HttpClient http, Uri platform, Func<string?> ac
         if (root.TryGetProperty("error", out var rpcError) && rpcError.ValueKind != JsonValueKind.Null) throw new InvalidOperationException("Platform bridge RPC is unavailable.");
         var result = root.GetProperty("result");
         if (!result.GetProperty("isSuccess").GetBoolean())
+        {
+            if (result.GetProperty("errorCode").GetString() is "authentication_required" or "user_not_found") throw new PlatformAuthenticationException();
             throw new BridgeException(result.GetProperty("errorCode").GetString() ?? "mobile_failed", result.GetProperty("message").GetString() ?? "Bridge request failed.");
+        }
         return MobileJson.Read<T>(result.GetProperty("value"));
     }
 }

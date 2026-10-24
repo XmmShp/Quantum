@@ -79,11 +79,19 @@ public static class MauiProgram
         {
             Timeout = TimeSpan.FromMinutes(5)
         });
+        var sessionStorageKey = "quantum.marketplace.session." + Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(marketplaceOptions.BaseAddress.AbsoluteUri)));
         builder.Services.AddSingleton(new QuantumMarketplaceSession(
-            () => SecureStorage.Default.GetAsync("quantum.marketplace.access-token"),
-            token => SecureStorage.Default.SetAsync("quantum.marketplace.access-token", token),
+            async () => await SecureStorage.Default.GetAsync(sessionStorageKey) ??
+                (marketplaceOptions.BaseAddress.AbsoluteUri == "https://quantum.io-vii.com/"
+                    ? await SecureStorage.Default.GetAsync("quantum.marketplace.access-token") : null),
+            async token =>
+            {
+                await SecureStorage.Default.SetAsync(sessionStorageKey, token);
+                SecureStorage.Default.Remove("quantum.marketplace.access-token");
+            },
             () =>
             {
+                SecureStorage.Default.Remove(sessionStorageKey);
                 SecureStorage.Default.Remove("quantum.marketplace.access-token");
                 return Task.CompletedTask;
             }));

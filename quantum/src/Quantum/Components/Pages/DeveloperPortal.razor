@@ -165,10 +165,12 @@
     private bool _isBusy;
 
     private bool CanLogin => !string.IsNullOrWhiteSpace(_email) && !string.IsNullOrWhiteSpace(_password);
+    private void SessionChanged() => _ = InvokeAsync(StateHasChanged);
     private Uri PortalUri => new(MarketplaceClient.BaseAddress, "portal/");
 
     protected override async Task OnInitializedAsync()
     {
+        MarketplaceSession.Changed += SessionChanged;
         try
         {
             await MarketplaceSession.InitializeAsync(MarketplaceClient, _lifetime.Token);
@@ -189,6 +191,7 @@
 
     public async ValueTask DisposeAsync()
     {
+        MarketplaceSession.Changed -= SessionChanged;
         _lifetime.Cancel();
         if (_pendingInstall?.Preview.PreviewId is { } previewId)
         {

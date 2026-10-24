@@ -29,7 +29,7 @@ public sealed class MobileDesktopBridge(
             if (IsRunning) throw new InvalidOperationException("Stop sharing before changing the plugin selection.");
             if (!session.IsAuthenticated) throw new InvalidOperationException("Sign in to Quantum Platform first.");
             gateway.SetSharing(sharedPlugins);
-            _client = new(http, options.BaseAddress, () => session.AccessToken);
+            _client = new(http, options.BaseAddress, () => session.AccessToken) { Authentication = session.Authentication };
             var saved = await readRegistration();
             if (saved is not null)
             {
@@ -130,6 +130,17 @@ public sealed class MobileDesktopBridge(
                 Status = "Connected"; delay = 2; Changed?.Invoke();
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested) { break; }
+            catch (PlatformAuthenticationException)
+            {
+                break;
+            }
+            catch (BridgeException exception) when (exception.Code == "mobile_device_revoked")
+            {
+                clearRegistration();
+                _client = null;
+                Bindings = [];
+                break;
+            }
             catch (Exception exception) when (exception is not OutOfMemoryException)
             {
                 Status = exception is BridgeException bridge ? bridge.Code : "Connection interrupted";

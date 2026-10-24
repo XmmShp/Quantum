@@ -156,7 +156,7 @@ public sealed partial class MainPage
 
     private async Task SubmitSignInAsync()
     {
-        if (_signingIn)
+        if (_signingIn || _restoring)
         {
             return;
         }
@@ -204,6 +204,8 @@ public sealed partial class MainPage
 
     private static string FriendlyError(Exception exception) => exception switch
     {
+        PlatformAuthenticationException => T("登录已过期或被撤销，请重新登录。", "Your session has expired or was revoked. Sign in again."),
+        PlatformRpcException { Code: "invalid_credentials" } => T("邮箱或密码不正确。", "The email or password is incorrect."),
         BridgeException { Code: "invalid_credentials" } => T("邮箱或密码不正确，请使用开发者后台绑定的邮箱。", "The email or password is incorrect. Use your developer portal email."),
         BridgeException { Code: "invalid_platform_address" } => T("平台地址无效，请在高级设置中填写 HTTPS 地址；仅本机调试允许 HTTP。", "Invalid platform address. Use HTTPS in Advanced settings; HTTP is allowed only for localhost."),
         BridgeException { Code: "login_service_unavailable" } => T("平台登录服务暂不可用，请稍后重试或检查高级设置。", "The sign-in service is unavailable. Retry later or check Advanced settings."),
