@@ -39,6 +39,9 @@ public sealed partial class MainPage
     protected override void OnAppearing()
     {
         base.OnAppearing();
+#if DEBUG
+        if (_debugPreviewStartup) { _debugPreviewStartup = false; Preview(); return; }
+#endif
         _ = RestoreLoginAsync();
     }
 

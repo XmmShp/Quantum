@@ -436,6 +436,9 @@ public sealed partial class MainPage : ContentPage
     public void Resume()
 
     {
+#if DEBUG
+        if (_debugPreviewStartup) return;
+#endif
 
         if (_preview) return;
         if (_client is null) { _ = RestoreLoginAsync(true); return; }
@@ -618,6 +621,7 @@ public sealed partial class MainPage : ContentPage
         _status.Text = T("模拟器 · MOCK · 不执行业务", "Simulator · MOCK · No business execution");
 
         ShowSnapshot(new("preview", "mock", "mock", "mock", DateTimeOffset.UtcNow.AddMinutes(5), page));
+        _status.Text = T("模拟器 · MOCK · 不执行业务", "Simulator · MOCK · No business execution");
 
         _pageContent.IsEnabled = true;
 

@@ -32,7 +32,9 @@ if ($Target -eq 'android') {
         -p:ApplicationDisplayVersion=$Version -p:ApplicationVersion=$BuildNumber `
         -p:WindowsPackageType=None -p:WindowsAppSDKSelfContained=true -o $publish
     $metadata = [Text.Encoding]::ASCII.GetString([IO.File]::ReadAllBytes((Resolve-Path "$publish/Quantum.Mobile.dll")))
-    if ($metadata.Contains('PreviewFileAsync') -or $metadata.Contains('RenderPreview')) { throw 'Debug preview tools must not be compiled into Release.' }
+    foreach ($debugSymbol in @('PreviewFileAsync', 'RenderPreview', 'MobileDebugServer', 'StartDebugInterface', 'DebugSetInput', 'QUANTUM_MOBILE_DEBUG_PORT')) {
+        if ($metadata.Contains($debugSymbol)) { throw 'Debug tools must not be compiled into Release.' }
+    }
     Compress-Archive -Path "$publish/*" -DestinationPath "$delivery/Quantum-Mobile-$Version-win-x64.zip" -Force
 }
 Get-ChildItem $delivery -File | Where-Object Name -NotLike 'SHA256SUMS.*' | ForEach-Object {

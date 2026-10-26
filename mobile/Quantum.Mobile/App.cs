@@ -19,6 +19,10 @@ public sealed class App : Application
         window.Stopped += (_, _) => page.Suspend();
         window.Resumed += (_, _) => page.Resume();
         window.Destroying += (_, _) => page.Suspend();
+#if DEBUG
+        page.StartDebugInterface();
+        window.Destroying += async (_, _) => await page.StopDebugInterfaceAsync();
+#endif
         return window;
     }
 }

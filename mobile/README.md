@@ -35,6 +35,8 @@ Android 调试包在 `mobile/Quantum.Mobile/bin/Debug/net10.0-android/io.quantum
 
 ## 不登录体验模拟器
 
+开发自动化可使用 [DEBUG 本地测试接口](debug-interface.md)：通过 HTTP 读取页面树、设置输入并触发按钮，无需频繁接管键鼠。接口需显式启用、仅监听 loopback，并在 Release 构建中排除。
+
 使用 Debug 配置启动 Windows 目标，选择“打开模拟器 · Mock 模式”，输入文字、切换开关并点保存。结果会明确标记 MOCK，不触发桌面业务。
 
 选择“模拟器 · 打开 UI JSON”可打开 `mobile/fixtures/mobile-page-v1.json`。文件中的固定 RPC 会被替换成 Mock 动作，仅采集对应输入。没有脚本或 DLL 加载路径。
@@ -57,7 +59,7 @@ Android 调试包在 `mobile/Quantum.Mobile/bin/Debug/net10.0-android/io.quantum
 
 - 页面通过 Publish/Remove 管理，刷新获取全量快照；未实现按会话异步 provider、自动失效推送、动态语言重建与业务成功后的自动页面刷新。
 - 平台先使用每账号有界 JSON 邮箱聚合 + PostgreSQL 账号锁和并发版本，不是面向大规模 QPS 的独立消息表；每账号最多 20 个设备、2,000 条保留消息、10 MiB 聚合数据。TTL 在账号请求时清理，尚无空闲账号定时正文清理 Worker。
-- 设备凭据最长 24 小时，需重新登录/注册；没有新增 RefreshToken 或推送。注册设备的 session 在进程崩溃恢复时复用，页面动作仍由内存 viewId/runtime 绑定阻止旧页面执行。
+- 平台登录支持自动续期和安全存储恢复，登录会话最长 30 天；设备授权仍独立保留 24 小时，到期需重新连接并在桌面批准。注册设备的 session 在进程崩溃恢复时复用，页面动作仍由内存 viewId/runtime 绑定阻止旧页面执行。详见[登录会话说明](../docs/login-sessions.md)。
 - 界面与动作 5 分钟有效；命令 30 秒内未授权启动即过期。消息 ID、执行记录和结果首期保留 24 小时，不是技术稿建议的 7 天去重窗口；更早的命令因到期/视图失效不能重做。
 - 不保证 exactly-once。执行中崩溃、超时或超大结果显示 unknown；用户需核对桌面。首期不保证在超时后继续追踪已脱离等待的 Handler 的最终结果。
 - 自动化覆盖纯协议、平台邮箱状态机、实际 iframe Host 调用、真实插件 RPC 以及通过 HttpMessageHandler 的完整收发闭环。另外已在真实平台 PostgreSQL 上应用迁移，并经 Android 模拟器、公网 HTTPS、本机桌面真实插件跑通调用。

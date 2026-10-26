@@ -28,4 +28,7 @@
     <MauiIcon Include="Resources\appicon.svg" Color="#181824" />
     <MauiSplashScreen Include="Resources\appicon.svg" Color="#181824" BaseSize="128,128" />
   </ItemGroup>
+  <ItemGroup Condition="'$(Configuration)' != 'Debug'">
+    <Compile Remove="Debugging/**/*.cs;MainPage.Debug.cs" />
+  </ItemGroup>
 </Project>
