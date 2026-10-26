@@ -69,6 +69,8 @@
 </CascadingValue>
 
 @code {
+    [Inject] private Quantum.Mobile.MobileDesktopBridge MobileAccess { get; set; } = null!;
+    [Inject] private Quantum.Marketplace.IQuantumMarketplaceClient Marketplace { get; set; } = null!;
     private string GlobalComponentKey(PluginGlobalComponentRegistration contribution)
     {
         var plugin = PluginCatalog.FindPlugin((string)contribution.PluginId);
@@ -85,6 +87,7 @@
     {
         if (firstRender)
         {
+            MobileAccess.Initialize(Marketplace);
             await UpdateDocumentCultureAsync();
         }
     }

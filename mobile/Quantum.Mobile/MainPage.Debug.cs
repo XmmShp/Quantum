@@ -52,6 +52,21 @@ public sealed partial class MainPage
     {
         if (path == "/state") return DebugState();
         if (_restoring || _signingIn) throw new MobileDebugException(409, "debug_app_busy");
+        if (path is "/navigation/open" or "/navigation/close" or "/navigation/select")
+        {
+            if (!_bottomBar.IsVisible) throw new MobileDebugException(409, "debug_navigation_unavailable");
+            if (path == "/navigation/open") await OpenNavigationAsync();
+            else if (path == "/navigation/close") await CloseNavigationAsync();
+            else
+            {
+                var select = body.Deserialize<DebugOpenRequest>(DebugJson)!;
+                var page = _navigation.Pages.FirstOrDefault(p => p.PluginId == select.PluginId && p.PageId == select.PageId)
+                    ?? throw new MobileDebugException(404, "debug_page_not_shared");
+                CheckDebugDraft(select.DiscardDraft);
+                await SelectNavigationPageAsync(page);
+            }
+            return DebugState();
+        }
         if (path == "/preview")
         {
             if (_pendingId is not null || _uncertain || _renderer?.IsDirty == true) throw new MobileDebugException(409, "debug_pending_or_dirty");
@@ -83,7 +98,7 @@ public sealed partial class MainPage
             }
             else
             {
-                if (_uncertain || _pendingId is not null || !_pageContent.IsEnabled || !_preview && (!_connected || _snapshot.ExpiresAt <= _client!.UtcNow))
+                if (_navigationExpanded || _uncertain || _pendingId is not null || !_pageContent.IsEnabled || !_preview && (!_connected || _snapshot.ExpiresAt <= _client!.UtcNow))
                     throw new MobileDebugException(409, "debug_action_unavailable");
                 if (path == "/input")
                 {
@@ -98,15 +113,14 @@ public sealed partial class MainPage
         if (path == "/devices")
         {
             var devices = await _client.CallAsync<BridgeDevice[]>("devices");
-            var bindings = await _client.CallAsync<BridgeBinding[]>("bindings");
             return devices.Where(d => d.Kind == "desktop" && d.SeenAt > _client.UtcNow.AddSeconds(-45))
-                .Select(d => new { d.Id, d.Name, approved = bindings.Any(b => b.DesktopId == d.Id && b.Approved) }).ToArray();
+                .Select(d => new { d.Id, d.Name }).ToArray();
         }
         if (path == "/desktop/select")
         {
             var id = body.Deserialize<DebugDesktopRequest>(DebugJson)!.DesktopId;
-            var bindings = await _client.CallAsync<BridgeBinding[]>("bindings");
-            if (!bindings.Any(b => b.DesktopId == id && b.Approved)) throw new MobileDebugException(403, "debug_desktop_not_approved");
+            var devices = await _client.CallAsync<BridgeDevice[]>("devices");
+            if (!devices.Any(d => d.Id == id && d.Kind == "desktop")) throw new MobileDebugException(404, "debug_desktop_not_found");
             CheckDebugDraft(false);
             _desktopId = id; await ShowPagesAsync();
             return DebugState();
@@ -139,6 +153,11 @@ public sealed partial class MainPage
         pending = _pendingId is not null, uncertain = _uncertain,
         status = _status.Text, desktopStatus = _desktopStatus.Text,
         desktopId = _desktopId,
+        navigation = new
+        {
+            visible = _bottomBar.IsVisible, expanded = _navigationExpanded,
+            pages = _navigation.Pages.Select(p => new { p.PluginId, p.PageId, p.Title, active = p.PluginId == _navigation.PluginId && p.PageId == _navigation.PageId }).ToArray()
+        },
         page = _snapshot is { } snapshot && _renderer is { } renderer ? new
         {
             viewId = renderer.DebugViewId, snapshot.PluginId, pageId = snapshot.Page.Id,
@@ -146,4 +165,16 @@ public sealed partial class MainPage
             tree = renderer.DebugDescribe(snapshot.Page.Root)
         } : null
     };
+
+    private void SetupPreviewNavigation(MobilePage page)
+    {
+        _previewNavigation.Clear();
+        _previewNavigation[page.Id] = page;
+        var status = new MobilePage("mock-status", T("状态预览", "Status preview"),
+            new MobileNode("VStack", "root") { Children = [new("Text", "title") { Text = T("连接与导航预览", "Connection and navigation preview") }, new("Text", "mock-info") { Text = "MOCK · No platform or business calls" }] });
+        _previewNavigation[status.Id] = status;
+        _navigation.Replace(_previewNavigation.Values.Select(p => new BridgePageInfo("mock", p.Id, p.Title)));
+        _navigation.Select("mock", page.Id);
+        RenderNavigation();
+    }
 }

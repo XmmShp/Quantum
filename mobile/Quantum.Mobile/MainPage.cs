@@ -87,6 +87,7 @@ public sealed partial class MainPage : ContentPage
         var shell = new Grid { RowDefinitions = { new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Star) } };
         shell.Add(CreateHeader());
         shell.Add(new ScrollView { Content = root }, 0, 1);
+        BuildNavigation(shell);
         Content = shell;
         ShowSignIn();
     }
@@ -175,98 +176,55 @@ public sealed partial class MainPage : ContentPage
     }
 
     private async Task ShowDevicesAsync()
-
     {
-
-        _snapshot = null; _desktopId = null; _renderer = null;
-
+        ResetNavigation();
+        _snapshot = null; _desktopId = null; _renderer = null; _openRequestId = null;
         var devices = await _client!.CallAsync<BridgeDevice[]>("devices");
-
-        var bindings = await _client.CallAsync<BridgeBinding[]>("bindings");
-        if (!_uncertain && _pendingId is null) _status.Text = T("请选择已授权的电脑，或申请连接。", "Select an approved desktop or request access.");
+        if (!_uncertain && _pendingId is null) _status.Text = T("请选择电脑。", "Choose your desktop.");
         var online = devices.Where(d => d.Kind == "desktop" && d.SeenAt > _client.UtcNow.AddSeconds(-45))
             .OrderByDescending(d => d.SeenAt).ToArray();
-
         _isSignIn = false;
-        _status.IsVisible = true;
-        _desktopStatus.IsVisible = true;
-        _language.IsEnabled = true;
+        _status.IsVisible = true; _desktopStatus.IsVisible = true; _language.IsEnabled = true;
         _body.Children.Clear();
-
         _body.Children.Add(new Label { Text = T("选择你的电脑", "Choose your desktop"), FontSize = 28 });
-
-        _body.Children.Add(new Label
-        {
-            Text = T("在电脑上打开“移动访问”，共享插件页面后，再在这里选择电脑。", "Enable Mobile access and share plugin pages on your computer, then choose it here."),
-            TextColor = MobileTheme.Muted,
-            FontSize = 14
-        });
+        _body.Children.Add(MobileTheme.Caption(T("选择登录同一 Quantum 账号的在线电脑，即可使用它的全部移动插件页面。", "Choose an online desktop signed in to the same Quantum account to use all its mobile plugin pages.")));
         if (online.Length == 0)
-        {
             _body.Children.Add(MobileTheme.Card(new VerticalStackLayout
             {
                 Spacing = 10,
                 Children =
                 {
                     new Label { Text = T("暂时没有可连接的电脑", "No desktops available yet"), TextColor = MobileTheme.Ink, FontSize = 18, FontAttributes = FontAttributes.Bold },
-                    new Label { Text = T("请确认电脑使用相同的平台账号，已开启共享并保持在线。", "Use the same platform account on your desktop, start sharing, and keep it online."), TextColor = MobileTheme.Muted, FontSize = 14 }
+                    MobileTheme.Caption(T("请确认电脑已登录同一账号并保持 Quantum 运行。", "Sign in to the same account and keep Quantum running on your desktop."))
                 }
             }));
-        }
         foreach (var device in online)
-
-        {
-
-            var approved = bindings.Any(b => b.DesktopId == device.Id && b.Approved);
-
-            _body.Children.Add(Button(device.Name + " · " + device.Id[..8] + " · " + (approved ? T("已授权", "Approved") : T("申请连接", "Request access")), async () =>
-
+            _body.Children.Add(Button(device.Name + " · " + device.Id[..8], async () =>
             {
-
-                if (!approved)
-
-                {
-
-                    await _client.CallAsync<JsonElement>("bind", new { desktopId = device.Id });
-
-                    _status.Text = T("请在桌面的“移动访问”中确认设备：", "Approve this device in desktop Mobile access: ") + _client.Registration!.Device.Id[..8];
-
-                }
-
-                else { _desktopId = device.Id; await ShowPagesAsync(); }
-
+                _desktopId = device.Id;
+                await ShowPagesAsync();
             }));
-
-        }
-
         _body.Children.Add(Button(T("刷新设备", "Refresh devices"), ShowDevicesAsync));
-
         _body.Children.Add(Button(T("退出登录", "Sign out"), SignOutAsync));
-
     }
 
     private async Task ShowPagesAsync()
-
     {
         _language.IsEnabled = true;
-
         var pages = await _client!.CallAsync<BridgePageInfo[]>("pages", new { desktopId = _desktopId });
-        if (!_uncertain && _pendingId is null) _status.Text = T("已连接电脑，请选择共享页面。", "Connected to your desktop. Choose a shared page.");
-
-        _snapshot = null; _renderer = null;
-
-        _body.Children.Clear();
-
-        _body.Children.Add(new Label { Text = T("共享的页面", "Shared pages"), FontSize = 28 });
-
-        foreach (var page in pages)
-
-            _body.Children.Add(Button(page.Title, () => OpenAsync(page.PluginId, page.PageId)));
-
-        if (pages.Length == 0) _body.Children.Add(new Label { Text = T("电脑尚未共享页面", "No pages are shared") });
-
-        _body.Children.Add(Button(T("返回设备列表", "Back to desktops"), ShowDevicesAsync));
-
+        _navigation.Replace(pages);
+        RenderNavigation();
+        if (pages.Length > 0)
+        {
+            var page = _navigation.Current ?? pages[0];
+            await SelectNavigationPageAsync(page);
+        }
+        else
+        {
+            _snapshot = null; _renderer = null; _body.Children.Clear();
+            _body.Children.Add(new Label { Text = T("这台电脑暂时没有移动插件页面", "No mobile plugin pages on this desktop yet"), FontSize = 24 });
+            _body.Children.Add(MobileTheme.Caption(T("安装支持移动页面的插件后，可从底部菜单刷新。", "Install a plugin with mobile pages, then refresh the bottom menu.")));
+        }
     }
 
     private async Task OpenAsync(string pluginId, string pageId)
@@ -274,6 +232,9 @@ public sealed partial class MainPage : ContentPage
     {
 
         if (_renderer?.IsDirty == true && !await DisplayAlertAsync(T("刷新页面", "Refresh page"), T("丢弃未提交的输入？", "Discard unsubmitted input?"), T("刷新", "Refresh"), T("取消", "Cancel"))) return;
+        if (_navigation.Pages.Any(p => p.PluginId == pluginId && p.PageId == pageId)) _navigation.Select(pluginId, pageId);
+        await CloseNavigationAsync();
+        RenderNavigation();
 
         _pageContent.IsEnabled = false;
 
@@ -313,25 +274,8 @@ public sealed partial class MainPage : ContentPage
 
         _body.Children.Add(_pageContent);
 
-        _body.Children.Add(Button(T("刷新页面", "Refresh page"), async () =>
-
-        {
-
-            var pluginId = snapshot.PluginId; var pageId = snapshot.Page.Id;
-
-            await OpenAsync(pluginId, pageId);
-
-        }));
-
-        _body.Children.Add(Button(T("返回页面列表", "Back to pages"), async () =>
-
-        {
-
-            if (_renderer?.IsDirty == true && !await DisplayAlertAsync(T("返回", "Go back"), T("丢弃未提交的输入？", "Discard unsubmitted input?"), T("返回", "Go back"), T("取消", "Cancel"))) return;
-
-            await ShowPagesAsync();
-
-        }));
+        if (!_preview)
+            _body.Children.Add(Button(T("刷新页面", "Refresh page"), () => OpenAsync(snapshot.PluginId, snapshot.Page.Id)));
 
         if (!_preview)
 
@@ -521,13 +465,7 @@ public sealed partial class MainPage : ContentPage
 
                         var desktops = await _client.CallAsync<BridgeDevice[]>("devices", cancellationToken: token);
 
-                        var bindings = await _client.CallAsync<BridgeBinding[]>("bindings", cancellationToken: token);
-
-                        var authorized = bindings.Any(b => b.DesktopId == _desktopId && b.Approved);
-
-                        _connected = authorized && desktops.Any(d => d.Id == _desktopId && d.SeenAt > _client.UtcNow.AddSeconds(-45));
-
-                        if (!authorized) { _snapshot = null; _renderer = null; _pageContent.Children.Clear(); }
+                        _connected = desktops.Any(d => d.Id == _desktopId && d.SeenAt > _client.UtcNow.AddSeconds(-45));
 
                         _desktopStatus.Text = (_connected ? T("电脑在线 · ", "Desktop online · ") : T("电脑离线 · ", "Desktop offline · ")) + DateTime.Now.ToString("HH:mm:ss");
 
@@ -607,6 +545,7 @@ public sealed partial class MainPage : ContentPage
             new MobileNode("Button", "save") { Text = "Save to desktop", ActionId = "mock-save", InputIds = ["content", "pinned"] }));
 
         RenderPreview(page);
+        SetupPreviewNavigation(page);
 
     }
 
@@ -627,11 +566,7 @@ public sealed partial class MainPage : ContentPage
 
         // Preview is deliberately isolated from platform transport.
 
-        _body.Children.RemoveAt(_body.Children.Count - 1);
-
-        _body.Children.RemoveAt(_body.Children.Count - 1);
-
-        _body.Children.Add(Button(T("退出模拟器", "Close simulator"), () => { _preview = false; _snapshot = null; ShowSignIn(); return Task.CompletedTask; }));
+        _body.Children.Add(Button(T("退出模拟器", "Close simulator"), () => { _preview = false; _snapshot = null; ResetNavigation(); ShowSignIn(); return Task.CompletedTask; }));
 
     }
 

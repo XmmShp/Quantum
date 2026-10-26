@@ -18,57 +18,27 @@
     }
     else
     {
-        <p>@Session.User?.Username · @Bridge.Status</p>
-        @foreach (var plugin in Catalog.Plugins.Where(p => p.MobilePages.Snapshot().Length > 0))
-        {
-            var id = plugin.Manifest.Id.ToString();
-            <label style="display:block;margin:12px 0">
-                <input type="checkbox" checked="@_selected.Contains(id)" disabled="@Bridge.IsRunning" @onchange="e => Select(id, e.Value is true)" />
-                @id (@plugin.MobilePages.Snapshot().Length)
-            </label>
-        }
-        @if (Bridge.IsRunning)
-        {
-            <button @onclick="StopAsync">@L["MobileStopSharing"]</button>
-        }
-        else
-        {
-            <button disabled="@(_selected.Count == 0 || _busy)" @onclick="StartAsync">@L["MobileStartSharing"]</button>
-        }
-        <h2>@L["MobileDevices"]</h2>
-        @foreach (var binding in Bridge.Bindings)
-        {
-            <div style="margin:12px 0">
-                <span>@binding.MobileName · @binding.MobileId[..8]</span>
-                <button @onclick="() => ApproveAsync(binding.MobileId, !binding.Approved)">
-                    @(binding.Approved ? L["MobileRevoke"] : L["MobileApprove"])
-                </button>
-            </div>
-        }
+        <p role="status">@Session.User?.Username · @L[Bridge.Status == "Connected" ? "MobileConnected" : "MobileConnecting"]</p>
+        <h2>@L["MobileSharedPages"]</h2>
+        <ul>
+            @foreach (var page in Catalog.Plugins.Where(p => p.RpcRuntime?.IsActive != false).SelectMany(p => p.MobilePages.Snapshot()))
+            {
+                <li>@(page.Title)</li>
+            }
+        </ul>
+        <p>@L["MobileSameAccountHint"]</p>
     }
-    @if (_error is not null) { <p role="alert">@_error</p> }
 </section>
 
 @code {
-    private readonly HashSet<string> _selected = [];
-    private string? _error;
-    private bool _busy;
-    protected override async Task OnInitializedAsync()
+    protected override void OnInitialized()
     {
         Bridge.Changed += Changed;
         Session.Changed += Changed;
-        await Run(() => Session.InitializeAsync(Marketplace));
+        Catalog.Changed += CatalogChanged;
+        Bridge.Initialize(Marketplace);
     }
-    private void Select(string id, bool value) { if (value) _selected.Add(id); else _selected.Remove(id); }
-    private async Task Run(Func<Task> operation)
-    {
-        _busy = true; _error = null;
-        try { await operation(); } catch (Exception exception) { _error = exception.Message; }
-        finally { _busy = false; }
-    }
-    private Task StartAsync() => Run(() => Bridge.StartAsync(_selected));
-    private Task StopAsync() => Run(Bridge.StopAsync);
-    private Task ApproveAsync(string id, bool approved) => Run(() => Bridge.ApproveAsync(id, approved));
     private void Changed() => _ = InvokeAsync(StateHasChanged);
-    public void Dispose() { Bridge.Changed -= Changed; Session.Changed -= Changed; }
+    private void CatalogChanged(object? sender, EventArgs e) => Changed();
+    public void Dispose() { Bridge.Changed -= Changed; Session.Changed -= Changed; Catalog.Changed -= CatalogChanged; }
 }

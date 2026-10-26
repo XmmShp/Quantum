@@ -39,19 +39,22 @@ $state.value.page.tree  # 节点 ID、类型、文字、有效启用状态、当
 | 方法与路径 | 用途 |
 | --- | --- |
 | `GET /state` | 页面树、状态、登录/连接布尔值、pending/uncertain 和当前调试 viewId |
-| `GET /devices` | 已登录账号的在线电脑及其已批准状态 |
-| `POST /desktop/select` | `{desktopId}`：只允许选择已经批准的电脑 |
+| `GET /devices` | 已登录账号的在线电脑（不暴露其他账号设备） |
+| `POST /desktop/select` | `{desktopId}`：选择同账号的在线电脑，无需审批 |
 | `GET /pages` | 当前电脑共享的页面列表 |
 | `POST /page/open` | `{pluginId,pageId,discardDraft?}`：打开实际共享页面 |
 | `POST /page/refresh` | `{viewId,discardDraft?}`：刷新当前真实页面 |
 | `POST /input` | `{viewId,nodeId,value}`：填写字符串或布尔输入 |
 | `POST /press` | `{viewId,nodeId}`：触发当前页面按钮 |
+| `POST /navigation/open` | 展开底部插件菜单 |
+| `POST /navigation/close` | 收起底部插件菜单 |
+| `POST /navigation/select` | `{pluginId,pageId,discardDraft?}`：切换插件，保留草稿保护 |
 | `POST /preview` | 进入内置隔离 Mock；有未确认操作或草稿时拒绝 |
 | `POST /preview/close` | 离开 Mock，尝试恢复已有登录；不接受密码 |
 
 `viewId` 是每次渲染更新的调试标识。旧 viewId、禁用控件、过期页面、未确认操作、超长输入和错误输入类型都会被拒绝。刷新或换页遇到未提交草稿时返回 `409 debug_draft_conflict`，只有显式提供 `discardDraft:true` 才丢弃。打开和刷新采用正常平台邮箱通道，返回后应轮询 `/state` 等待新页面。
 
-真实业务模式先去掉 `QUANTUM_MOBILE_DEBUG_PREVIEW` 并重启。已有安全存储登录会自动恢复；首次登录、开启共享和设备批准仍在正常界面完成。接口不暴露密码、平台访问/续期令牌或设备密钥，没有登录、批准、撤销和任意 RPC 路由。不要同时运行两个使用相同登录和设备注册的真实客户端实例。
+真实业务模式先去掉 `QUANTUM_MOBILE_DEBUG_PREVIEW` 并重启。已有安全存储登录会自动恢复；首次登录仍在正常界面完成；桌面自动提供全部移动页面，同账号无需设备审批。接口不暴露密码、平台访问/续期令牌或设备密钥，没有登录、批准、撤销和任意 RPC 路由。不要同时运行两个使用相同登录和设备注册的真实客户端实例。
 
 POST 不自动重试。HTTP 超时或断开不能证明业务未执行，应查询 `/state` 的 pending/uncertain，并按正常流程在桌面核对结果。Mock 和真实模式都不会绕过这些边界。原生弹窗仍应由开发者处理；调试导航提前检测草稿冲突，避免为正常测试弹出丢弃确认框。
 

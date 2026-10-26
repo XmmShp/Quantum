@@ -40,9 +40,15 @@ try{
     Reject '/input' @{viewId=$view;nodeId='content';value=('x'*501)} 400
     Reject '/press' @{viewId=$view;nodeId='not-present'} 404
     Reject '/preview' @{} 409
+    $opened=Call '/navigation/open' @{}
+    if(!$opened.value.navigation.expanded){throw 'Bottom navigation sheet did not open.'}
+    Reject '/navigation/select' @{pluginId='mock';pageId='mock-status'} 409
+    $switched=Call '/navigation/select' @{pluginId='mock';pageId='mock-status';discardDraft=$true}
+    if($switched.value.navigation.expanded -or $switched.value.page.pageId -ne 'mock-status' -or $switched.value.page.viewId -eq $view){throw 'Navigation did not switch to a fresh page and close its sheet.'}
+    Reject '/press' @{viewId=$view;nodeId='save'} 409
     $json=(Call '/state' $null)|ConvertTo-Json -Depth 24
     if($json.Contains($token) -or $json -match 'accessToken|refreshToken|deviceSecret|password'){throw 'Credential material appeared in the debug state.'}
-    [ordered]@{passed=$true;mode='isolated native Mock';readPageTree=$true;nativeTextAndToggleBinding=$true;nativeButtonCallback=$true;staleViewRejected=$true;wrongTypeAndLengthRejected=$true;unknownButtonRejected=$true;dirtyDraftProtected=$true;credentialsExposed=$false;keyboardOrMouseUsed=$false}|ConvertTo-Json
+    [ordered]@{passed=$true;mode='isolated native Mock';readPageTree=$true;nativeTextAndToggleBinding=$true;nativeButtonCallback=$true;staleViewRejected=$true;wrongTypeAndLengthRejected=$true;unknownButtonRejected=$true;dirtyDraftProtected=$true;bottomNavigationSheet=$true;pluginSwitchCreatesFreshView=$true;credentialsExposed=$false;keyboardOrMouseUsed=$false}|ConvertTo-Json
 }finally{
     if($process -and !$process.HasExited){Stop-Process -Id $process.Id}
     foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$previous[$name])}

@@ -15,6 +15,38 @@ namespace Quantum.Tests;
 public sealed class MobileBridgeEndToEndTests
 {
     [Fact]
+    public async Task AutomaticConnectionFollowsLoginAccountChangesAndLogout()
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(20));
+        using var http = new HttpClient(new PlatformHandler());
+        var options = new QuantumMarketplaceOptions(new Uri("https://quantum.test/"), "0.1.0");
+        var session = new QuantumMarketplaceSession(() => Task.FromResult<string?>(null), _ => Task.CompletedTask, () => Task.CompletedTask);
+        var marketplace = new QuantumMarketplaceClient(http, options, session);
+        var catalog = new PluginCatalog([]);
+        using var router = new PluginRpcRouter(catalog, NullLogger<PluginRpcRouter>.Instance);
+        var gateway = new MobileActionGateway(catalog, router);
+        var registrations = new System.Collections.Concurrent.ConcurrentDictionary<string, string>();
+        var journal = Path.Combine(Path.GetTempPath(), "quantum-mobile-auto-" + Guid.NewGuid().ToString("N"));
+        await using var desktop = new MobileDesktopBridge(http, session, options, gateway, journal,
+            user => Task.FromResult(registrations.GetValueOrDefault(user)),
+            (user, text) => { registrations[user] = text; return Task.CompletedTask; },
+            user => registrations.TryRemove(user, out _));
+        desktop.Initialize(marketplace);
+        Assert.False(desktop.IsRunning);
+        await session.LoginAsync(marketplace, "test@example.test", "fixture-password", timeout.Token);
+        await Until(() => desktop.IsRunning && registrations.ContainsKey("1"));
+        await session.LoginAsync(marketplace, "other@example.test", "fixture-password", timeout.Token);
+        await Until(() => desktop.IsRunning && registrations.ContainsKey("2") && !registrations.ContainsKey("1"));
+        await session.LogoutAsync();
+        await Until(() => !desktop.IsRunning && registrations.IsEmpty);
+        Assert.Empty(gateway.Pages());
+        async Task Until(Func<bool> ready)
+        {
+            while (!ready()) await Task.Delay(30, timeout.Token);
+        }
+    }
+
+    [Fact]
     public async Task AuthenticatedPollingInvokesRealRpcOnceAndPersistsOutcome()
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(25));
@@ -40,15 +72,16 @@ public sealed class MobileBridgeEndToEndTests
         var journal = Path.Combine(Path.GetTempPath(), "quantum-mobile-test-" + Guid.NewGuid().ToString("N"));
         string? registration = null;
         await using var desktop = new MobileDesktopBridge(http, session, options, gateway, journal,
-            () => Task.FromResult(registration), text => { registration = text; return Task.CompletedTask; }, () => registration = null);
+            _ => Task.FromResult(registration), (_, text) => { registration = text; return Task.CompletedTask; }, _ => registration = null);
         try
         {
-            await desktop.StartAsync(["quantum.plugin.mobile"], token);
+            await desktop.StartAsync(token);
             var phone = new BridgeClient(http, options.BaseAddress, () => session.AccessToken);
             phone.Registration = await phone.CallAsync<BridgeRegistration>("register", new { name = "Phone", kind = "mobile" }, token);
             var device = (await phone.CallAsync<BridgeDevice[]>("devices", cancellationToken: token)).Single(d => d.Kind == "desktop");
-            await phone.CallAsync<JsonElement>("bind", new { desktopId = device.Id }, token);
-            await desktop.ApproveAsync(phone.Registration.Device.Id, true);
+            plugin.MobilePages.Publish(MobileUi.Page("extra", "Extra page", MobileUi.Text("title", "A newly installed page")));
+            while ((await phone.CallAsync<BridgePageInfo[]>("pages", new { desktopId = device.Id }, token)).Length != 2)
+                await Task.Delay(50, token);
             await phone.CallAsync<JsonElement>("send", new BridgeSend("open", device.Id, "open", MobileJson.Element(new BridgeOpen("quantum.plugin.mobile", "notes"))), token);
             BridgeSnapshot? snapshot = null;
             while (snapshot is null)
@@ -123,7 +156,10 @@ public sealed class MobileBridgeEndToEndTests
             lock (_gate)
             {
                 if (root.GetProperty("method").GetString() == "Login")
-                    result = new { isSuccess = true, value = new MarketplaceLogin("test-token", DateTime.UtcNow.AddHours(1), new("1", "tester", "test@example.test", MarketplaceUserRoles.User)) };
+                {
+                    var email = root.GetProperty("params").GetProperty("email").GetString()!;
+                    result = new { isSuccess = true, value = new MarketplaceLogin("test-token", DateTime.UtcNow.AddHours(1), new(email.StartsWith("other") ? "2" : "1", "tester", email, MarketplaceUserRoles.User)) };
+                }
                 else if (request.Headers.Authorization?.Parameter != "test-token")
                     result = new { isSuccess = false, errorCode = "authentication_required", message = "Sign in first." };
                 else

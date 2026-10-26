@@ -98,14 +98,16 @@ public static class MauiProgram
         builder.Services.AddSingleton<IQuantumMarketplaceClient, QuantumMarketplaceClient>();
         builder.Services.AddSingleton<MarketplacePluginInstaller>();
         builder.Services.AddSingleton<Quantum.Mobile.MobileActionGateway>();
+        string DesktopRegistrationKey(string user) => "quantum.mobile.desktop." + Convert.ToHexStringLower(
+            System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(marketplaceOptions.BaseAddress.AbsoluteUri + "\n" + user)));
         builder.Services.AddSingleton(services => new Quantum.Mobile.MobileDesktopBridge(
             services.GetRequiredService<HttpClient>(),
             services.GetRequiredService<QuantumMarketplaceSession>(), marketplaceOptions,
             services.GetRequiredService<Quantum.Mobile.MobileActionGateway>(),
             Path.Combine(FileSystem.AppDataDirectory, "MobileBridgeJournal"),
-            () => SecureStorage.Default.GetAsync("quantum.mobile.desktop." + marketplaceOptions.BaseAddress.Host),
-            value => SecureStorage.Default.SetAsync("quantum.mobile.desktop." + marketplaceOptions.BaseAddress.Host, value),
-            () => SecureStorage.Default.Remove("quantum.mobile.desktop." + marketplaceOptions.BaseAddress.Host)));
+            user => SecureStorage.Default.GetAsync(DesktopRegistrationKey(user)),
+            (user, value) => SecureStorage.Default.SetAsync(DesktopRegistrationKey(user), value),
+            user => SecureStorage.Default.Remove(DesktopRegistrationKey(user))));
         builder.Services.AddSingleton<PluginStaticAssetFileProvider>();
         builder.Services.AddScoped<WebPluginInteropBridge>();
         builder.Services.AddSingleton<MainPage>();

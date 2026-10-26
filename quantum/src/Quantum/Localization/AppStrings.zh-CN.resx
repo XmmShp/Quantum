@@ -300,7 +300,11 @@
   <data name="MarketplacePluginIncompatible" xml:space="preserve"><value>{0} 与 Quantum {1} 不兼容。</value></data>
   <data name="MarketplacePackageIdentityMismatch" xml:space="preserve"><value>安装包与所选插件或版本不一致，未执行安装。</value></data>
   <data name="MobileAccess" xml:space="preserve"><value>移动访问</value></data>
-  <data name="MobileAccessDescription" xml:space="preserve"><value>通过 Quantum 平台将选定插件页面共享给已授权手机。插件与业务始终在此电脑执行。</value></data>
+  <data name="MobileAccessDescription" xml:space="preserve"><value>登录后，全部插件的移动页面会自动提供给同一 Quantum 账号的设备，插件与业务仍在此电脑执行。</value></data>
+  <data name="MobileConnected" xml:space="preserve"><value>已上线</value></data>
+  <data name="MobileConnecting" xml:space="preserve"><value>正在自动连接…</value></data>
+  <data name="MobileSharedPages" xml:space="preserve"><value>可用插件页面</value></data>
+  <data name="MobileSameAccountHint" xml:space="preserve"><value>手机登录同一账号后选择此电脑即可连接，无需申请或批准设备。</value></data>
   <data name="MobileSignInFirst" xml:space="preserve"><value>请先在插件市场登录 Quantum 平台。</value></data>
   <data name="MobileStartSharing" xml:space="preserve"><value>开启共享</value></data>
   <data name="MobileStopSharing" xml:space="preserve"><value>停止共享</value></data>

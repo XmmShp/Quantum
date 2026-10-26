@@ -5,11 +5,11 @@ using Quantum.Mobile.Internal;
 
 namespace Quantum.Mobile;
 
-/// <summary>Opt-in bridge. Its journal is written before acknowledging commands or executing RPC.</summary>
+/// <summary>Same-account bridge. Its journal precedes acknowledgement and business execution.</summary>
 public sealed class MobileDesktopBridge(
     HttpClient http, QuantumMarketplaceSession session, QuantumMarketplaceOptions options,
     MobileActionGateway gateway, string journalPath,
-    Func<Task<string?>> readRegistration, Func<string, Task> saveRegistration, Action clearRegistration) : IAsyncDisposable
+    Func<string, Task<string?>> readRegistration, Func<string, string, Task> saveRegistration, Action<string> clearRegistration) : IAsyncDisposable
 {
     private readonly SemaphoreSlim _lifecycle = new(1);
     private CancellationTokenSource? _cancellation;
@@ -18,19 +18,66 @@ public sealed class MobileDesktopBridge(
     private string? _catalogSignature;
     public bool IsRunning => _loop is { IsCompleted: false };
     public string Status { get; private set; } = "Stopped";
-    public BridgeBinding[] Bindings { get; private set; } = [];
+    private readonly CancellationTokenSource _lifetime = new();
+    private readonly SemaphoreSlim _wake = new(0, 1);
+    private Task? _automatic;
+    private string? _activeUser;
     public event Action? Changed;
 
-    public async Task StartAsync(IEnumerable<string> sharedPlugins, CancellationToken cancellationToken = default)
+    public void Initialize(IQuantumMarketplaceClient marketplace)
+    {
+        if (_automatic is not null) return;
+        session.Changed += SessionChanged;
+        _automatic = Task.Run(() => RunAutomaticAsync(marketplace, _lifetime.Token));
+    }
+
+    private void SessionChanged()
+    {
+        if (_activeUser is not null && _activeUser != session.User?.UserId)
+        {
+            gateway.SetSharing([]);
+            _cancellation?.Cancel();
+        }
+        try { _wake.Release(); } catch (Exception e) when (e is SemaphoreFullException or ObjectDisposedException) { }
+        Changed?.Invoke();
+    }
+
+    private async Task RunAutomaticAsync(IQuantumMarketplaceClient marketplace, CancellationToken token)
+    {
+        var delay = 2;
+        while (!token.IsCancellationRequested)
+        {
+            try
+            {
+                await session.InitializeAsync(marketplace, token);
+                if (!session.IsAuthenticated || _activeUser is not null && _activeUser != session.User?.UserId)
+                {
+                    if (_client is not null || _activeUser is not null) await StopAsync();
+                }
+                if (session.IsAuthenticated && !IsRunning) await StartAsync(token);
+                delay = 2;
+            }
+            catch (OperationCanceledException) when (token.IsCancellationRequested) { break; }
+            catch (Exception e) when (e is not OutOfMemoryException)
+            {
+                gateway.SetSharing([]);
+                Status = "Connection interrupted"; Changed?.Invoke(); delay = Math.Min(delay * 2, 60);
+            }
+            try { await _wake.WaitAsync(TimeSpan.FromSeconds(delay), token); }
+            catch (OperationCanceledException) { break; }
+        }
+    }
+
+    public async Task StartAsync(CancellationToken cancellationToken = default)
     {
         await _lifecycle.WaitAsync(cancellationToken);
         try
         {
-            if (IsRunning) throw new InvalidOperationException("Stop sharing before changing the plugin selection.");
+            if (IsRunning) return;
             if (!session.IsAuthenticated) throw new InvalidOperationException("Sign in to Quantum Platform first.");
-            gateway.SetSharing(sharedPlugins);
+            _activeUser = session.User!.UserId;
             _client = new(http, options.BaseAddress, () => session.AccessToken) { Authentication = session.Authentication };
-            var saved = await readRegistration();
+            var saved = await readRegistration(_activeUser);
             if (saved is not null)
             {
                 _client.Registration = JsonSerializer.Deserialize<BridgeRegistration>(saved, MobileJson.Options);
@@ -40,27 +87,21 @@ public sealed class MobileDesktopBridge(
             if (_client.Registration is null)
             {
                 _client.Registration = await _client.CallAsync<BridgeRegistration>("register", new { name = Environment.MachineName, kind = "desktop" }, cancellationToken);
-                await saveRegistration(JsonSerializer.Serialize(_client.Registration, MobileJson.Options));
+                await saveRegistration(_activeUser, JsonSerializer.Serialize(_client.Registration, MobileJson.Options));
             }
             Directory.CreateDirectory(journalPath);
-            var pages = gateway.Pages();
+            var pages = gateway.ShareAllPages();
             await _client.CallAsync<JsonElement>("catalog", new { pages }, cancellationToken);
             _catalogSignature = JsonSerializer.Serialize(pages, MobileJson.Options);
             _cancellation?.Dispose();
             _cancellation = new CancellationTokenSource();
             var client = _client;
             var loopToken = _cancellation.Token;
-            _loop = Task.Run(() => RunAsync(client, loopToken), CancellationToken.None);
+            var user = _activeUser;
+            _loop = Task.Run(() => RunAsync(client, user, loopToken), CancellationToken.None);
         }
+        catch { gateway.SetSharing([]); throw; }
         finally { _lifecycle.Release(); }
-    }
-
-    public async Task ApproveAsync(string mobileId, bool approved)
-    {
-        if (_client is null || !IsRunning) throw new InvalidOperationException("Mobile sharing is stopped.");
-        await _client.CallAsync<JsonElement>("approve", new { mobileId, approved });
-        // Forget all local action capabilities immediately, including commands already in the mailbox.
-        gateway.SetSharing(gateway.Pages().Select(p => p.PluginId).Distinct());
     }
 
     public async Task StopAsync()
@@ -77,37 +118,31 @@ public sealed class MobileDesktopBridge(
                 try { using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5)); await _client.CallAsync<JsonElement>("revoke", cancellationToken: timeout.Token); }
                 catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or BridgeException or PlatformAuthenticationException or InvalidOperationException) { }
             }
-            clearRegistration();
-            _client = null; Bindings = []; Status = "Stopped"; Changed?.Invoke();
+            if (_activeUser is { } user) clearRegistration(user);
+            _client = null; _activeUser = null; Status = "Stopped"; Changed?.Invoke();
         }
         finally { _lifecycle.Release(); }
     }
 
-    private async Task RunAsync(BridgeClient client, CancellationToken token)
+    private async Task RunAsync(BridgeClient client, string user, CancellationToken token)
     {
         var delay = 2;
-        while (!token.IsCancellationRequested && session.IsAuthenticated)
+        while (!token.IsCancellationRequested && session.IsAuthenticated && session.User?.UserId == user)
         {
             try
             {
-                var pages = gateway.Pages();
+                var pages = gateway.ShareAllPages();
                 var signature = JsonSerializer.Serialize(pages, MobileJson.Options);
                 if (signature != _catalogSignature)
                 {
                     await client.CallAsync<JsonElement>("catalog", new { pages }, token);
                     _catalogSignature = signature;
                 }
-                Bindings = await client.CallAsync<BridgeBinding[]>("bindings", cancellationToken: token);
                 await FlushJournalAsync(client, token);
                 var messages = await client.CallAsync<BridgeMessage[]>("poll", cancellationToken: token);
                 foreach (var message in messages)
                 {
                     token.ThrowIfCancellationRequested();
-                    if (!Bindings.Any(b => b.MobileId == message.SenderId && b.Approved))
-                    {
-                        await AckAsync(client, message, token);
-                        continue;
-                    }
                     if (message.Kind == "open")
                     {
                         try
@@ -136,9 +171,8 @@ public sealed class MobileDesktopBridge(
             }
             catch (BridgeException exception) when (exception.Code == "mobile_device_revoked")
             {
-                clearRegistration();
+                clearRegistration(user);
                 _client = null;
-                Bindings = [];
                 break;
             }
             catch (Exception exception) when (exception is not OutOfMemoryException)
@@ -193,7 +227,7 @@ public sealed class MobileDesktopBridge(
                 await SendAsync(client, new(entry.RequestId + "-result", entry.MobileId, "result", MobileJson.Element(outcome)), token);
                 await SaveAsync(file, entry with { Outcome = outcome, Uploaded = true }, token);
             }
-            catch (BridgeException exception) when (exception.Code is "mobile_binding_required" or "mobile_not_found" or "mobile_request_conflict")
+            catch (BridgeException exception) when (exception.Code is "mobile_not_found" or "mobile_request_conflict")
             {
                 await SaveAsync(file, entry with { Outcome = outcome, Uploaded = true }, token);
             }
@@ -214,6 +248,13 @@ public sealed class MobileDesktopBridge(
         => client.CallAsync<JsonElement>("ack", new BridgeAck(message.Id, message.Lease!), token);
     private static Task<JsonElement> SendAsync(BridgeClient client, BridgeSend message, CancellationToken token)
         => client.CallAsync<JsonElement>("send", message, token);
-    public async ValueTask DisposeAsync() { await StopAsync(); _cancellation?.Dispose(); _lifecycle.Dispose(); }
+    public async ValueTask DisposeAsync()
+    {
+        session.Changed -= SessionChanged;
+        await _lifetime.CancelAsync();
+        if (_automatic is not null) await _automatic;
+        await StopAsync();
+        _cancellation?.Dispose(); _lifecycle.Dispose(); _lifetime.Dispose(); _wake.Dispose();
+    }
     private sealed record JournalEntry(string DesktopId, string MobileId, string RequestId, DateTimeOffset CreatedAt, BridgeOutcome? Outcome, bool Uploaded = false);
 }

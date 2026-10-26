@@ -76,13 +76,14 @@ public sealed partial class MainPage
 
     private void ShowExpiredDevice()
     {
+        ResetNavigation();
         _connected = false;
         _snapshot = null;
         _renderer = null;
         _desktopId = null;
         _client = null;
         _body.Children.Clear();
-        _body.Children.Add(new Label { Text = T("设备访问已过期或被撤销，请重新连接并在电脑上批准访问。", "Device access expired or was revoked. Reconnect and approve access on your desktop.") });
+        _body.Children.Add(new Label { Text = T("设备连接已过期，请重新连接。", "The device connection expired. Reconnect to continue.") });
         _body.Children.Add(Button(T("重新连接设备", "Reconnect device"), async () =>
         {
             if (_storageKey.Length > 0) SecureStorage.Default.Remove(_storageKey);

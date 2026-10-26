@@ -83,6 +83,7 @@ public sealed partial class MainPage
 
     private void ShowSignIn()
     {
+        ResetNavigation();
         _isSignIn = true;
         _language.IsEnabled = true;
         _status.IsVisible = false;
@@ -132,7 +133,7 @@ public sealed partial class MainPage
         _advancedButton.TextColor = MobileTheme.Muted;
         _advancedButton.FontAttributes = FontAttributes.None;
         _body.Children.Add(_advancedButton);
-        _body.Children.Add(MobileTheme.Caption(T("登录后，在电脑上开启移动访问并批准这台设备。", "After signing in, enable Mobile access on your desktop and approve this device.")));
+        _body.Children.Add(MobileTheme.Caption(T("登录后选择同账号的在线电脑，即可使用插件。", "After signing in, select an online desktop on the same account to use its plugins.")));
 #if DEBUG
         var debug = new VerticalStackLayout { Spacing = 8, Margin = new Thickness(0, 14, 0, 0) };
         debug.Children.Add(MobileTheme.Caption(T("开发工具 · 仅调试版本", "Developer tools · Debug builds only")));

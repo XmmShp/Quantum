@@ -10,6 +10,7 @@ namespace Quantum.Platform.Application;
 public sealed class MobileBridgeMailbox
 {
     public List<DeviceState> Devices { get; set; } = [];
+    // Retained only for deserializing previously persisted mailboxes. Account ownership now grants access.
     public List<BridgeBinding> Bindings { get; set; } = [];
     public List<MessageState> Messages { get; set; } = [];
     public Dictionary<string, OutcomeState> Outcomes { get; set; } = [];
@@ -45,25 +46,20 @@ public sealed class MobileBridgeMailbox
         {
             case "heartbeat": return MobileJson.Element(new { serverTime = now });
             case "devices": return MobileJson.Element(Devices.Select(d => d.Device).ToArray());
-            case "bindings": return MobileJson.Element(Bindings.Where(b => b.DesktopId == sender.Device.Id || b.MobileId == sender.Device.Id).ToArray());
+            // Compatibility for older clients: every live same-account pair is accessible.
+            case "bindings": return MobileJson.Element(Devices.Where(d => d.Device.Kind != sender.Device.Kind)
+                .Select(d => sender.Device.Kind == "desktop"
+                    ? new BridgeBinding(sender.Device.Id, d.Device.Id, d.Device.Name, true)
+                    : new BridgeBinding(d.Device.Id, sender.Device.Id, sender.Device.Name, true)).ToArray());
             case "bind":
             {
                 RequireKind(sender, "mobile");
-                var desktop = Target(Text(body, "desktopId"), "desktop");
-                if (!Bindings.Any(b => b.DesktopId == desktop.Device.Id && b.MobileId == sender.Device.Id))
-                    Bindings.Add(new(desktop.Device.Id, sender.Device.Id, sender.Device.Name, false));
+                _ = Target(Text(body, "desktopId"), "desktop");
                 return MobileJson.Element(new { });
             }
             case "approve":
             {
-                RequireKind(sender, "desktop");
-                var mobileId = Text(body, "mobileId");
-                var binding = Bindings.SingleOrDefault(b => b.DesktopId == sender.Device.Id && b.MobileId == mobileId)
-                    ?? throw new BridgeException("mobile_binding_required", "No pending request.");
-                Bindings.Remove(binding);
-                if (body.GetProperty("approved").GetBoolean()) Bindings.Add(binding with { Approved = true });
-                PurgePair(sender.Device.Id, mobileId);
-                return MobileJson.Element(new { });
+                throw new BridgeException("mobile_approval_not_required", "Same-account access does not require device approval.");
             }
             case "catalog":
             {
@@ -84,7 +80,6 @@ public sealed class MobileBridgeMailbox
             {
                 RequireKind(sender, "mobile");
                 var desktop = Target(Text(body, "desktopId"), "desktop");
-                RequireBinding(desktop.Device.Id, sender.Device.Id);
                 return MobileJson.Element(desktop.Pages);
             }
             case "send": return Send(sender, MobileJson.Read<BridgeSend>(body), now);
@@ -94,7 +89,7 @@ public sealed class MobileBridgeMailbox
                 var requestId = Text(body, "requestId");
                 var command = Messages.SingleOrDefault(m => m.Message.Id == requestId && m.Message.TargetId == sender.Device.Id && m.Message.Kind == "action");
                 if (command is null || command.Message.ExpiresAt <= now) throw new BridgeException("mobile_action_expired", "Action expired.");
-                RequireBinding(sender.Device.Id, command.Message.SenderId);
+                RequireDevicePair(sender.Device.Id, command.Message.SenderId);
                 var invoke = MobileJson.Read<BridgeInvoke>(command.Message.Body);
                 if (!Snapshots.Values.Any(s => s.DesktopId == sender.Device.Id && s.MobileId == command.Message.SenderId && s.Snapshot.ViewId == invoke.ViewId && s.Snapshot.ExpiresAt > now))
                     throw new BridgeException("mobile_view_stale", "Refresh this page.");
@@ -134,7 +129,7 @@ public sealed class MobileBridgeMailbox
             {
                 RequireKind(sender, "mobile");
                 var desktopId = Text(body, "desktopId");
-                RequireBinding(desktopId, sender.Device.Id);
+                RequireDevicePair(desktopId, sender.Device.Id);
                 var snapshot = Snapshots.Values.FirstOrDefault(s => s.DesktopId == desktopId && s.MobileId == sender.Device.Id &&
                     s.Snapshot.PluginId == Text(body, "pluginId") && s.Snapshot.Page.Id == Text(body, "pageId"));
                 return MobileJson.Element(snapshot?.Snapshot);
@@ -156,7 +151,6 @@ public sealed class MobileBridgeMailbox
         var target = Target(send.TargetId, sender.Device.Kind == "mobile" ? "desktop" : "mobile");
         var desktop = sender.Device.Kind == "desktop" ? sender : target;
         var mobile = sender.Device.Kind == "mobile" ? sender : target;
-        RequireBinding(desktop.Device.Id, mobile.Device.Id);
         var duplicate = Messages.FirstOrDefault(m => m.Message.Id == send.Id);
         if (duplicate is not null)
         {
@@ -225,16 +219,10 @@ public sealed class MobileBridgeMailbox
     {
         if (device.Device.Kind != kind) throw new BridgeException("mobile_forbidden", "Operation is not available to this device type.");
     }
-    private void RequireBinding(string desktopId, string mobileId)
+    private void RequireDevicePair(string desktopId, string mobileId)
     {
-        if (!Bindings.Any(b => b.DesktopId == desktopId && b.MobileId == mobileId && b.Approved))
-            throw new BridgeException("mobile_binding_required", "Approve this phone on the desktop first.");
-    }
-    private void PurgePair(string desktopId, string mobileId)
-    {
-        Messages.RemoveAll(m => m.Message.SenderId == desktopId && m.Message.TargetId == mobileId || m.Message.SenderId == mobileId && m.Message.TargetId == desktopId);
-        foreach (var key in Snapshots.Where(p => p.Value.DesktopId == desktopId && p.Value.MobileId == mobileId).Select(p => p.Key).ToArray()) Snapshots.Remove(key);
-        foreach (var key in Outcomes.Where(p => p.Value.DesktopId == desktopId && p.Value.MobileId == mobileId).Select(p => p.Key).ToArray()) Outcomes.Remove(key);
+        _ = Target(desktopId, "desktop");
+        _ = Target(mobileId, "mobile");
     }
     private void Cleanup(DateTimeOffset now)
     {

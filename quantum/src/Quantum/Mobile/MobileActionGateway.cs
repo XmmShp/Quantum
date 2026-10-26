@@ -18,6 +18,17 @@ public sealed class MobileActionGateway(PluginCatalog catalog, PluginRpcRouter r
         lock (_gate) { _shared = pluginIds.ToHashSet(StringComparer.Ordinal); _views.Clear(); }
     }
 
+    public BridgePageInfo[] ShareAllPages()
+    {
+        lock (_gate)
+        {
+            var plugins = catalog.Plugins.Where(p => p.RpcRuntime?.IsActive != false && p.MobilePages.Snapshot().Length > 0)
+                .Select(p => p.Manifest.Id.ToString()).ToHashSet(StringComparer.Ordinal);
+            if (!_shared.SetEquals(plugins)) { _shared = plugins; _views.Clear(); }
+            return Pages();
+        }
+    }
+
     public BridgePageInfo[] Pages()
     {
         lock (_gate) return catalog.Plugins.Where(p => _shared.Contains(p.Manifest.Id.ToString()) && p.RpcRuntime?.IsActive != false)
