@@ -32,6 +32,7 @@ public sealed class PersistentLoginHttpTests
         var sessions = new MemoryRepository<PlatformLoginSession>();
         var password = new Pbkdf2PlatformPasswordHasher();
         users.Add(PlatformUser.Create("native-test", "native@example.test", password.Hash("fixture-password-123"), idGenerator: new SnowflakeIdGenerator()));
+        users.Add(PlatformUser.Create("other-native", "other@example.test", password.Hash("fixture-password-456"), idGenerator: new SnowflakeIdGenerator()));
         var jwt = new PlatformJwtOptions { SigningKey = new string('k', 64) };
         var builder = NOFWebApplicationBuilder.Create([]);
         builder.WebApplicationBuilder.WebHost.UseTestServer();
@@ -77,10 +78,19 @@ public sealed class PersistentLoginHttpTests
         var accessBefore = authentication.AccessToken;
         var bridge = new BridgeClient(http, http.BaseAddress, () => authentication.AccessToken) { Authentication = authentication };
         bridge.Registration = await bridge.CallAsync<BridgeRegistration>("register", new { name = "native-test-phone", kind = "mobile" });
+        var desktop = new BridgeClient(http, http.BaseAddress, () => authentication.AccessToken) { Authentication = authentication };
+        desktop.Registration = await desktop.CallAsync<BridgeRegistration>("register", new { name = "native-desktop", kind = "desktop" });
+        Assert.Empty(await bridge.CallAsync<BridgePageInfo[]>("pages", new { desktopId = desktop.Registration.Device.Id }));
+        var other = new PlatformSession(http, http.BaseAddress, () => Task.FromResult<string?>(null), _ => Task.CompletedTask, () => Task.CompletedTask, clock);
+        await other.LoginAsync("other@example.test", "fixture-password-456");
+        var foreign = new BridgeClient(http, http.BaseAddress, () => other.AccessToken) { Authentication = other };
+        foreign.Registration = await foreign.CallAsync<BridgeRegistration>("register", new { name = "foreign-phone", kind = "mobile" });
+        Assert.DoesNotContain(await foreign.CallAsync<BridgeDevice[]>("devices"), d => d.Id == desktop.Registration.Device.Id);
+        Assert.Equal("mobile_not_found", (await Assert.ThrowsAsync<BridgeException>(() => foreign.CallAsync<BridgePageInfo[]>("pages", new { desktopId = desktop.Registration.Device.Id }))).Code);
         clock.Advance(TimeSpan.FromMinutes(61));
         await bridge.CallAsync<JsonElement>("heartbeat");
         Assert.NotEqual(accessBefore, authentication.AccessToken);
-        Assert.Single(sessions);
+        Assert.Equal(2, sessions.Count);
         var restored = NewSession();
         Assert.True(await restored.RestoreAsync());
         Assert.Equal(authentication.User!.UserId, restored.User!.UserId);

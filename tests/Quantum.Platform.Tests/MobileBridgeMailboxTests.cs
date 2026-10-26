@@ -21,10 +21,8 @@ public sealed class MobileBridgeMailboxTests
     private JsonElement Call(BridgeRegistration device, string operation, object? body = null, DateTimeOffset? now = null)
         => _mailbox.Exchange(new(operation, device.Device.Id, device.Secret, MobileJson.Element(body ?? new { })), now ?? Now);
     private BridgeRegistration Register(string kind) => MobileJson.Read<BridgeRegistration>(_mailbox.Exchange(new("register", Body: MobileJson.Element(new { name = kind, kind })), Now));
-    private void Bind(BridgeRegistration desktop, BridgeRegistration phone)
+    private void PublishCatalog(BridgeRegistration desktop, BridgeRegistration phone)
     {
-        Call(phone, "bind", new { desktopId = desktop.Device.Id });
-        Call(desktop, "approve", new { mobileId = phone.Device.Id, approved = true });
         Call(desktop, "catalog", new { pages = new[] { new BridgePageInfo("plugin.notes", "notes", "Notes") } });
     }
     private BridgeSnapshot Publish(BridgeRegistration desktop, BridgeRegistration phone)
@@ -35,10 +33,10 @@ public sealed class MobileBridgeMailboxTests
         return snapshot;
     }
     [Fact]
-    public void AccessRequiresDeviceSecretBindingAndMatchingDeviceType()
+    public void AccessRequiresDeviceSecretAndMatchingAccountAndDeviceType()
     {
         var desktop = Register("desktop"); var phone = Register("mobile");
-        Assert.Throws<BridgeException>(() => Call(phone, "pages", new { desktopId = desktop.Device.Id }));
+        Assert.Empty(MobileJson.Read<BridgePageInfo[]>(Call(phone, "pages", new { desktopId = desktop.Device.Id })));
         Assert.Throws<BridgeException>(() => Call(phone with { Secret = "forged" }, "poll"));
         Assert.Throws<BridgeException>(() => Call(phone, "catalog", new { pages = Array.Empty<BridgePageInfo>() }));
         // A device from another account is absent from this account-scoped aggregate.
@@ -46,9 +44,22 @@ public sealed class MobileBridgeMailboxTests
         Assert.Throws<BridgeException>(() => other.Exchange(new("poll", phone.Device.Id, phone.Secret, MobileJson.Element(new { })), Now));
     }
     [Fact]
+    public void SameAccountCanReadPagesWithoutAnyBindOrApprovalAndLegacyFlagsCannotBlockIt()
+    {
+        var desktop = Register("desktop"); var phone = Register("mobile");
+        PublishCatalog(desktop, phone);
+        _mailbox.Bindings.Add(new(desktop.Device.Id, phone.Device.Id, "legacy", false));
+        Assert.Single(MobileJson.Read<BridgePageInfo[]>(Call(phone, "pages", new { desktopId = desktop.Device.Id })));
+        var other = new MobileBridgeMailbox();
+        var foreign = MobileJson.Read<BridgeRegistration>(other.Exchange(new("register", Body: MobileJson.Element(new { name = "foreign", kind = "desktop" })), Now));
+        Assert.Equal("mobile_not_found", Assert.Throws<BridgeException>(() => Call(phone, "pages", new { desktopId = foreign.Device.Id })).Code);
+        Assert.Throws<BridgeException>(() => Call(phone, "send", new BridgeSend("foreign-open", foreign.Device.Id, "open", MobileJson.Element(new BridgeOpen("plugin.notes", "notes")))));
+    }
+
+    [Fact]
     public void MessagesLeaseRedeliverAndOnlyCorrectRecipientCanAck()
     {
-        var desktop = Register("desktop"); var phone = Register("mobile"); Bind(desktop, phone);
+        var desktop = Register("desktop"); var phone = Register("mobile"); PublishCatalog(desktop, phone);
         Call(phone, "send", new BridgeSend("open", desktop.Device.Id, "open", MobileJson.Element(new BridgeOpen("plugin.notes", "notes"))));
         var first = MobileJson.Read<BridgeMessage[]>(Call(desktop, "poll"));
         Assert.Single(first);
@@ -65,7 +76,7 @@ public sealed class MobileBridgeMailboxTests
     [Fact]
     public void DuplicateActionHasOneMailboxEntryAndStatusSurvivesSerialization()
     {
-        var desktop = Register("desktop"); var phone = Register("mobile"); Bind(desktop, phone); Publish(desktop, phone);
+        var desktop = Register("desktop"); var phone = Register("mobile"); PublishCatalog(desktop, phone); Publish(desktop, phone);
         var send = new BridgeSend("action", desktop.Device.Id, "action", MobileJson.Element(new BridgeInvoke("view", "fixed", [])));
         Call(phone, "send", send); Call(phone, "send", send);
         Assert.Single(MobileJson.Read<BridgeMessage[]>(Call(desktop, "poll")));
@@ -78,7 +89,7 @@ public sealed class MobileBridgeMailboxTests
     [Fact]
     public void ExpiredUnstartedActionsBecomeKnownFailuresInsteadOfWaitingForever()
     {
-        var desktop = Register("desktop"); var phone = Register("mobile"); Bind(desktop, phone); Publish(desktop, phone);
+        var desktop = Register("desktop"); var phone = Register("mobile"); PublishCatalog(desktop, phone); Publish(desktop, phone);
         Call(phone, "send", new BridgeSend("expired", desktop.Device.Id, "action", MobileJson.Element(new BridgeInvoke("view", "fixed", []))));
         var status = MobileJson.Read<BridgeOutcome>(Call(phone, "status", new { requestId = "expired" }, Now.AddSeconds(31)));
         Assert.Equal("failed", status.Status);
@@ -87,12 +98,12 @@ public sealed class MobileBridgeMailboxTests
     [Fact]
     public void CatalogChangeRevocationAndOfflineDesktopRejectOldActions()
     {
-        var desktop = Register("desktop"); var phone = Register("mobile"); Bind(desktop, phone); Publish(desktop, phone);
+        var desktop = Register("desktop"); var phone = Register("mobile"); PublishCatalog(desktop, phone); Publish(desktop, phone);
         var send = new BridgeSend("action", desktop.Device.Id, "action", MobileJson.Element(new BridgeInvoke("view", "fixed", [])));
         Assert.Equal("mobile_desktop_offline", Assert.Throws<BridgeException>(() => Call(phone, "send", send, Now.AddSeconds(46))).Code);
         Call(desktop, "catalog", new { pages = Array.Empty<BridgePageInfo>() });
         Assert.Throws<BridgeException>(() => Call(phone, "send", send));
-        Call(desktop, "approve", new { mobileId = phone.Device.Id, approved = false });
+        Call(desktop, "revoke");
         Assert.Throws<BridgeException>(() => Call(phone, "pages", new { desktopId = desktop.Device.Id }));
         Call(phone, "revoke");
         Assert.Throws<BridgeException>(() => Call(phone, "poll"));
