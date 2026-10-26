@@ -95,6 +95,8 @@ public sealed partial class MainPage
             var button = Button(page.Title, () => SelectNavigationPageAsync(page));
             button.AutomationId = "mobile-nav-" + i;
             button.FontSize = 13; button.Padding = new Thickness(8, 10);
+            button.LineBreakMode = LineBreakMode.TailTruncation;
+            button.MaximumHeightRequest = 56;
             button.BackgroundColor = selected ? Color.FromArgb("#EEE8F7") : Colors.Transparent;
             button.TextColor = selected ? MobileTheme.Accent : MobileTheme.Muted;
             buttons.Add(button, i, 0);
@@ -115,6 +117,7 @@ public sealed partial class MainPage
         {
             var selected = page.PluginId == _navigation.PluginId && page.PageId == _navigation.PageId;
             var button = Button((selected ? "✓  " : "") + page.Title, () => SelectNavigationPageAsync(page));
+            button.LineBreakMode = LineBreakMode.TailTruncation;
             button.BackgroundColor = selected ? Color.FromArgb("#EEE8F7") : MobileTheme.Canvas;
             button.TextColor = selected ? MobileTheme.Accent : MobileTheme.Ink;
             _navigationItems.Children.Add(button);
