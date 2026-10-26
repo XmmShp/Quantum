@@ -63,7 +63,8 @@ public sealed partial class MainPage : ContentPage
 
     private string? _lastOutcomeKey;
 
-    private static string T(string zh, string en) => Preferences.Default.Get("quantum.mobile.language", CultureInfo.CurrentUICulture.Name).StartsWith("zh", StringComparison.OrdinalIgnoreCase) ? zh : en;
+    private static string T(string zh, string en) => Chinese ? zh : en;
+    private static bool Chinese => Preferences.Default.Get("quantum.mobile.language", CultureInfo.CurrentUICulture.Name).StartsWith("zh", StringComparison.OrdinalIgnoreCase);
 
     public MainPage()
     {
@@ -182,6 +183,7 @@ public sealed partial class MainPage : ContentPage
         var devices = await _client!.CallAsync<BridgeDevice[]>("devices");
 
         var bindings = await _client.CallAsync<BridgeBinding[]>("bindings");
+        if (!_uncertain && _pendingId is null) _status.Text = T("请选择已授权的电脑，或申请连接。", "Select an approved desktop or request access.");
         var online = devices.Where(d => d.Kind == "desktop" && d.SeenAt > _client.UtcNow.AddSeconds(-45))
             .OrderByDescending(d => d.SeenAt).ToArray();
 
@@ -249,6 +251,7 @@ public sealed partial class MainPage : ContentPage
         _language.IsEnabled = true;
 
         var pages = await _client!.CallAsync<BridgePageInfo[]>("pages", new { desktopId = _desktopId });
+        if (!_uncertain && _pendingId is null) _status.Text = T("已连接电脑，请选择共享页面。", "Connected to your desktop. Choose a shared page.");
 
         _snapshot = null; _renderer = null;
 
@@ -296,6 +299,7 @@ public sealed partial class MainPage : ContentPage
         if (_snapshot is not null && _renderer?.IsDirty == true) return; // Never replace a live draft via a duplicate/reordered response.
 
         _snapshot = snapshot;
+        _status.Text = MobileFeedback.Snapshot(_uncertain, _pendingId is not null, Chinese);
 
         _renderer = new(InvokeAsync);
 
@@ -409,7 +413,7 @@ public sealed partial class MainPage : ContentPage
 
         if (_pendingId != outcome.RequestId) return;
 
-        _status.Text = outcome.Status + " · " + outcome.Message;
+        _status.Text = MobileFeedback.Outcome(outcome, Chinese);
 
         if (outcome.Status is "accepted" or "running") return;
 
@@ -417,15 +421,11 @@ public sealed partial class MainPage : ContentPage
 
         _lastOutcomeKey = outcome.RequestId + outcome.Status;
 
-        _uncertain = outcome.Status == "unknown";
+        _uncertain = outcome.Status is not ("succeeded" or "failed");
 
         if (!_uncertain) ClearPending();
 
         _pageContent.IsEnabled = false;
-
-        var details = outcome.Result is { } json ? json.ToString() : outcome.Message;
-
-        _body.Children.Add(new Label { Text = details, FontSize = 14 });
 
         // A successful business result does not imply a new page snapshot exists. Refresh is explicit.
 
@@ -490,7 +490,7 @@ public sealed partial class MainPage : ContentPage
 
                             var error = MobileJson.Read<BridgePageError>(message.Body);
 
-                            if (error.RequestId == _openRequestId) _status.Text = error.Code + " · " + error.Message;
+                            if (error.RequestId == _openRequestId) _status.Text = MobileFeedback.Failure(error.Code, Chinese);
 
                         }
 

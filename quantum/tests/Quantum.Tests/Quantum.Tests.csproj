@@ -17,6 +17,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Compile Include="../../../mobile/Quantum.Mobile/MobileFeedback.cs" Link="Mobile/MobileFeedback.cs" />
     <ProjectReference Include="..\..\src\Quantum\Quantum.csproj" />
     <ProjectReference Include="..\..\..\samples\Quantum.ExampleDependentPlugin\Quantum.ExampleDependentPlugin.csproj" />
     <ProjectReference Include="..\..\..\samples\Quantum.ExamplePlugin\Quantum.ExamplePlugin.csproj" />
