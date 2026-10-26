@@ -114,4 +114,7 @@ jobs:
           merge-multiple: true
           path: artifacts/mobile-release
       - name: Publish development preview
-        run: gh release create "$GITHUB_REF_NAME" artifacts/mobile-release/* --verify-tag --prerelease --title "Quantum Mobile ${{ needs.prepare.outputs.version }} Preview" --notes-file docs/mobile-release-notes.md
+        run: |
+          gh release create "$GITHUB_REF_NAME" --verify-tag --draft --prerelease --title "Quantum Mobile ${{ needs.prepare.outputs.version }} Preview" --notes-file docs/mobile-release-notes.md
+          gh release upload "$GITHUB_REF_NAME" artifacts/mobile-release/*
+          gh release edit "$GITHUB_REF_NAME" --draft=false --prerelease --latest=false
