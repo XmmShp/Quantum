@@ -43,6 +43,17 @@ public sealed class MobileBridgeMailboxTests
         var other = new MobileBridgeMailbox();
         Assert.Throws<BridgeException>(() => other.Exchange(new("poll", phone.Device.Id, phone.Secret, MobileJson.Element(new { })), Now));
     }
+
+    [Fact]
+    public void CatalogIconsAreOptInSoOlderPhonesCanStillReadPages()
+    {
+        var desktop = Register("desktop"); var phone = Register("mobile");
+        Call(desktop, "catalog", new { pages = new[] { new BridgePageInfo("plugin.notes", "notes", "Notes") { Icon = "✦" } } });
+        var legacy = Call(phone, "pages", new { desktopId = desktop.Device.Id });
+        Assert.False(legacy[0].TryGetProperty("icon", out _));
+        var modern = Call(phone, "pages", new { desktopId = desktop.Device.Id, includeIcons = true });
+        Assert.Equal("✦", modern[0].GetProperty("icon").GetString());
+    }
     [Fact]
     public void SameAccountCanReadPagesWithoutAnyBindOrApprovalAndLegacyFlagsCannotBlockIt()
     {

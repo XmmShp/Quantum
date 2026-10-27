@@ -70,6 +70,7 @@ public sealed class MobileBridgeMailbox
                 {
                     MobileUiValidator.Id(page.PluginId); MobileUiValidator.Id(page.PageId);
                     if (string.IsNullOrWhiteSpace(page.Title) || page.Title.Length > 200) throw new ArgumentException("Invalid page title.");
+                    if (page.Icon is { } icon && (icon.Length > 64 || icon.Any(char.IsControl))) throw new ArgumentException("Invalid page icon.");
                 }
                 sender.Pages = pages;
                 // A catalog publication is an authorization epoch change. Invalidate old phone views.
@@ -80,7 +81,8 @@ public sealed class MobileBridgeMailbox
             {
                 RequireKind(sender, "mobile");
                 var desktop = Target(Text(body, "desktopId"), "desktop");
-                return MobileJson.Element(desktop.Pages);
+                var includeIcons = body.TryGetProperty("includeIcons", out var icons) && icons.ValueKind == JsonValueKind.True;
+                return MobileJson.Element(includeIcons ? desktop.Pages : desktop.Pages.Select(p => p with { Icon = null }).ToArray());
             }
             case "send": return Send(sender, MobileJson.Read<BridgeSend>(body), now);
             case "authorize":
