@@ -1,6 +1,6 @@
 {
   "id": "quantum.plugin.calendar",
-  "version": "1.3.4",
+  "version": "1.3.5",
   "entryAssembly": "Quantum.CalendarPlugin.dll",
   "database": {
     "migrations": "./migrations"
@@ -13,10 +13,13 @@
         "path": "/plugins/calendar",
         "component": "Quantum.OfficialPlugins.Calendar.UI.Pages.Calendar",
         "title": "日历",
-        "titles": { "en-US": "Calendar" },
+        "titles": {
+          "en-US": "Calendar"
+        },
         "icon": "日",
         "order": 100,
-        "showInNavigation": true
+        "showInNavigation": true,
+        "iconFile": "icons/plugin.ico"
       }
     ]
   },

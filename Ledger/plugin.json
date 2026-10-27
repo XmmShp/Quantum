@@ -1,23 +1,33 @@
 {
   "id": "quantum.plugin.ledger",
-  "version": "0.4.4",
+  "version": "0.4.5",
   "entryAssembly": "Quantum.LedgerPlugin.dll",
-  "database": { "migrations": "./migrations" },
+  "database": {
+    "migrations": "./migrations"
+  },
   "dependencies": [],
   "integrations": [],
   "ui": {
-    "routes": [{
-      "path": "/plugins/ledger",
-      "component": "Quantum.OfficialPlugins.Ledger.UI.Pages.Ledger",
-      "title": "记账",
-      "titles": { "en": "Ledger", "zh": "记账" },
-      "icon": "¥",
-      "order": 120,
-      "showInNavigation": true
-    }]
+    "routes": [
+      {
+        "path": "/plugins/ledger",
+        "component": "Quantum.OfficialPlugins.Ledger.UI.Pages.Ledger",
+        "title": "记账",
+        "titles": {
+          "en": "Ledger",
+          "zh": "记账"
+        },
+        "icon": "¥",
+        "order": 120,
+        "showInNavigation": true,
+        "iconFile": "icons/plugin.ico"
+      }
+    ]
   },
   "web": {
-    "head": ["<link rel=\"stylesheet\" href=\"_content/quantum.plugin.ledger/ledger.css\">"],
+    "head": [
+      "<link rel=\"stylesheet\" href=\"_content/quantum.plugin.ledger/ledger.css\">"
+    ],
     "postBlazor": []
   }
 }

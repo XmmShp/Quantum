@@ -193,3 +193,7 @@ Quantum 在启动时统一配置 `JsonSerializerOptions.NOF`：枚举采用字�
 原生 `IServiceCollection.AddRpcServer<T>()` 要求 NOF `11.0.0-nightly.1473609.75efa591` 或兼容的后续版本。宿主、SDK 和插件应统一 NOF 版本。插件使用已发布的 `Quantum.Plugin.Abstraction` 0.1.0 即可完成当前 RPC 联动和注册；不依赖 SDK 自定义注册或发现封装。
 
 可选联动直接按 canonical RPC 能力名调用 `IRpcInvoker.InvokeAsync<T>`，由宿主完成路由，返回 NOF Result。页面通过既有 `quantum.rpc.catalog` RPC 逐项判断能力可用性；选择候选日程只要求 `calendar.list`，查看关联详情只要求 `calendar.get`，不要求同一提供者或完整能力组。目录检查仅用于 UI，实际调用仍须处理能力已卸载等失败。只有业务明确要求指定实现时才使用 qualified name。跨能力使用的资源 ID 和数据语义由契约约定。
+
+## 导航图标
+
+官方插件使用 `ui.routes[].iconFile` 引用 `wwwroot/icons/plugin.ico`，保留 `icon` 文字作为旧宿主的回退。仅支持标准 ICO，包含 PNG 或 DIB 图层均可。发布包必须包含声明的 ICO，`scripts/verify-plugin-assets.py` 会检查文件是否随包发布。此 manifest 字段要求 Quantum 0.1.16 或更新版本。

@@ -37,6 +37,18 @@ def verify(directory):
             raise ValueError(f"Asset is outside wwwroot: {reference}")
         if not asset.is_file() or asset.stat().st_size == 0:
             raise ValueError(f"Missing or empty published asset: {reference}")
+    for route in manifest.get("ui", {}).get("routes", []):
+        if "iconFile" not in route:
+            continue
+        relative = Path(route["iconFile"])
+        asset = (directory / "wwwroot" / relative).resolve()
+        if relative.is_absolute() or ".." in relative.parts or not asset.is_relative_to((directory / "wwwroot").resolve()):
+            raise ValueError("Icon is outside wwwroot")
+        if relative.suffix.lower() != ".ico" or not asset.is_file():
+            raise ValueError("Missing published ICO file")
+        content = asset.read_bytes()
+        if not 22 <= len(content) <= 1024 * 1024 or content[:4] != b"\x00\x00\x01\x00":
+            raise ValueError("Invalid published ICO file")
     print(f"Verified {manifest['id']}: {len(parser.paths)} declared static assets")
 
 

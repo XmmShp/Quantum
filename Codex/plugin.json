@@ -1,6 +1,6 @@
 {
   "id": "quantum.plugin.codex",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "entryAssembly": "Quantum.CodexPlugin.dll",
   "dependencies": [],
   "integrations": [],
@@ -10,10 +10,13 @@
         "path": "/plugins/codex",
         "component": "Quantum.OfficialPlugins.Codex.UI.Pages.Codex",
         "title": "Codex",
-        "titles": { "en-US": "Codex" },
+        "titles": {
+          "en-US": "Codex"
+        },
         "icon": "✦",
         "order": 110,
-        "showInNavigation": true
+        "showInNavigation": true,
+        "iconFile": "icons/plugin.ico"
       }
     ],
     "globalComponents": [
