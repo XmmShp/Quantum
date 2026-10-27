@@ -30,6 +30,7 @@ try{
         Start-Sleep -Milliseconds 300
     }
     if(!$state.value.preview -or $state.value.authenticated){throw 'Expected isolated, unauthenticated Mock startup.'}
+    if($state.value.page.tree.cornerRadius -ne 0){throw 'Layout root clips its content to rounded card corners.'}
     $view=$state.value.page.viewId
     $null=Call '/input' @{viewId=$view;nodeId='content';value='HTTP debug test 中文'}
     $null=Call '/input' @{viewId=$view;nodeId='pinned';value=$true}
@@ -66,6 +67,7 @@ try{
     Reject '/preview' @{} 409
     $opened=Call '/navigation/open' @{}
     if(!$opened.value.navigation.expanded){throw 'Bottom navigation sheet did not open.'}
+    if($opened.value.navigation.gridColumns -ne 4 -or $opened.value.navigation.tiles.Count -ne 2 -or $opened.value.navigation.tiles[1].column -ne 1 -or $opened.value.navigation.tiles[1].row -ne 0){throw 'Expanded plugin navigation is not a four-column icon matrix.'}
     Reject '/navigation/select' @{pluginId='mock.status';pageId='mock-status'} 409
     $switched=Call '/navigation/select' @{pluginId='mock.status';pageId='mock-status';discardDraft=$true}
     if($switched.value.navigation.expanded -or $switched.value.page.pageId -ne 'mock-status' -or $switched.value.page.viewId -eq $view){throw 'Navigation did not switch to a fresh page and close its sheet.'}

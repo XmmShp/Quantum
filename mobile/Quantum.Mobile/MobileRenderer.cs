@@ -90,6 +90,8 @@ public sealed class MobileRenderer
         var card = node.Id != _contentRootId && node.Children.Any(n => n.Type == "Text" && n.Style == "title" ||
             n.Type == "HStack" && n.Children.FirstOrDefault() is { Type: "Text", Style: "title" });
         ((VerticalStackLayout)border.Content!).Spacing = node.Id == _contentRootId ? 12 : card ? 8 : 4;
+        // Layout-only wrappers must not clip their children to card corners.
+        border.StrokeShape = new RoundRectangle { CornerRadius = card ? 14 : 0 };
         border.Padding = card ? new Thickness(12) : new Thickness(0);
         border.BackgroundColor = card ? Colors.White : Colors.Transparent;
         border.Stroke = MobileTheme.Line;
@@ -209,6 +211,8 @@ public sealed class MobileRenderer
         enabled = _debugControls.TryGetValue(node.Id, out var control) && DebugEnabled(control),
         value = _inputs.TryGetValue(node.Id, out var value) ? (JsonElement?)value : null,
         actionable = _debugPress.ContainsKey(node.Id),
+        cornerRadius = _views.TryGetValue(node.Id, out var view) && view is Border { StrokeShape: RoundRectangle rectangle }
+            ? rectangle.CornerRadius.TopLeft : (double?)null,
         children = node.Children.Select(DebugDescribe).ToArray()
     };
 

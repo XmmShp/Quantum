@@ -10,7 +10,11 @@ public sealed partial class MainPage
     private readonly Border _bottomBar = new() { IsVisible = false };
     private readonly Grid _navigationOverlay = new() { IsVisible = false };
     private readonly Border _navigationSheet = new();
-    private readonly VerticalStackLayout _navigationItems = new() { Spacing = 8 };
+    private readonly Grid _navigationItems = new()
+    {
+        ColumnSpacing = 8, RowSpacing = 12,
+        ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Star) }
+    };
     private bool _navigationExpanded;
     private DateTimeOffset _suppressNavClickUntil;
     private bool _navigationDragging;
@@ -118,18 +122,42 @@ public sealed partial class MainPage
         };
         _bottomBar.Content = new VerticalStackLayout { Spacing = 0, Children = { grip, buttons } };
         _navigationItems.Children.Clear();
+        _navigationItems.RowDefinitions.Clear();
+        var index = 0;
         foreach (var page in _navigation.Pages)
         {
             var selected = page.PluginId == _navigation.PluginId && page.PageId == _navigation.PageId;
-            var button = Button((page.Icon ?? "◇") + "   " + page.Title, async () => { if (DateTimeOffset.UtcNow >= _suppressNavClickUntil) await SelectNavigationPageAsync(page); });
-            button.FontSize = 14; button.Padding = new Thickness(12, 10);
+            var button = Button(page.Icon ?? "◇", async () => { if (DateTimeOffset.UtcNow >= _suppressNavClickUntil) await SelectNavigationPageAsync(page); });
+            button.FontSize = 24; button.Padding = 0;
+            button.WidthRequest = button.HeightRequest = 48;
+            button.MinimumWidthRequest = button.MinimumHeightRequest = 48;
+            button.HorizontalOptions = LayoutOptions.Center;
+            button.CornerRadius = 14; button.BorderWidth = 0;
             AddReorderGestures(button, page);
-            button.LineBreakMode = LineBreakMode.TailTruncation;
             button.BackgroundColor = selected ? Color.FromArgb("#EEE8F7") : MobileTheme.Canvas;
             button.TextColor = selected ? MobileTheme.Accent : MobileTheme.Ink;
-            _navigationItems.Children.Add(button);
+            SemanticProperties.SetDescription(button, page.Title);
+            var label = new Label
+            {
+                Text = page.Title, FontSize = 12, TextColor = selected ? MobileTheme.Accent : MobileTheme.Muted,
+                HorizontalTextAlignment = TextAlignment.Center, LineBreakMode = LineBreakMode.TailTruncation, MaxLines = 1
+            };
+            var tap = new TapGestureRecognizer();
+            tap.Tapped += async (_, _) => { if (DateTimeOffset.UtcNow >= _suppressNavClickUntil) await SelectNavigationPageAsync(page); };
+            label.GestureRecognizers.Add(tap);
+            AddReorderGestures(label, page);
+            var tile = new Grid { RowSpacing = 4, Padding = new Thickness(2, 4), MinimumHeightRequest = 80,
+                RowDefinitions = { new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Auto) } };
+            tile.Add(button); tile.Add(label, 0, 1);
+            if (index % 4 == 0) _navigationItems.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
+            _navigationItems.Add(tile, index % 4, index / 4);
+            index++;
         }
-        if (_navigation.Pages.Length == 0) _navigationItems.Children.Add(MobileTheme.Caption(T("暂无移动插件页面", "No mobile plugin pages yet")));
+        if (_navigation.Pages.Length == 0)
+        {
+            var empty = MobileTheme.Caption(T("暂无移动插件页面", "No mobile plugin pages yet"));
+            _navigationItems.Add(empty); Grid.SetColumnSpan(empty, 4);
+        }
         RenderAccountMenu();
     }
 
@@ -191,7 +219,7 @@ public sealed partial class MainPage
         if (_navigationExpanded || !_bottomBar.IsVisible) return;
         await CloseMenuAsync();
         _navigationExpanded = true;
-        _navigationSheet.HeightRequest = Math.Min(Math.Max(180, Height * .72), Math.Min(560, Math.Max(220, 120 + _navigation.Pages.Length * 52)));
+        _navigationSheet.HeightRequest = Math.Min(Math.Max(180, Height * .72), Math.Min(560, Math.Max(220, 120 + Math.Ceiling(_navigation.Pages.Length / 4d) * 92)));
         _navigationSheet.TranslationY = 80;
         _navigationOverlay.IsVisible = true;
         await _navigationSheet.TranslateToAsync(0, 0, 160, Easing.CubicOut);

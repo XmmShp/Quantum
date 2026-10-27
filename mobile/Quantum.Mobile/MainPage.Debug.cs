@@ -228,6 +228,8 @@ public sealed partial class MainPage
         navigation = new
         {
             visible = _bottomBar.IsVisible, expanded = _navigationExpanded,
+            gridColumns = _navigationItems.ColumnDefinitions.Count,
+            tiles = _navigationItems.Children.OfType<Grid>().Select(tile => new { row = Grid.GetRow(tile), column = Grid.GetColumn(tile) }).ToArray(),
             iconButtons = (_bottomBar.Content as VerticalStackLayout)?.Children.OfType<Grid>().LastOrDefault()?.Children.OfType<Button>().Select(b => b.Text).ToArray(),
             shortcuts = _navigation.Shortcuts().Select(p => new { p.PluginId, p.PageId, p.Icon }).ToArray(),
             pages = _navigation.Pages.Select(p => new { p.PluginId, p.PageId, p.Title, p.Icon, active = p.PluginId == _navigation.PluginId && p.PageId == _navigation.PageId }).ToArray()
