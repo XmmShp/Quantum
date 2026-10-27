@@ -51,7 +51,18 @@ public sealed partial class MainPage
     private async Task<object> ExecuteDebugAsync(string path, JsonElement body)
     {
         if (path == "/state") return DebugState();
-        if (path == "/settings/open") { await ShowSettingsAsync(); return DebugState(); }
+        if (path is "/menu/open" or "/menu/close")
+        {
+            if (!_titleBar.IsVisible) throw new MobileDebugException(401, "debug_sign_in_required");
+            if (path == "/menu/open") await OpenMenuAsync();
+            else await CloseMenuAsync();
+            return DebugState();
+        }
+        if (path == "/settings/open")
+        {
+            if (!_titleBar.IsVisible) throw new MobileDebugException(401, "debug_sign_in_required");
+            await ShowSettingsAsync(); return DebugState();
+        }
         if (path == "/settings/close")
         {
             if (_settingsPage is null || !ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), _settingsPage)) throw new MobileDebugException(409, "debug_settings_unavailable");
@@ -114,7 +125,7 @@ public sealed partial class MainPage
             }
             else
             {
-                if (_navigationExpanded || _uncertain || _pendingId is not null || !_pageContent.IsEnabled || !_preview && (!_connected || _snapshot.ExpiresAt <= _client!.UtcNow))
+                if (_menuExpanded || _settingsPage is not null && ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), _settingsPage) || _navigationExpanded || _uncertain || _pendingId is not null || !_pageContent.IsEnabled || !_preview && (!_connected || _snapshot.ExpiresAt <= _client!.UtcNow))
                     throw new MobileDebugException(409, "debug_action_unavailable");
                 if (path == "/input")
                 {
@@ -138,7 +149,7 @@ public sealed partial class MainPage
             var devices = await _client.CallAsync<BridgeDevice[]>("devices");
             if (!devices.Any(d => d.Id == id && d.Kind == "desktop")) throw new MobileDebugException(404, "debug_desktop_not_found");
             CheckDebugDraft(false);
-            _desktopId = id; await ShowPagesAsync();
+            await SelectDesktopAsync(devices.Single(d => d.Id == id), false);
             return DebugState();
         }
         if (_desktopId is null) throw new MobileDebugException(409, "debug_select_desktop_first");
@@ -167,6 +178,8 @@ public sealed partial class MainPage
         authenticated = _authentication?.IsAuthenticated == true,
         connected = _connected, preview = _preview, persistentHeader = !_isSignIn && _signInHeader.Parent is not null, syncPanelVisible = _syncPanel.IsVisible,
         settingsVisible = _settingsPage is not null && ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), _settingsPage),
+        titleBar = new { visible = _titleBar.IsVisible, height = _titleBar.HeightRequest, avatar = _avatarInitial.AutomationId, title = _pageTitle.Text },
+        menu = new { expanded = _menuExpanded, visible = _menuOverlay.IsVisible, settingsPinnedToBottom = Grid.GetRow(_menuSettings) == 1, desktopId = _desktopId },
         pending = _pendingId is not null, uncertain = _uncertain,
         status = _status.Text, desktopStatus = _desktopStatus.Text,
         desktopId = _desktopId,

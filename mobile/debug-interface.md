@@ -46,6 +46,10 @@ $state.value.page.tree  # 节点 ID、类型、文字、有效启用状态、当
 | `POST /page/refresh` | `{viewId,discardDraft?}`：刷新当前真实页面 |
 | `POST /input` | `{viewId,nodeId,value}`：填写字符串或布尔输入 |
 | `POST /press` | `{viewId,nodeId}`：触发当前页面按钮 |
+| `POST /menu/open` | 打开头像对应的左侧账户菜单 |
+| `POST /menu/close` | 收起账户菜单 |
+| `POST /settings/open` | 从账户菜单进入独立设置页 |
+| `POST /settings/close` | 返回插件页，保留草稿 |
 | `POST /navigation/open` | 展开底部插件菜单 |
 | `POST /navigation/close` | 收起底部插件菜单 |
 | `POST /navigation/select` | `{pluginId,pageId,discardDraft?}`：切换插件，保留草稿保护 |

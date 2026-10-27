@@ -19,6 +19,7 @@
   <ItemGroup>
     <Compile Include="../../../mobile/Quantum.Mobile/MobileFeedback.cs" Link="Mobile/MobileFeedback.cs" />
     <Compile Include="../../../mobile/Quantum.Mobile/MobileNavigationState.cs" Link="Mobile/MobileNavigationState.cs" />
+    <Compile Include="../../../mobile/Quantum.Mobile/MobileDesktopSelection.cs" Link="Mobile/MobileDesktopSelection.cs" />
     <Compile Include="../../../mobile/Quantum.Mobile/Debugging/*.cs" Link="Mobile/Debugging/%(Filename)%(Extension)" />
     <ProjectReference Include="..\..\src\Quantum\Quantum.csproj" />
     <ProjectReference Include="..\..\..\samples\Quantum.ExampleDependentPlugin\Quantum.ExampleDependentPlugin.csproj" />

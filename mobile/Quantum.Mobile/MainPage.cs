@@ -98,10 +98,11 @@ public sealed partial class MainPage : ContentPage
         _signInHeader = CreateHeader();
         _viewport.Content = new ScrollView { Content = root };
         _viewport.Refreshing += (_, _) => { _syncPanel.IsVisible = !_isSignIn; _viewport.IsRefreshing = false; };
-        var shell = new Grid { RowDefinitions = { new RowDefinition(GridLength.Star), new RowDefinition(GridLength.Auto) } };
-        shell.Add(_viewport);
+        var shell = new Grid { RowDefinitions = { new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Star), new RowDefinition(GridLength.Auto) } };
+        shell.Add(_viewport, 0, 1);
 
         BuildNavigation(shell);
+        BuildAccountMenu(shell);
         Content = shell;
         ShowSignIn();
     }
@@ -183,43 +184,10 @@ public sealed partial class MainPage : ContentPage
         _preview = false;
         Preferences.Default.Set("quantum.mobile.email", _email.Text?.Trim() ?? "");
 
-        await ShowDevicesAsync();
+        await EnterDesktopAsync();
 
         Resume();
 
-    }
-
-    private async Task ShowDevicesAsync()
-    {
-        ResetNavigation();
-        _snapshot = null; _desktopId = null; _renderer = null; _openRequestId = null; _pageCache.Clear();
-        var devices = await _client!.CallAsync<BridgeDevice[]>("devices");
-        if (!_uncertain && _pendingId is null) _status.Text = T("请选择电脑。", "Choose your desktop.");
-        var online = devices.Where(d => d.Kind == "desktop" && d.SeenAt > _client.UtcNow.AddSeconds(-45))
-            .OrderByDescending(d => d.SeenAt).ToArray();
-        _isSignIn = false;
-        _status.IsVisible = true; _desktopStatus.IsVisible = true; _language.IsEnabled = true;
-        _body.Children.Clear();
-        _body.Children.Add(new Label { Text = T("选择你的电脑", "Choose your desktop"), FontSize = 28 });
-        _body.Children.Add(MobileTheme.Caption(T("选择登录同一 Quantum 账号的在线电脑，即可使用它的全部移动插件页面。", "Choose an online desktop signed in to the same Quantum account to use all its mobile plugin pages.")));
-        if (online.Length == 0)
-            _body.Children.Add(MobileTheme.Card(new VerticalStackLayout
-            {
-                Spacing = 10,
-                Children =
-                {
-                    new Label { Text = T("暂时没有可连接的电脑", "No desktops available yet"), TextColor = MobileTheme.Ink, FontSize = 18, FontAttributes = FontAttributes.Bold },
-                    MobileTheme.Caption(T("请确认电脑已登录同一账号并保持 Quantum 运行。", "Sign in to the same account and keep Quantum running on your desktop."))
-                }
-            }));
-        foreach (var device in online)
-            _body.Children.Add(Button(device.Name + " · " + device.Id[..8], async () =>
-            {
-                _desktopId = device.Id;
-                await ShowPagesAsync();
-            }));
-        _body.Children.Add(Button(T("刷新设备", "Refresh devices"), ShowDevicesAsync));
-        _body.Children.Add(Button(T("退出登录", "Sign out"), SignOutAsync));
     }
 
     private async Task ShowPagesAsync()
@@ -237,7 +205,7 @@ public sealed partial class MainPage : ContentPage
         {
             _snapshot = null; _renderer = null; _body.Children.Clear();
             _body.Children.Add(new Label { Text = T("这台电脑暂时没有移动插件页面", "No mobile plugin pages on this desktop yet"), FontSize = 24 });
-            _body.Children.Add(MobileTheme.Caption(T("安装支持移动页面的插件后，可从底部菜单刷新。", "Install a plugin with mobile pages, then refresh the bottom menu.")));
+            _body.Children.Add(MobileTheme.Caption(T("安装支持移动页面的插件后，可从设置中刷新插件列表。", "Install a plugin with mobile pages, then refresh the plugin list in Settings.")));
         }
     }
 
@@ -507,14 +475,24 @@ public sealed partial class MainPage : ContentPage
 
                     }
 
-                    if (_desktopId is not null && DateTimeOffset.UtcNow >= nextDevices)
+                    if (DateTimeOffset.UtcNow >= nextDevices)
 
                     {
 
                         nextDevices = DateTimeOffset.UtcNow.AddSeconds(10);
                         var desktops = await _client.CallAsync<BridgeDevice[]>("devices", cancellationToken: token);
 
-                        _connected = desktops.Any(d => d.Id == _desktopId && d.SeenAt > _client.UtcNow.AddSeconds(-45));
+                        _knownDesktops = desktops.Where(d => d.Kind == "desktop").ToArray();
+                        _currentDesktop = _knownDesktops.FirstOrDefault(d => d.Id == _desktopId);
+                        _connected = _currentDesktop is not null && MobileDesktopSelection.IsOnline(_currentDesktop, _client.UtcNow);
+                        if (_snapshot is null && !_awaitingSnapshot && !_selectingDesktop && _pendingId is null && !_uncertain)
+                        {
+                            var available = MobileDesktopSelection.Choose(_knownDesktops, _desktopId, _client.UtcNow, Preferences.Default.Get(_storageKey + ".desktop-name", ""));
+                            if (available is not null && MobileDesktopSelection.IsOnline(available, _client.UtcNow))
+                                await SelectDesktopAsync(available, false);
+                        }
+                        _currentDesktopState.Text = _connected ? T("在线", "Online") : T("未连接", "Not connected");
+                        if (_menuExpanded) RenderDesktopChoices();
 
                         _desktopStatus.Text = (_connected ? T("电脑在线 · ", "Desktop online · ") : T("电脑离线 · ", "Desktop offline · ")) + DateTime.Now.ToString("HH:mm:ss");
 
@@ -572,7 +550,7 @@ public sealed partial class MainPage : ContentPage
         if (_storageKey.Length > 0) { SecureStorage.Default.Remove(_storageKey); Preferences.Default.Remove(_storageKey + ".pending"); }
 
         if (_authentication is not null) await _authentication.LogoutAsync();
-        _client = null; _snapshot = null; _renderer = null; _pendingId = null; _uncertain = false;
+        _client = null; _snapshot = null; _renderer = null; _pendingId = null; _uncertain = false; _desktopId = null; _currentDesktop = null; _knownDesktops = [];
 
         _status.Text = ""; _desktopStatus.Text = ""; _pageCache.Clear(); _deferredSnapshot = null; ShowSignIn();
 

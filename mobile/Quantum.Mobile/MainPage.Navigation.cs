@@ -21,7 +21,7 @@ public sealed partial class MainPage
         _bottomBar.Stroke = MobileTheme.Line;
         _bottomBar.StrokeThickness = 1;
         _bottomBar.Padding = new Thickness(12, 6, 12, 12);
-        shell.Add(_bottomBar, 0, 1);
+        shell.Add(_bottomBar, 0, 2);
         var up = new PanGestureRecognizer();
         double drag = 0;
         up.PanUpdated += async (_, e) =>
@@ -73,7 +73,7 @@ public sealed partial class MainPage
             Children = { heading, new ScrollView { Content = _navigationItems, MaximumHeightRequest = 420 } }
         };
         _navigationOverlay.Add(_navigationSheet);
-        shell.Add(_navigationOverlay, 0, 0);
+        shell.Add(_navigationOverlay, 0, 1);
         Grid.SetRowSpan(_navigationOverlay, 2);
         SemanticProperties.SetDescription(_bottomBar, T("插件导航，向上拖动展开全部插件", "Plugin navigation. Pull up to see all plugins."));
     }
@@ -122,10 +122,7 @@ public sealed partial class MainPage
             _navigationItems.Children.Add(button);
         }
         if (_navigation.Pages.Length == 0) _navigationItems.Children.Add(MobileTheme.Caption(T("暂无移动插件页面", "No mobile plugin pages yet")));
-        if (!_preview)
-        {
-            _navigationItems.Children.Add(Button(T("设置", "Settings"), ShowSettingsAsync));
-        }
+        RenderAccountMenu();
     }
 
     private async Task RefreshNavigationAsync()
@@ -139,6 +136,7 @@ public sealed partial class MainPage
     private async Task OpenNavigationAsync()
     {
         if (_navigationExpanded || !_bottomBar.IsVisible) return;
+        await CloseMenuAsync();
         _navigationExpanded = true;
         _navigationSheet.MaximumHeightRequest = Math.Max(220, Math.Min(560, Height * .72));
         _navigationSheet.TranslationY = 80;
@@ -180,6 +178,7 @@ public sealed partial class MainPage
 
     protected override bool OnBackButtonPressed()
     {
+        if (_menuExpanded) { _ = CloseMenuAsync(); return true; }
         if (!_navigationExpanded) return base.OnBackButtonPressed();
         _ = CloseNavigationAsync(); return true;
     }
