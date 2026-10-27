@@ -1,9 +1,9 @@
 {
   "repository": "https://github.com/XmmShp/Quantum.Platform",
-  "baseCommit": "fffc1a393b731420d8252346937ba7ae08981454",
+  "baseCommit": "b8d3ec8d7bcf988d420a7406f9de5c4aa053da9e",
   "sourceState": "committed",
   "files": {
-    "src/Quantum.Platform.Application/MobileBridgeMailbox.cs": "65c7caac8f422b05bf1a05d3aa61a7fd86a85e31f8e7a1248b65bf1ad3528dcd"
+    "src/Quantum.Platform.Application/MobileBridgeMailbox.cs": "587a78c37522a72af5a16f323bf7af4f172a6b871d2768ad6862f7e0164c3986"
   },
   "lineEndings": "LF (normalized from source)"
 }

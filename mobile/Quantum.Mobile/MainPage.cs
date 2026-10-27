@@ -33,6 +33,14 @@ public sealed partial class MainPage : ContentPage
 
     private readonly VerticalStackLayout _pageContent = new() { Spacing = 16 };
 
+    private readonly VerticalStackLayout _syncPanel = new() { Spacing = 8, IsVisible = false };
+    private readonly RefreshView _viewport = new();
+    private readonly Dictionary<string, BridgeSnapshot> _pageCache = new();
+    private View _signInHeader = null!;
+    private DateTimeOffset _subscriptionRenewAt;
+    private bool _resetInputsAfterAction;
+    private bool _awaitingSnapshot;
+
     private readonly SemaphoreSlim _pollGate = new(1);
 
     private BridgeClient? _client;
@@ -74,19 +82,25 @@ public sealed partial class MainPage : ContentPage
         NavigationPage.SetHasNavigationBar(this, false);
         var root = new VerticalStackLayout
         {
-            Padding = new Thickness(24, 28),
+            Padding = new Thickness(18, 12),
             Spacing = 16,
             MaximumWidthRequest = 480,
             HorizontalOptions = LayoutOptions.Fill
         };
         _status.TextColor = MobileTheme.Muted;
         _desktopStatus.TextColor = MobileTheme.Muted;
-        root.Children.Add(_status);
-        root.Children.Add(_desktopStatus);
+        _syncPanel.Children.Add(_desktopStatus);
+        _syncPanel.Children.Add(_status);
+        _syncPanel.Children.Add(Button(T("收起", "Close"), () => { _syncPanel.IsVisible = false; return Task.CompletedTask; }));
+        _syncPanel.Children.Add(Button(T("核对桌面后清除待确认状态", "Clear pending state after checking desktop"), ConfirmPendingAsync));
+        root.Children.Add(_syncPanel);
         root.Children.Add(_body);
-        var shell = new Grid { RowDefinitions = { new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Star) } };
-        shell.Add(CreateHeader());
-        shell.Add(new ScrollView { Content = root }, 0, 1);
+        _signInHeader = CreateHeader();
+        _viewport.Content = new ScrollView { Content = root };
+        _viewport.Refreshing += (_, _) => { _syncPanel.IsVisible = !_isSignIn; _viewport.IsRefreshing = false; };
+        var shell = new Grid { RowDefinitions = { new RowDefinition(GridLength.Star), new RowDefinition(GridLength.Auto) } };
+        shell.Add(_viewport);
+
         BuildNavigation(shell);
         Content = shell;
         ShowSignIn();
@@ -178,7 +192,7 @@ public sealed partial class MainPage : ContentPage
     private async Task ShowDevicesAsync()
     {
         ResetNavigation();
-        _snapshot = null; _desktopId = null; _renderer = null; _openRequestId = null;
+        _snapshot = null; _desktopId = null; _renderer = null; _openRequestId = null; _pageCache.Clear();
         var devices = await _client!.CallAsync<BridgeDevice[]>("devices");
         if (!_uncertain && _pendingId is null) _status.Text = T("请选择电脑。", "Choose your desktop.");
         var online = devices.Where(d => d.Kind == "desktop" && d.SeenAt > _client.UtcNow.AddSeconds(-45))
@@ -237,62 +251,79 @@ public sealed partial class MainPage : ContentPage
         RenderNavigation();
 
         _pageContent.IsEnabled = false;
+        _awaitingSnapshot = true;
+        _snapshot = null; _renderer = null; _deferredSnapshot = null;
+        _body.Children.Clear();
+        if (_pageCache.TryGetValue(pluginId + ":" + pageId, out var cached))
+        {
+            RenderSnapshot(cached, false);
+            _pageContent.IsEnabled = false;
+        }
+        else
+        {
+            _body.Children.Add(new ActivityIndicator { IsRunning = true, Color = MobileTheme.Accent, HeightRequest = 32 });
+        }
+        await RequestSnapshotAsync(pluginId, pageId);
+    }
 
-        _snapshot = null; _renderer = null;
-
+    private async Task RequestSnapshotAsync(string pluginId, string pageId)
+    {
         _openRequestId = Guid.NewGuid().ToString("N");
-
-        _status.Text = T("等待电脑生成页面…", "Waiting for desktop…");
-
+        _subscriptionRenewAt = DateTimeOffset.UtcNow.AddSeconds(_awaitingSnapshot ? 10 : 120);
+        _status.Text = T("正在同步…", "Syncing…");
         await _client!.CallAsync<JsonElement>("send", new BridgeSend(_openRequestId, _desktopId!, "open", MobileJson.Element(new BridgeOpen(pluginId, pageId))));
-
     }
 
     private void ShowSnapshot(BridgeSnapshot snapshot)
 
     {
-        _language.IsEnabled = false;
-
         if (_snapshot?.ViewId == snapshot.ViewId) return;
-
         if (!_preview && snapshot.RequestId != _openRequestId) return;
+        if (_snapshot is not null && snapshot.ExpiresAt < _snapshot.ExpiresAt) return;
+        if (_pendingId is not null) { _deferredSnapshot = snapshot; return; }
+        if (_awaitingSnapshot) _subscriptionRenewAt = DateTimeOffset.UtcNow.AddMinutes(2);
+        _awaitingSnapshot = false;
+        RenderSnapshot(snapshot, !_resetInputsAfterAction);
+        _resetInputsAfterAction = false;
+    }
 
-        if (_snapshot is not null && _renderer?.IsDirty == true) return; // Never replace a live draft via a duplicate/reordered response.
+    private BridgeSnapshot? _deferredSnapshot;
 
+    private void RenderSnapshot(BridgeSnapshot snapshot, bool preserveInputs)
+    {
+        var samePage = _snapshot?.PluginId == snapshot.PluginId && _snapshot.Page.Id == snapshot.Page.Id;
         _snapshot = snapshot;
+        _pageCache[snapshot.PluginId + ":" + snapshot.Page.Id] = snapshot;
         _status.Text = MobileFeedback.Snapshot(_uncertain, _pendingId is not null, Chinese);
-
-        _renderer = new(InvokeAsync);
-
-        _pageContent.Children.Clear();
-
-        _pageContent.Children.Add(_renderer.Render(snapshot.Page));
-
-        _body.Children.Clear();
-
-        _body.Children.Add(new Label { Text = snapshot.Page.Title, FontSize = 28, FontAttributes = FontAttributes.Bold });
-
-        _body.Children.Add(_pageContent);
-
-        if (!_preview)
-            _body.Children.Add(Button(T("刷新页面", "Refresh page"), () => OpenAsync(snapshot.PluginId, snapshot.Page.Id)));
-
-        if (!_preview)
-
-            _body.Children.Add(Button(T("核对桌面后清除待确认状态", "Clear pending state after checking desktop"), async () =>
-
+        if (samePage && preserveInputs && _renderer is not null)
+        {
+            var root = _renderer.Update(snapshot.Page);
+            if (!ReferenceEquals(_pageContent.Children[0], root))
             {
-
-                if ((_pendingId is not null || _uncertain) && await DisplayAlertAsync(T("确认业务结果", "Confirm the outcome"),
-
-                    T("请先在桌面检查操作是否已经生效。清除后可手动再次操作。", "Check whether the operation already took effect on desktop. Clearing permits another manual action."),
-
-                    T("已核对", "Checked"), T("取消", "Cancel"))) { ClearPending(); _uncertain = false; }
-
-            }));
-
+                _pageContent.Children.Clear();
+                _pageContent.Children.Add(root);
+            }
+        }
+        else
+        {
+            _renderer = new(InvokeAsync);
+            _pageContent.Children.Clear();
+            _pageContent.Children.Add(_renderer.Render(snapshot.Page));
+            _body.Children.Clear();
+            _body.Children.Add(_pageContent);
+        }
         _pageContent.IsEnabled = !_uncertain && _pendingId is null && snapshot.ExpiresAt > (_client?.UtcNow ?? DateTimeOffset.UtcNow);
+    }
 
+    private async Task ConfirmPendingAsync()
+    {
+        if ((_pendingId is not null || _uncertain) && await DisplayAlertAsync(T("确认业务结果", "Confirm the outcome"),
+            T("请先在桌面检查操作是否已经生效。", "Check whether the operation already took effect on desktop."),
+            T("已核对", "Checked"), T("取消", "Cancel")))
+        {
+            ClearPending(); _uncertain = false;
+            if (_snapshot is { } snapshot) await RequestSnapshotAsync(snapshot.PluginId, snapshot.Page.Id);
+        }
     }
 
     private async Task InvokeAsync(string actionId, Dictionary<string, JsonElement> inputs)
@@ -313,7 +344,7 @@ public sealed partial class MainPage : ContentPage
 
         {
 
-            if (_uncertain || _pendingId is not null || !_connected || _snapshot is null || _snapshot.ExpiresAt <= _client!.UtcNow)
+            if (_uncertain || _pendingId is not null || _awaitingSnapshot || !_connected || _snapshot is null || _snapshot.ExpiresAt <= _client!.UtcNow)
 
                 throw new InvalidOperationException(T("请先同步页面或确认之前的结果", "Sync the page or confirm the previous result first"));
 
@@ -335,7 +366,7 @@ public sealed partial class MainPage : ContentPage
 
         {
 
-            ClearPending(); _status.Text = exception.Code;
+            ClearPending(); _status.Text = MobileFeedback.Failure(exception.Code, Chinese); _syncPanel.IsVisible = true;
 
         }
 
@@ -371,7 +402,17 @@ public sealed partial class MainPage : ContentPage
 
         _pageContent.IsEnabled = false;
 
-        // A successful business result does not imply a new page snapshot exists. Refresh is explicit.
+        if (_uncertain || outcome.Status == "failed") _syncPanel.IsVisible = true;
+        _resetInputsAfterAction = outcome.Status == "succeeded";
+        if (!_uncertain && _deferredSnapshot is { } next)
+        {
+            _deferredSnapshot = null;
+            ShowSnapshot(next);
+        }
+        else if (!_uncertain && _snapshot is { } snapshot)
+        {
+            _subscriptionRenewAt = DateTimeOffset.MinValue;
+        }
 
     }
 
@@ -409,7 +450,9 @@ public sealed partial class MainPage : ContentPage
 
         if (!await _pollGate.WaitAsync(0, token)) return;
 
-        var delay = 2;
+        var delay = .5;
+        var nextDevices = DateTimeOffset.MinValue;
+        var nextStatus = DateTimeOffset.MinValue;
 
         try
 
@@ -437,7 +480,11 @@ public sealed partial class MainPage : ContentPage
 
                             var error = MobileJson.Read<BridgePageError>(message.Body);
 
-                            if (error.RequestId == _openRequestId) _status.Text = MobileFeedback.Failure(error.Code, Chinese);
+                            if (error.RequestId == _openRequestId)
+                            {
+                                _status.Text = MobileFeedback.Failure(error.Code, Chinese);
+                                _syncPanel.IsVisible = true;
+                            }
 
                         }
 
@@ -447,10 +494,11 @@ public sealed partial class MainPage : ContentPage
 
                     }
 
-                    if (_pendingId is not null)
+                    if (_pendingId is not null && DateTimeOffset.UtcNow >= nextStatus)
 
                     {
 
+                        nextStatus = DateTimeOffset.UtcNow.AddSeconds(2);
                         try { Outcome(await _client.CallAsync<BridgeOutcome>("status", new { requestId = _pendingId }, token)); }
 
                         catch (BridgeException e) when (e.Code == "mobile_not_found")
@@ -459,10 +507,11 @@ public sealed partial class MainPage : ContentPage
 
                     }
 
-                    if (_desktopId is not null)
+                    if (_desktopId is not null && DateTimeOffset.UtcNow >= nextDevices)
 
                     {
 
+                        nextDevices = DateTimeOffset.UtcNow.AddSeconds(10);
                         var desktops = await _client.CallAsync<BridgeDevice[]>("devices", cancellationToken: token);
 
                         _connected = desktops.Any(d => d.Id == _desktopId && d.SeenAt > _client.UtcNow.AddSeconds(-45));
@@ -471,9 +520,13 @@ public sealed partial class MainPage : ContentPage
 
                     }
 
-                    delay = 2;
+                    if (_snapshot is { } current && _pendingId is null && !_uncertain && DateTimeOffset.UtcNow >= _subscriptionRenewAt)
+                        await RequestSnapshotAsync(current.PluginId, current.Page.Id);
+                    else if (_awaitingSnapshot && _navigation.Current is { } selected && DateTimeOffset.UtcNow >= _subscriptionRenewAt)
+                        await RequestSnapshotAsync(selected.PluginId, selected.PageId);
+                    delay = .5;
 
-                    _pageContent.IsEnabled = _connected && !_uncertain && _pendingId is null && _snapshot is not null && _snapshot.ExpiresAt > _client.UtcNow;
+                    _pageContent.IsEnabled = _connected && !_awaitingSnapshot && !_uncertain && _pendingId is null && _snapshot is not null && _snapshot.ExpiresAt > _client.UtcNow;
 
                 }
 
@@ -521,7 +574,7 @@ public sealed partial class MainPage : ContentPage
         if (_authentication is not null) await _authentication.LogoutAsync();
         _client = null; _snapshot = null; _renderer = null; _pendingId = null; _uncertain = false;
 
-        _status.Text = ""; _desktopStatus.Text = ""; ShowSignIn();
+        _status.Text = ""; _desktopStatus.Text = ""; _pageCache.Clear(); _deferredSnapshot = null; ShowSignIn();
 
     }
 

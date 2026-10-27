@@ -56,12 +56,25 @@ public sealed class MobileActionGatewayTests
     {
         await using var fixture = new Fixture();
         var snapshot = fixture.Open(); var button = snapshot.Page.Root.Children[1];
-        fixture.Plugin.MobilePages.Publish(fixture.Page);
+        fixture.Plugin.MobilePages.Publish(MobileUi.Page("notes", "Updated notes", MobileUi.Text("removed", "Action removed")));
         await Assert.ThrowsAsync<BridgeException>(() => fixture.Gateway.InvokeAsync("r", "phone", new(snapshot.ViewId, button.ActionId!, new() { ["text"] = MobileJson.Element("Hello") }), default));
         await fixture.Runtime.PauseAsync(default);
         Assert.Empty(fixture.Gateway.Pages());
         Assert.Throws<BridgeException>(() => fixture.Open());
         Assert.Equal(0, fixture.Counter.Calls);
+    }
+
+    [Fact]
+    public async Task LiveContentChangesPreserveUnchangedActionsDuringSnapshotDelivery()
+    {
+        await using var fixture = new Fixture();
+        var previous = fixture.Open();
+        fixture.Plugin.MobilePages.Publish(fixture.Page with { Title = "Updated content" });
+        fixture.Gateway.Open("phone", "desktop-session", new("quantum.plugin.mobile", "notes"), DateTimeOffset.UtcNow, replacePrevious: false);
+        var result = await fixture.Gateway.InvokeAsync("in-flight", "phone", new(previous.ViewId,
+            previous.Page.Root.Children[1].ActionId!, new() { ["text"] = MobileJson.Element("draft") }), default);
+        Assert.Equal("succeeded", result.Status);
+        Assert.Equal(1, fixture.Counter.Calls);
     }
 
     private sealed class Fixture : IAsyncDisposable

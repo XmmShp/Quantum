@@ -17,12 +17,11 @@ public sealed partial class MainPage
 
     private void BuildNavigation(Grid shell)
     {
-        shell.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
         _bottomBar.BackgroundColor = Colors.White;
         _bottomBar.Stroke = MobileTheme.Line;
         _bottomBar.StrokeThickness = 1;
         _bottomBar.Padding = new Thickness(12, 6, 12, 12);
-        shell.Add(_bottomBar, 0, 2);
+        shell.Add(_bottomBar, 0, 1);
         var up = new PanGestureRecognizer();
         double drag = 0;
         up.PanUpdated += async (_, e) =>
@@ -74,7 +73,7 @@ public sealed partial class MainPage
             Children = { heading, new ScrollView { Content = _navigationItems, MaximumHeightRequest = 420 } }
         };
         _navigationOverlay.Add(_navigationSheet);
-        shell.Add(_navigationOverlay, 0, 1);
+        shell.Add(_navigationOverlay, 0, 0);
         Grid.SetRowSpan(_navigationOverlay, 2);
         SemanticProperties.SetDescription(_bottomBar, T("插件导航，向上拖动展开全部插件", "Plugin navigation. Pull up to see all plugins."));
     }
@@ -125,8 +124,7 @@ public sealed partial class MainPage
         if (_navigation.Pages.Length == 0) _navigationItems.Children.Add(MobileTheme.Caption(T("暂无移动插件页面", "No mobile plugin pages yet")));
         if (!_preview)
         {
-            _navigationItems.Children.Add(Button(T("刷新插件", "Refresh plugins"), RefreshNavigationAsync));
-            _navigationItems.Children.Add(Button(T("切换电脑", "Switch desktop"), ShowDevicesAsync));
+            _navigationItems.Children.Add(Button(T("设置", "Settings"), ShowSettingsAsync));
         }
     }
 

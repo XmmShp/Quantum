@@ -130,7 +130,7 @@ public sealed class MobileBridgeMailbox
                 RequireKind(sender, "mobile");
                 var desktopId = Text(body, "desktopId");
                 RequireDevicePair(desktopId, sender.Device.Id);
-                var snapshot = Snapshots.Values.FirstOrDefault(s => s.DesktopId == desktopId && s.MobileId == sender.Device.Id &&
+                var snapshot = Snapshots.Values.OrderByDescending(s => s.Snapshot.ExpiresAt).FirstOrDefault(s => s.DesktopId == desktopId && s.MobileId == sender.Device.Id &&
                     s.Snapshot.PluginId == Text(body, "pluginId") && s.Snapshot.Page.Id == Text(body, "pageId"));
                 return MobileJson.Element(snapshot?.Snapshot);
             }
@@ -189,7 +189,18 @@ public sealed class MobileBridgeMailbox
             if (snapshot.DesktopSessionId != desktop.Device.SessionId || snapshot.ExpiresAt <= now || snapshot.ExpiresAt > now.AddMinutes(5) ||
                 !desktop.Pages.Any(p => p.PluginId == snapshot.PluginId && p.PageId == snapshot.Page.Id))
                 throw new ArgumentException("Invalid mobile snapshot.");
-            Snapshots[$"{desktop.Device.Id}:{mobile.Device.Id}:{snapshot.PluginId}:{snapshot.Page.Id}"] = new(desktop.Device.Id, mobile.Device.Id, snapshot);
+            // A small overlap lets an action already in transit use the preceding frame.
+            // The desktop still validates its action declaration against the current page.
+            foreach (var key in Snapshots.Where(s => s.Value.DesktopId == desktop.Device.Id && s.Value.MobileId == mobile.Device.Id &&
+                         s.Value.Snapshot.PluginId == snapshot.PluginId && s.Value.Snapshot.Page.Id == snapshot.Page.Id)
+                         .OrderByDescending(s => s.Value.Snapshot.ExpiresAt).Skip(2).Select(s => s.Key).ToArray())
+                Snapshots.Remove(key);
+            Snapshots[$"{desktop.Device.Id}:{mobile.Device.Id}:{snapshot.PluginId}:{snapshot.Page.Id}:{snapshot.ViewId}"] = new(desktop.Device.Id, mobile.Device.Id, snapshot);
+            // Page snapshots are replaceable state, not business commands. Keep only the latest
+            // queued frame for this page, including when a suspended phone has not acknowledged it.
+            Messages.RemoveAll(m => m.Message.SenderId == desktop.Device.Id && m.Message.TargetId == mobile.Device.Id &&
+                m.Message.Kind == "snapshot" && MobileJson.Read<BridgeSnapshot>(m.Message.Body) is var prior &&
+                prior.PluginId == snapshot.PluginId && prior.Page.Id == snapshot.Page.Id);
         }
         else if (send.Kind == "pageError")
         {
@@ -228,8 +239,10 @@ public sealed class MobileBridgeMailbox
     {
         Devices.RemoveAll(d => d.ExpiresAt <= now);
         Bindings.RemoveAll(b => !Devices.Any(d => d.Device.Id == b.DesktopId) || !Devices.Any(d => d.Device.Id == b.MobileId));
-        // Retain message IDs for 24 hours even after command expiry, for retry deduplication.
-        Messages.RemoveAll(m => m.CreatedAt < now.AddHours(-24));
+        // Business commands and results retain their 24h deduplication window. Transport-only
+        // page frames and completed opens need not accumulate during a live subscription.
+        Messages.RemoveAll(m => m.CreatedAt < now.AddHours(-24) ||
+            m.Acknowledged && m.Message.Kind is "snapshot" or "open" or "pageError");
         foreach (var message in Messages.Where(m => m.Message.ExpiresAt <= now))
         {
             message.Acknowledged = true;

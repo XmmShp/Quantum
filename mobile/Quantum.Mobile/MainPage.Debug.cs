@@ -51,6 +51,22 @@ public sealed partial class MainPage
     private async Task<object> ExecuteDebugAsync(string path, JsonElement body)
     {
         if (path == "/state") return DebugState();
+        if (path == "/settings/open") { await ShowSettingsAsync(); return DebugState(); }
+        if (path == "/settings/close")
+        {
+            if (_settingsPage is null || !ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), _settingsPage)) throw new MobileDebugException(409, "debug_settings_unavailable");
+            await Navigation.PopAsync(); return DebugState();
+        }
+        if (path == "/preview/update")
+        {
+            if (!_preview || _snapshot is null) throw new MobileDebugException(409, "debug_not_previewing");
+            var page = _snapshot.Page with { Root = _snapshot.Page.Root with
+            {
+                Children = _snapshot.Page.Root.Children.Select(node => node.Id == "title" ? node with { Text = "Live update received" } : node).ToArray()
+            } };
+            ShowSnapshot(new(Guid.NewGuid().ToString("N"), "mock", "mock", "mock", DateTimeOffset.UtcNow.AddMinutes(5), page));
+            return DebugState();
+        }
         if (_restoring || _signingIn) throw new MobileDebugException(409, "debug_app_busy");
         if (path is "/navigation/open" or "/navigation/close" or "/navigation/select")
         {
@@ -149,7 +165,8 @@ public sealed partial class MainPage
     private object DebugState() => new
     {
         authenticated = _authentication?.IsAuthenticated == true,
-        connected = _connected, preview = _preview,
+        connected = _connected, preview = _preview, persistentHeader = !_isSignIn && _signInHeader.Parent is not null, syncPanelVisible = _syncPanel.IsVisible,
+        settingsVisible = _settingsPage is not null && ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), _settingsPage),
         pending = _pendingId is not null, uncertain = _uncertain,
         status = _status.Text, desktopStatus = _desktopStatus.Text,
         desktopId = _desktopId,

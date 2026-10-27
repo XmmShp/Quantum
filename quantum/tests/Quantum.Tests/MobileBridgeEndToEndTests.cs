@@ -130,6 +130,26 @@ public sealed class MobileBridgeEndToEndTests
             } while (outcome.Status is "accepted" or "running");
             Assert.Equal("unknown", outcome.Status);
             Assert.Equal(1, counter.Calls);
+            // A desktop change reaches the already open page without another phone open/refresh command.
+            plugin.MobilePages.Publish(MobileUi.Page("notes", "Updated notes", MobileUi.Text("updated", "Desktop edit arrived")));
+            using (var liveTimeout = CancellationTokenSource.CreateLinkedTokenSource(token))
+            {
+                liveTimeout.CancelAfter(TimeSpan.FromSeconds(4));
+                var updated = false;
+                while (!updated)
+                {
+                    foreach (var message in await phone.CallAsync<BridgeMessage[]>("poll", cancellationToken: liveTimeout.Token))
+                    {
+                        if (message.Kind == "snapshot")
+                        {
+                            var live = MobileJson.Read<BridgeSnapshot>(message.Body);
+                            updated |= live.Page.Title == "Updated notes" && live.RequestId == "open";
+                        }
+                        await phone.CallAsync<JsonElement>("ack", new BridgeAck(message.Id, message.Lease!), liveTimeout.Token);
+                    }
+                    if (!updated) await Task.Delay(30, liveTimeout.Token);
+                }
+            }
             // The phone cannot swap the RPC name: that is not part of its wire action contract.
             await Assert.ThrowsAsync<BridgeException>(() => phone.CallAsync<JsonElement>("send", command with
             {

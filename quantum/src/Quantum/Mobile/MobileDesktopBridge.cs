@@ -126,7 +126,9 @@ public sealed class MobileDesktopBridge(
 
     private async Task RunAsync(BridgeClient client, string user, CancellationToken token)
     {
-        var delay = 2;
+        var delay = .5;
+        var subscriptions = new Dictionary<string, PageSubscription>();
+        var nextJournalScan = DateTimeOffset.MinValue;
         while (!token.IsCancellationRequested && session.IsAuthenticated && session.User?.UserId == user)
         {
             try
@@ -138,7 +140,12 @@ public sealed class MobileDesktopBridge(
                     await client.CallAsync<JsonElement>("catalog", new { pages }, token);
                     _catalogSignature = signature;
                 }
-                await FlushJournalAsync(client, token);
+                if (DateTimeOffset.UtcNow >= nextJournalScan)
+                {
+                    await FlushJournalAsync(client, token);
+                    nextJournalScan = DateTimeOffset.UtcNow.AddSeconds(5);
+                }
+                var processedAction = false;
                 var messages = await client.CallAsync<BridgeMessage[]>("poll", cancellationToken: token);
                 foreach (var message in messages)
                 {
@@ -147,10 +154,15 @@ public sealed class MobileDesktopBridge(
                     {
                         try
                         {
+                            var open = MobileJson.Read<BridgeOpen>(message.Body);
+                            var revision = gateway.Revision(open);
+                            var renewal = subscriptions.TryGetValue(message.SenderId, out var previous) && previous.Page == open;
                             var snapshot = gateway.Open(message.SenderId, client.Registration!.Device.SessionId,
-                                MobileJson.Read<BridgeOpen>(message.Body), client.UtcNow) with
+                                open, client.UtcNow, replacePrevious: !renewal) with
                             { RequestId = message.Id };
                             await SendAsync(client, new(Guid.NewGuid().ToString("N"), message.SenderId, "snapshot", MobileJson.Element(snapshot)), token);
+                            subscriptions[message.SenderId] = new(open, message.Id,
+                                revision, client.UtcNow.AddMinutes(5), client.UtcNow);
                         }
                         catch (Exception exception) when (exception is ArgumentException or InvalidOperationException or BridgeException)
                         {
@@ -160,9 +172,27 @@ public sealed class MobileDesktopBridge(
                         }
                         await AckAsync(client, message, token);
                     }
-                    else if (message.Kind == "action") await ProcessActionAsync(client, message, token);
+                    else if (message.Kind == "action") { await ProcessActionAsync(client, message, token); processedAction = true; }
                 }
-                Status = "Connected"; delay = 2; Changed?.Invoke();
+                // Upload the result in this turn, rather than after another polling interval.
+                if (processedAction) await FlushJournalAsync(client, token);
+                foreach (var (mobileId, subscription) in subscriptions.ToArray())
+                {
+                    if (subscription.Until <= client.UtcNow) { subscriptions.Remove(mobileId); continue; }
+                    try
+                    {
+                        var revision = gateway.Revision(subscription.Page);
+                        if (revision == subscription.Revision && subscription.SentAt > client.UtcNow.AddMinutes(-3)) continue;
+                        var snapshot = gateway.Open(mobileId, client.Registration!.Device.SessionId, subscription.Page, client.UtcNow, replacePrevious: false)
+                            with { RequestId = subscription.RequestId };
+                        await SendAsync(client, new(Guid.NewGuid().ToString("N"), mobileId, "snapshot", MobileJson.Element(snapshot)), token);
+                        subscriptions[mobileId] = subscription with { Revision = revision, SentAt = client.UtcNow };
+                    }
+                    catch (BridgeException exception) when (exception.Code is "mobile_not_found" or "mobile_sharing_disabled" or "mobile_view_stale")
+                    { subscriptions.Remove(mobileId); }
+                }
+                if (Status != "Connected") { Status = "Connected"; Changed?.Invoke(); }
+                delay = .5;
             }
             catch (OperationCanceledException) when (token.IsCancellationRequested) { break; }
             catch (PlatformAuthenticationException)
@@ -180,7 +210,7 @@ public sealed class MobileDesktopBridge(
                 Status = exception is BridgeException bridge ? bridge.Code : "Connection interrupted";
                 Changed?.Invoke(); delay = Math.Min(delay * 2, 60);
             }
-            try { await Task.Delay(TimeSpan.FromSeconds(delay + Random.Shared.NextDouble() * .4), token); }
+            try { await Task.Delay(TimeSpan.FromSeconds(delay), token); }
             catch (OperationCanceledException) { break; }
         }
         gateway.SetSharing([]);
@@ -257,4 +287,5 @@ public sealed class MobileDesktopBridge(
         _cancellation?.Dispose(); _lifecycle.Dispose(); _lifetime.Dispose(); _wake.Dispose();
     }
     private sealed record JournalEntry(string DesktopId, string MobileId, string RequestId, DateTimeOffset CreatedAt, BridgeOutcome? Outcome, bool Uploaded = false);
+    private sealed record PageSubscription(BridgeOpen Page, string RequestId, long Revision, DateTimeOffset Until, DateTimeOffset SentAt);
 }

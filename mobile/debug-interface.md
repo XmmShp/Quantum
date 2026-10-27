@@ -50,6 +50,7 @@ $state.value.page.tree  # 节点 ID、类型、文字、有效启用状态、当
 | `POST /navigation/close` | 收起底部插件菜单 |
 | `POST /navigation/select` | `{pluginId,pageId,discardDraft?}`：切换插件，保留草稿保护 |
 | `POST /preview` | 进入内置隔离 Mock；有未确认操作或草稿时拒绝 |
+| `POST /preview/update` | 仅内置 Mock：模拟实时页面变化，验证原生输入、焦点和草稿保留 |
 | `POST /preview/close` | 离开 Mock，尝试恢复已有登录；不接受密码 |
 
 `viewId` 是每次渲染更新的调试标识。旧 viewId、禁用控件、过期页面、未确认操作、超长输入和错误输入类型都会被拒绝。刷新或换页遇到未提交草稿时返回 `409 debug_draft_conflict`，只有显式提供 `discardDraft:true` 才丢弃。打开和刷新采用正常平台邮箱通道，返回后应轮询 `/state` 等待新页面。

@@ -1,5 +1,7 @@
 # Quantum Mobile development preview
 
+0.1.4 gives plugin pages the full content viewport. Settings move into a dedicated page in the bottom menu; pull down the content area to inspect connection and synchronization status. There is no persistent app header, duplicate page heading, or manual prepare-data/refresh flow. Updated official plugins publish changes automatically, and desktop subscriptions forward them to the current phone view. Existing controls update in place, preserving unsubmitted inputs and scrolling. Switching pages displays a session-local cached preview while a fresh actionable view arrives. Desktop results upload in the same processing turn, foreground polling is 500 ms, and desktop-presence checks are throttled separately. Platform coalescing prevents live snapshots from exhausting mailbox storage; business request deduplication remains intact.
+
 0.1.3 connects directly to online desktops signed in to the same account. Desktop Quantum automatically publishes every available mobile plugin page after sign-in; plugin selection and per-device approval are no longer required. After choosing a desktop, the first plugin opens immediately. A persistent bottom navigation bar offers quick switches, and its pull-up menu lists all pages, refreshes the catalog and switches desktops. Draft confirmation and pending-action protections remain in place.
 
 0.1.2 improves feedback after real device testing: page loading and device selection clear outdated status messages, action results use Chinese/English UI messages, and plugin result JSON is no longer displayed. Validation errors offer input guidance. Pending and uncertain actions retain their duplicate-submission warnings.
@@ -12,7 +14,7 @@ Android companion client and portable Windows client. Sign in with the same Quan
 - Calendar, Ledger and Codex mobile pages are provided by the matching updated official plugins.
 - Chinese/English selection and persistent advanced connection settings.
 - Release builds omit Mock and UI JSON developer tools.
-- Explicit data refresh; expired and uncertain operations must be checked before retrying.
+- Automatic page updates; expired and uncertain operations must be checked before retrying.
 
 This is an Android/Windows development preview. iOS and store distribution are not included. Windows: extract the full archive and run Quantum.Mobile.exe. Android: install the signed APK. Local debug-signed builds may need removal before installing this first release because the signing identity differs. Future published updates use the persistent release signing identity.
 

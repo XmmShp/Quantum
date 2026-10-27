@@ -15,7 +15,7 @@ try{
     $env:QUANTUM_MOBILE_DEBUG_PREVIEW='1'
     $directory=Join-Path $repo 'mobile/Quantum.Mobile/bin/Debug/net10.0-windows10.0.19041.0/win-x64'
     if(!(Test-Path (Join-Path $directory 'Quantum.Mobile.exe'))){throw 'Build the Windows Debug target first.'}
-    $process=Start-Process -FilePath (Join-Path $directory 'Quantum.Mobile.exe') -WorkingDirectory $directory -PassThru
+    $process=Start-Process -FilePath (Join-Path $directory 'Quantum.Mobile.exe') -WorkingDirectory $directory -WindowStyle Hidden -PassThru
     function Call([string]$path,[hashtable]$body){
         if($null -eq $body){return & $invoke -Port $Port -Path $path}
         return & $invoke -Port $Port -Method POST -Path $path -Json ($body|ConvertTo-Json -Compress)
@@ -29,6 +29,17 @@ try{
     $view=$state.value.page.viewId
     $null=Call '/input' @{viewId=$view;nodeId='content';value='HTTP debug test 中文'}
     $null=Call '/input' @{viewId=$view;nodeId='pinned';value=$true}
+    $live=Call '/preview/update' @{}
+    if($live.value.persistentHeader -or $live.value.syncPanelVisible){throw 'Plugin viewport contains persistent app chrome.'}
+    $content=$live.value.page.tree.children | Where-Object id -eq 'content'
+    $pinned=$live.value.page.tree.children | Where-Object id -eq 'pinned'
+    $title=$live.value.page.tree.children | Where-Object id -eq 'title'
+    if($content.value -ne 'HTTP debug test 中文' -or !$pinned.value -or !$live.value.page.dirty -or $title.text -ne 'Live update received'){throw 'A live snapshot replaced draft inputs or failed to update native content.'}
+    $view=$live.value.page.viewId
+    $settings=Call '/settings/open' @{}
+    if(!$settings.value.settingsVisible){throw 'Settings are not a separate navigation page.'}
+    $returned=Call '/settings/close' @{}
+    if($returned.value.settingsVisible -or $returned.value.page.viewId -ne $view -or !$returned.value.page.dirty){throw 'Returning from settings replaced the plugin draft.'}
     $after=Call '/press' @{viewId=$view;nodeId='save'}
     if($after.value.status -notmatch 'HTTP debug test' -or $after.value.status -notmatch 'true'){throw 'Native button callback did not see the actual bound inputs.'}
     function Reject([string]$path,[hashtable]$body,[int]$status){
@@ -48,7 +59,7 @@ try{
     Reject '/press' @{viewId=$view;nodeId='save'} 409
     $json=(Call '/state' $null)|ConvertTo-Json -Depth 24
     if($json.Contains($token) -or $json -match 'accessToken|refreshToken|deviceSecret|password'){throw 'Credential material appeared in the debug state.'}
-    [ordered]@{passed=$true;mode='isolated native Mock';readPageTree=$true;nativeTextAndToggleBinding=$true;nativeButtonCallback=$true;staleViewRejected=$true;wrongTypeAndLengthRejected=$true;unknownButtonRejected=$true;dirtyDraftProtected=$true;bottomNavigationSheet=$true;pluginSwitchCreatesFreshView=$true;credentialsExposed=$false;keyboardOrMouseUsed=$false}|ConvertTo-Json
+    [ordered]@{passed=$true;mode='isolated native Mock';readPageTree=$true;nativeTextAndToggleBinding=$true;liveUpdatePreservesDraft=$true;unobstructedViewport=$true;separateSettingsRetainsDraft=$true;nativeButtonCallback=$true;staleViewRejected=$true;wrongTypeAndLengthRejected=$true;unknownButtonRejected=$true;dirtyDraftProtected=$true;bottomNavigationSheet=$true;pluginSwitchCreatesFreshView=$true;credentialsExposed=$false;keyboardOrMouseUsed=$false}|ConvertTo-Json
 }finally{
     if($process -and !$process.HasExited){Stop-Process -Id $process.Id}
     foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$previous[$name])}

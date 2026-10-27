@@ -35,7 +35,7 @@ public sealed class MobileActionGateway(PluginCatalog catalog, PluginRpcRouter r
             .SelectMany(p => p.MobilePages.Snapshot().Select(page => new BridgePageInfo(p.Manifest.Id.ToString(), page.Id, page.Title))).ToArray();
     }
 
-    public BridgeSnapshot Open(string mobileId, string desktopSessionId, BridgeOpen open, DateTimeOffset now)
+    public BridgeSnapshot Open(string mobileId, string desktopSessionId, BridgeOpen open, DateTimeOffset now, bool replacePrevious = true)
     {
         lock (_gate)
         {
@@ -50,7 +50,7 @@ public sealed class MobileActionGateway(PluginCatalog catalog, PluginRpcRouter r
             {
                 var id = node.Action is null ? null : Guid.NewGuid().ToString("N");
                 if (node.Action is { } action)
-                    actions[id!] = new(action, router.ResolveMobileTarget(action.RpcName));
+                    actions[id!] = new(action, router.ResolveMobileTarget(action.RpcName), node.Id);
                 return new(node.Type, node.Id)
                 {
                     Text = node.Text,
@@ -65,11 +65,23 @@ public sealed class MobileActionGateway(PluginCatalog catalog, PluginRpcRouter r
             }
             var snapshot = new BridgeSnapshot(Guid.NewGuid().ToString("N"), desktopSessionId, open.PluginId,
                 plugin.RuntimeId.ToString("N"), now.AddMinutes(5), new Quantum.Mobile.Internal.MobilePage(page.Id, page.Title, Render(page.Root)) { SchemaVersion = page.SchemaVersion });
-            foreach (var key in _views.Where(v => v.Value.MobileId == mobileId && v.Value.Snapshot.PluginId == open.PluginId && v.Value.Snapshot.Page.Id == open.PageId).Select(v => v.Key).ToArray())
+            foreach (var key in _views.Where(v => v.Value.MobileId == mobileId && v.Value.Snapshot.PluginId == open.PluginId && v.Value.Snapshot.Page.Id == open.PageId)
+                         .OrderByDescending(v => v.Value.LocalExpiresAt).Skip(replacePrevious ? 0 : 2).Select(v => v.Key).ToArray())
                 _views.Remove(key);
             if (_views.Count >= 100) throw new BridgeException("mobile_busy", "Too many open pages.");
             _views[snapshot.ViewId] = new(mobileId, snapshot, revision, nodes, actions, DateTimeOffset.UtcNow.AddMinutes(5));
             return snapshot;
+        }
+    }
+
+    public long Revision(BridgeOpen open)
+    {
+        lock (_gate)
+        {
+            var plugin = catalog.FindPlugin(open.PluginId);
+            if (!_shared.Contains(open.PluginId) || plugin is null || plugin.RpcRuntime?.IsActive == false)
+                throw new BridgeException("mobile_not_found", "Page is unavailable.");
+            return plugin.MobilePages.Get(open.PageId).Revision;
         }
     }
 
@@ -85,9 +97,19 @@ public sealed class MobileActionGateway(PluginCatalog catalog, PluginRpcRouter r
             if (!_views.TryGetValue(invoke.ViewId, out view!) || view.MobileId != mobileId || !_shared.Contains(view.Snapshot.PluginId))
                 throw new BridgeException("mobile_view_stale", "Refresh this page.");
             var owner = catalog.FindPlugin(view.Snapshot.PluginId);
-            if (owner is null || owner.RuntimeId.ToString("N") != view.Snapshot.RuntimeId || owner.MobilePages.Revision != view.Revision ||
+            if (owner is null || owner.RuntimeId.ToString("N") != view.Snapshot.RuntimeId ||
                 !view.Actions.TryGetValue(invoke.ActionId, out binding!))
                 throw new BridgeException("mobile_action_not_allowed", "Action is no longer available.");
+            if (owner.MobilePages.Revision != view.Revision)
+            {
+                var current = MobileUiValidator.Validate(owner.MobilePages.Get(view.Snapshot.Page.Id).Page);
+                var button = view.Nodes[binding.NodeId];
+                if (!current.TryGetValue(button.Id, out var liveButton) || !liveButton.Enabled ||
+                    JsonSerializer.Serialize(liveButton.Action, MobileJson.Options) != JsonSerializer.Serialize(binding.Action, MobileJson.Options) ||
+                    binding.Action.Inputs.Values.Any(id => !current.TryGetValue(id, out var input) || !input.Enabled ||
+                        input.Type != view.Nodes[id].Type || input.MaxLength != view.Nodes[id].MaxLength))
+                    throw new BridgeException("mobile_action_not_allowed", "Action is no longer available.");
+            }
             if (view.Busy) throw new BridgeException("mobile_busy", "An action is already running on this page.");
             var expected = binding.Action.Inputs.Values.ToHashSet(StringComparer.Ordinal);
             if (invoke.Inputs is null || invoke.Inputs.Count != expected.Count || invoke.Inputs.Keys.Any(k => !expected.Contains(k)) ||
@@ -134,7 +156,7 @@ public sealed class MobileActionGateway(PluginCatalog catalog, PluginRpcRouter r
         foreach (var key in _views.Where(p => p.Value.LocalExpiresAt <= now ||
                      catalog.FindPlugin(p.Value.Snapshot.PluginId)?.RuntimeId.ToString("N") != p.Value.Snapshot.RuntimeId).Select(p => p.Key).ToArray()) _views.Remove(key);
     }
-    private sealed record BoundAction(MobileRpcAction Action, Guid TargetRuntimeId);
+    private sealed record BoundAction(MobileRpcAction Action, Guid TargetRuntimeId, string NodeId);
     private sealed record View(string MobileId, BridgeSnapshot Snapshot, long Revision,
         IReadOnlyDictionary<string, MobileNode> Nodes, Dictionary<string, BoundAction> Actions, DateTimeOffset LocalExpiresAt)
     { public bool Busy { get; set; } }
