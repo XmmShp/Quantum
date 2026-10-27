@@ -123,16 +123,16 @@ public sealed class MobileBridgeMailboxTests
     {
         var desktop = Register("desktop"); var phone = Register("mobile"); PublishCatalog(desktop, phone); Publish(desktop, phone);
         Call(phone, "send", new BridgeSend("expired", desktop.Device.Id, "action", MobileJson.Element(new BridgeInvoke("view", "fixed", []))));
-        var status = MobileJson.Read<BridgeOutcome>(Call(phone, "status", new { requestId = "expired" }, Now.AddSeconds(31)));
+        var status = MobileJson.Read<BridgeOutcome>(Call(phone, "status", new { requestId = "expired" }, Now.AddMinutes(5)));
         Assert.Equal("failed", status.Status);
-        Assert.Empty(MobileJson.Read<BridgeMessage[]>(Call(desktop, "poll", now: Now.AddSeconds(31))));
+        Assert.Empty(MobileJson.Read<BridgeMessage[]>(Call(desktop, "poll", now: Now.AddMinutes(5))));
     }
     [Fact]
-    public void CatalogChangeRevocationAndOfflineDesktopRejectOldActions()
+    public void CatalogChangeAndRevocationRejectOldActions()
     {
         var desktop = Register("desktop"); var phone = Register("mobile"); PublishCatalog(desktop, phone); Publish(desktop, phone);
         var send = new BridgeSend("action", desktop.Device.Id, "action", MobileJson.Element(new BridgeInvoke("view", "fixed", [])));
-        Assert.Equal("mobile_desktop_offline", Assert.Throws<BridgeException>(() => Call(phone, "send", send, Now.AddSeconds(46))).Code);
+
         Call(desktop, "catalog", new { pages = Array.Empty<BridgePageInfo>() });
         Assert.Throws<BridgeException>(() => Call(phone, "send", send));
         Call(desktop, "revoke");
@@ -140,4 +140,44 @@ public sealed class MobileBridgeMailboxTests
         Call(phone, "revoke");
         Assert.Throws<BridgeException>(() => Call(phone, "poll"));
     }
+    [Fact]
+    public void OfflineActionSurvivesPersistenceAndSnapshotChurnAndDeduplicatesLostResponse()
+    {
+        var desktop = Register("desktop"); var phone = Register("mobile"); PublishCatalog(desktop, phone); Publish(desktop, phone);
+        var send = new BridgeSend("queued", desktop.Device.Id, "action", MobileJson.Element(new BridgeInvoke("view", "fixed", [])));
+        Call(phone, "send", send, Now.AddSeconds(46));
+        for (var i = 0; i < 6; i++)
+        {
+            var snapshot = new BridgeSnapshot("new-" + i, desktop.Device.SessionId, "plugin.notes", "runtime", Now.AddMinutes(5),
+                MobileUi.Page("notes", "Notes", new MobileNode("Button", "save") { Text = "Save", ActionId = "fixed" }));
+            Call(desktop, "send", new BridgeSend("frame-" + i, phone.Device.Id, "snapshot", MobileJson.Element(snapshot)), Now.AddSeconds(60));
+        }
+        var restored = JsonSerializer.Deserialize<MobileBridgeMailbox>(JsonSerializer.Serialize(_mailbox, MobileJson.Options), MobileJson.Options)!;
+        JsonElement Resume(BridgeRegistration device, string operation, object body) => restored.Exchange(
+            new(operation, device.Device.Id, device.Secret, MobileJson.Element(body)), Now.AddSeconds(90));
+        Resume(phone, "send", send);
+        Assert.Single(restored.Messages, m => m.Message.Id == "queued");
+        Assert.Single(MobileJson.Read<BridgeMessage[]>(Resume(desktop, "poll", new { })), m => m.Id == "queued");
+        Resume(desktop, "authorize", new { requestId = "queued" });
+        Assert.Equal("running", MobileJson.Read<BridgeOutcome>(Resume(phone, "status", new { requestId = "queued" })).Status);
+        Assert.Throws<BridgeException>(() => Resume(desktop, "authorize", new { requestId = "queued" }));
+    }
+
+    [Fact]
+    public void StableInstallationRestoresDeviceWithoutMergingDistinctMachinesWithSameName()
+    {
+        BridgeRegistration RegisterInstance(string instance) => MobileJson.Read<BridgeRegistration>(_mailbox.Exchange(
+            new("register", Body: MobileJson.Element(new { name = "Computer", kind = "desktop", clientInstanceId = instance })), Now));
+        var installation = Guid.NewGuid().ToString("N");
+        var first = RegisterInstance(installation);
+        var restored = RegisterInstance(installation);
+        Assert.Equal(first.Device.Id, restored.Device.Id);
+        Assert.NotEqual(first.Secret, restored.Secret);
+        Assert.Throws<BridgeException>(() => Call(first, "poll"));
+        Assert.NotEqual(restored.Device.Id, RegisterInstance(Guid.NewGuid().ToString("N")).Device.Id);
+        Assert.Equal(2, _mailbox.Devices.Count);
+        Call(restored, "heartbeat", now: Now.AddHours(23));
+        Call(restored, "heartbeat", now: Now.AddHours(25));
+    }
+
 }
