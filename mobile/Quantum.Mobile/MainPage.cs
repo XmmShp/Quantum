@@ -403,7 +403,7 @@ public sealed partial class MainPage : ContentPage
 
     }
 
-    public void Suspend() { _refreshCompletion?.TrySetCanceled(); _polling?.Cancel(); _connected = false; _pageContent.IsEnabled = false; }
+    public void Suspend() { if (_renderer is { } renderer) _ = renderer.StopRecordingAsync(); _refreshCompletion?.TrySetCanceled(); _polling?.Cancel(); _connected = false; _pageContent.IsEnabled = false; }
 
     public void Resume()
 
@@ -595,8 +595,9 @@ public sealed partial class MainPage : ContentPage
             MobileUi.Divider("line"), MobileUi.TextField("content").Hint("What's on your mind?").Limit(500),
 
             MobileUi.Toggle("pinned", "Pin this note"),
+            new MobileNode("Attachments", "attachments"),
 
-            new MobileNode("Button", "save") { Text = "Save to desktop", ActionId = "mock-save", InputIds = ["content", "pinned"] }));
+            new MobileNode("Button", "save") { Text = "Save to desktop", ActionId = "mock-save", InputIds = ["content", "pinned", "attachments"] })) with { SchemaVersion = 2 };
 
         RenderPreview(page);
         SetupPreviewNavigation(page);

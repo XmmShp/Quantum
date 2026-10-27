@@ -8,6 +8,7 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <ProjectReference Include="../Fixtures/OptionalFrameworkPackage/OptionalFrameworkPackage.csproj" ReferenceOutputAssembly="false" />
     <PackageReference Include="Microsoft.NET.Test.Sdk" />
     <PackageReference Include="xunit" />
     <PackageReference Include="xunit.runner.visualstudio">
@@ -25,4 +26,8 @@
     <ProjectReference Include="..\..\..\samples\Quantum.ExampleDependentPlugin\Quantum.ExampleDependentPlugin.csproj" />
     <ProjectReference Include="..\..\..\samples\Quantum.ExamplePlugin\Quantum.ExamplePlugin.csproj" />
   </ItemGroup>
+  <Target Name="CopyOptionalFrameworkFixture" AfterTargets="Build">
+    <Copy SourceFiles="$(MSBuildThisFileDirectory)../Fixtures/OptionalFrameworkPackage/bin/$(Configuration)/net10.0/System.Quantum.Optional.dll"
+          DestinationFolder="$(TargetDir)PrivateOptional" />
+  </Target>
 </Project>

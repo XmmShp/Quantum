@@ -86,12 +86,15 @@ public sealed class MobileActionGateway(PluginCatalog catalog, PluginRpcRouter r
         }
     }
 
-    public async Task<BridgeOutcome> InvokeAsync(string requestId, string mobileId, BridgeInvoke invoke, CancellationToken cancellationToken)
+    public async Task<BridgeOutcome> InvokeAsync(string requestId, string mobileId, BridgeInvoke invoke, CancellationToken cancellationToken,
+        Func<BridgeAttachment, CancellationToken, Task<byte[]>>? readAttachment = null)
     {
         View view;
         BoundAction binding;
         JsonElement payload;
         IDisposable? ownerLease;
+        var attachmentInputs = new Dictionary<string, BridgeAttachment[]>();
+        Dictionary<string, JsonElement> arguments;
         lock (_gate)
         {
             Purge(DateTimeOffset.UtcNow);
@@ -116,7 +119,7 @@ public sealed class MobileActionGateway(PluginCatalog catalog, PluginRpcRouter r
             if (invoke.Inputs is null || invoke.Inputs.Count != expected.Count || invoke.Inputs.Keys.Any(k => !expected.Contains(k)) ||
                 JsonSerializer.SerializeToUtf8Bytes(invoke.Inputs, MobileJson.Options).Length > 16 * 1024)
                 throw new BridgeException("mobile_input_invalid", "Only the declared inputs can be submitted.");
-            var arguments = new Dictionary<string, JsonElement>(binding.Action.Constants, StringComparer.Ordinal);
+            arguments = new Dictionary<string, JsonElement>(binding.Action.Constants, StringComparer.Ordinal);
             foreach (var (field, source) in binding.Action.Inputs)
             {
                 var node = view.Nodes[source];
@@ -124,10 +127,17 @@ public sealed class MobileActionGateway(PluginCatalog catalog, PluginRpcRouter r
                 if (!node.Enabled || node.Type == "TextField" && (value.ValueKind != JsonValueKind.String || value.GetString()!.Length > node.MaxLength) ||
                     node.Type == "Toggle" && value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
                     throw new BridgeException("mobile_input_invalid", "Input does not match its declared control.");
+                if (node.Type == "Attachments")
+                {
+                    attachmentInputs[field] = MobileAttachments.Read(value);
+                }
                 arguments[field] = value.Clone();
             }
             if (!view.Nodes.Values.Any(n => n.Enabled && n.Type == "Button" && n.Action == binding.Action))
                 throw new BridgeException("mobile_action_not_allowed", "Button is disabled.");
+            if (attachmentInputs.Values.Sum(files => files.Length) > MobileAttachments.MaximumFiles ||
+                attachmentInputs.Values.SelectMany(files => files).Sum(file => file.Size) > MobileAttachments.MaximumTotalBytes)
+                throw new BridgeException("mobile_attachment_invalid", "Attachment limits exceeded.");
             payload = MobileJson.Element(arguments);
             ownerLease = owner.RpcRuntime?.AcquireMobileOwnerLease();
             view.Busy = true;
@@ -136,6 +146,20 @@ public sealed class MobileActionGateway(PluginCatalog catalog, PluginRpcRouter r
         {
             using (ownerLease)
             {
+                foreach (var (field, files) in attachmentInputs)
+                {
+                    var materialized = new List<object>();
+                    foreach (var file in files)
+                    {
+                        if (readAttachment is null) throw new BridgeException("mobile_attachment_unavailable", "Attachment transport is unavailable.");
+                        var bytes = await readAttachment(file, cancellationToken);
+                        if (bytes.LongLength != file.Size || Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes)) != file.Sha256)
+                            throw new BridgeException("mobile_attachment_invalid", "Attachment checksum failed.");
+                        materialized.Add(new { name = file.Name, contentType = file.ContentType, dataBase64 = Convert.ToBase64String(bytes) });
+                    }
+                    arguments[field] = MobileJson.Element(materialized);
+                }
+                payload = MobileJson.Element(arguments);
                 var context = new PluginRpcCallContext(view.Snapshot.PluginId, view.Snapshot.RuntimeId,
                     new Dictionary<string, JsonElement>
                     {

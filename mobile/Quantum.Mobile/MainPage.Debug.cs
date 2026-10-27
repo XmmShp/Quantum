@@ -246,7 +246,7 @@ public sealed partial class MainPage
         page = _snapshot is { } snapshot && _renderer is { } renderer ? new
         {
             viewId = renderer.DebugViewId, snapshot.PluginId, pageId = snapshot.Page.Id,
-            snapshot.Page.Title, snapshot.ExpiresAt, dirty = renderer.IsDirty,
+            snapshot.Page.Title, snapshot.Page.SchemaVersion, snapshot.ExpiresAt, dirty = renderer.IsDirty,
             tree = renderer.DebugDescribe(snapshot.Page.Root)
         } : null
     };

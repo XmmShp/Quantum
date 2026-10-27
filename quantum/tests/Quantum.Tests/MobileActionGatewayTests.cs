@@ -78,6 +78,28 @@ public sealed class MobileActionGatewayTests
         Assert.Equal(1, fixture.Counter.Calls);
     }
 
+    [Fact]
+    public async Task AttachmentReferencesAreVerifiedAndMaterializedBeforeTheRealPluginRpc()
+    {
+        await using var fixture = new Fixture();
+        fixture.Plugin.MobilePages.Publish(MobileUi.Page("notes", "Notes", MobileUi.VStack("root", MobileUi.TextField("text"), MobileUi.Attachments("files"),
+            MobileUi.Button("save", "Save").OnClick(MobileUi.Rpc("quantum.plugin.mobile.mobile-test.save").Constant("notebookId", "inbox").Input("text", "text").Input("attachments", "files")))));
+        var view = fixture.Open();
+        var bytes = new byte[] { 1, 2, 3 };
+        var file = new BridgeAttachment(Guid.NewGuid().ToString("N"), "selected.txt", "text/plain", bytes.Length,
+            Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes)));
+        var invoke = new BridgeInvoke(view.ViewId, view.Page.Root.Children[2].ActionId!, new()
+        {
+            ["text"] = MobileJson.Element("hello"), ["files"] = MobileJson.Element(new[] { file })
+        });
+        await Assert.ThrowsAsync<BridgeException>(() => fixture.Gateway.InvokeAsync("corrupt", "phone", invoke, default, (_, _) => Task.FromResult(new byte[] { 9 })));
+        Assert.Equal(0, fixture.Counter.Calls);
+        var result = await fixture.Gateway.InvokeAsync("valid-media", "phone", invoke, default, (_, _) => Task.FromResult(bytes));
+        Assert.Equal("succeeded", result.Status);
+        Assert.Equal(Convert.ToBase64String(bytes), fixture.Counter.Attachments!.Single().DataBase64);
+        Assert.Equal("selected.txt", fixture.Counter.Attachments!.Single().Name);
+    }
+
     private sealed class Fixture : IAsyncDisposable
     {
         private readonly ServiceProvider _services;
@@ -109,8 +131,11 @@ public sealed class MobileActionGatewayTests
     }
 }
 
-public sealed class MobileTestCounter { public int Calls { get; set; } }
-public sealed record MobileTestRequest(string Text, string NotebookId);
+public sealed class MobileTestCounter { public int Calls { get; set; } public Quantum.Plugin.Abstraction.MobileAttachment[]? Attachments { get; set; } }
+public sealed record MobileTestRequest(string Text, string NotebookId)
+{
+    public Quantum.Plugin.Abstraction.MobileAttachment[] Attachments { get; init; } = [];
+}
 [TransportOverQuantum]
 [RpcInvocationName("mobile-test")]
 public interface IMobileTestService : IRpcService { Result<string> Save(MobileTestRequest request); }
@@ -120,6 +145,7 @@ public sealed class MobileTestSave(MobileTestCounter counter) : MobileTestServer
     public override Task<Result<string>> HandleAsync(MobileTestRequest request, Context context, CancellationToken cancellationToken)
     {
         counter.Calls++;
+        counter.Attachments = request.Attachments;
         return Task.FromResult<Result<string>>($"{request.NotebookId}:{request.Text}:{context[QuantumRpcContextKeys.CallerPluginId]}:{context["quantum.mobile.deviceId"]}");
     }
 }

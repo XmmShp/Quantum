@@ -21,9 +21,9 @@ public sealed class WebPluginInteropBridgeTests
         var catalog = new PluginCatalog([plugin]);
         using var router = new PluginRpcRouter(catalog, NullLogger<PluginRpcRouter>.Instance);
         using var bridge = CreateBridge(catalog, router, host, new RejectingEventDeliveryJavaScriptRuntime());
-        var page = Quantum.Plugin.Abstraction.Mobile.Page("status", "Status", Quantum.Plugin.Abstraction.Mobile.Text("text", "Hello"));
+        var page = Quantum.Plugin.Abstraction.Mobile.Page("status", "Status", Quantum.Plugin.Abstraction.Mobile.Attachments("files"));
         await bridge.InvokeAsync(PluginId, runtimeId.ToString("N"), "publish", "mobile", "publish", JsonSerializer.SerializeToElement(new { page }, Quantum.Mobile.Internal.MobileJson.Options));
-        Assert.Single(plugin.MobilePages.Snapshot());
+        Assert.Equal(2, Assert.Single(plugin.MobilePages.Snapshot()).SchemaVersion);
         await Assert.ThrowsAsync<InvalidOperationException>(() => bridge.InvokeAsync(PluginId, Guid.NewGuid().ToString("N"), "stale", "mobile", "remove", JsonSerializer.SerializeToElement(new { pageId = "status" })));
         await bridge.ReleaseRuntimeAsync(PluginId, runtimeId.ToString("N"));
         Assert.Empty(plugin.MobilePages.Snapshot());

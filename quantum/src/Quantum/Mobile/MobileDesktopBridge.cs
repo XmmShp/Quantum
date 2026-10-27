@@ -236,7 +236,8 @@ public sealed class MobileDesktopBridge(
             await client.CallAsync<JsonElement>("authorize", new { requestId = message.Id }, token);
             using var timeout = CancellationTokenSource.CreateLinkedTokenSource(token);
             timeout.CancelAfter(TimeSpan.FromSeconds(30));
-            outcome = await gateway.InvokeAsync(message.Id, message.SenderId, MobileJson.Read<BridgeInvoke>(message.Body), timeout.Token)
+            outcome = await gateway.InvokeAsync(message.Id, message.SenderId, MobileJson.Read<BridgeInvoke>(message.Body), timeout.Token,
+                (attachment, cancellation) => ReadAttachmentAsync(client, attachment, cancellation))
                 .WaitAsync(timeout.Token);
             if (JsonSerializer.SerializeToUtf8Bytes(outcome, MobileJson.Options).Length > 120 * 1024)
                 outcome = new(message.Id, "unknown", "The operation returned an oversized result. Check desktop state before retrying.");
@@ -245,6 +246,23 @@ public sealed class MobileDesktopBridge(
         catch (Exception exception) when (exception is not OutOfMemoryException)
         { outcome = new(message.Id, "unknown", "The result is unknown. Check desktop state before retrying."); }
         await SaveAsync(file, entry with { Outcome = outcome }, CancellationToken.None);
+    }
+
+    private static async Task<byte[]> ReadAttachmentAsync(BridgeClient client, BridgeAttachment file, CancellationToken token)
+    {
+        MobileAttachments.Validate(file);
+        var bytes = new byte[(int)file.Size];
+        var chunks = (int)((file.Size + MobileAttachments.ChunkBytes - 1) / MobileAttachments.ChunkBytes);
+        await Parallel.ForEachAsync(Enumerable.Range(0, chunks), new ParallelOptions { MaxDegreeOfParallelism = 4, CancellationToken = token }, async (index, cancellation) =>
+        {
+            var offset = index * MobileAttachments.ChunkBytes;
+            var result = await client.CallAsync<JsonElement>("attachment/read", new { attachmentId = file.Id, offset }, cancellation);
+            var chunk = Convert.FromBase64String(result.GetProperty("dataBase64").GetString()!);
+            var expected = Math.Min(MobileAttachments.ChunkBytes, bytes.Length - offset);
+            if (chunk.Length != expected) throw new BridgeException("mobile_attachment_invalid", "Attachment chunk is incomplete.");
+            chunk.CopyTo(bytes, offset);
+        });
+        return bytes;
     }
 
     private async Task FlushJournalAsync(BridgeClient client, CancellationToken token)

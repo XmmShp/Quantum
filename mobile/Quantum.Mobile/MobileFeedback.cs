@@ -9,7 +9,7 @@ public static class MobileFeedback
     {
         "accepted" => Pick(chinese, "已排队，等待电脑处理…", "Queued; waiting for desktop…"),
         "running" => Pick(chinese, "电脑正在执行，请稍候。", "The desktop is working. Please wait."),
-        "succeeded" => Pick(chinese, "已完成", "Completed."),
+        "succeeded" => Pick(chinese, "已提交", "Submitted."),
         "failed" => Failure(ErrorCode(outcome.Result), chinese),
         _ => Uncertain(chinese)
     };
@@ -21,6 +21,7 @@ public static class MobileFeedback
 
     public static string Failure(string? code, bool chinese) => code switch
     {
+        "mobile_attachment_invalid" or "mobile_attachment_unavailable" or "codex_attachment_invalid" => Pick(chinese, "附件不可用，请检查文件大小或重新选择。", "Attachment unavailable. Check its size or select it again."),
         "calendar_invalid_request" => Pick(chinese, "请检查待办标题、日期和时间后重试。", "Check the task title, date and time, then try again."),
         "ledger_invalid_amount" => Pick(chinese, "请输入有效金额，例如 12.50。", "Enter a valid amount, for example 12.50."),
         "ledger_invalid_request" => Pick(chinese, "请检查金额、分类和日期后重试。", "Check the amount, category and date, then try again."),

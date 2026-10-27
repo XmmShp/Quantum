@@ -16,7 +16,7 @@ public sealed class MobileFeedbackTests
         Assert.DoesNotContain("sensitive", text);
         Assert.DoesNotContain("wire", text);
         Assert.DoesNotContain("isSuccess", text);
-        Assert.Contains(chinese ? "已完成" : "Completed", text);
+        Assert.Contains(chinese ? "已提交" : "Submitted", text);
     }
 
     [Theory]

@@ -39,7 +39,13 @@ public sealed class PluginLoadContext : AssemblyLoadContext
     {
         if (MustShareWithHost(assemblyName.Name))
         {
-            return LoadFromDefaultContext(assemblyName);
+            var shared = LoadFromDefaultContext(assemblyName);
+            // SDK/NOF contracts retain host identity. Optional framework packages such as
+            // System.Speech may instead be supplied privately when the host does not use them.
+            if (shared is not null || assemblyName.Name == "Quantum.Plugin.Abstraction" || assemblyName.Name!.StartsWith("NOF.", StringComparison.Ordinal))
+            {
+                return shared;
+            }
         }
 
         var assemblyPath = OperatingSystem.IsMacCatalyst()

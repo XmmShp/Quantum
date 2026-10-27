@@ -51,32 +51,35 @@ public sealed class MobileRenderer
         return root;
     }
 
+    public Task StopRecordingAsync() => Task.WhenAll(_views.Values.OfType<AttachmentPickerView>().Select(p => p.StopForBackgroundAsync()));
+
     public void SetActionsEnabled(bool enabled)
     {
         _actionsEnabled = enabled;
         foreach (var (id, view) in _views)
-            if (view is Button) view.IsEnabled = enabled && _nodes[id].Enabled && _nodes[id].ActionId is not null;
+            if (view is Button) view.IsEnabled = enabled && !_views.Values.OfType<AttachmentPickerView>().Any(p => p.IsRecording) && _nodes[id].Enabled && _nodes[id].ActionId is not null;
     }
 
     public void ResetSubmittedInputs(Dictionary<string, JsonElement> submitted)
     {
         foreach (var (id, value) in submitted)
             if (_inputs.TryGetValue(id, out var current) && current.GetRawText() == value.GetRawText())
-                SetInput(id, value.ValueKind == JsonValueKind.String ? MobileJson.Element("") : MobileJson.Element(false));
-        IsDirty = _inputs.Values.Any(v => v.ValueKind == JsonValueKind.String ? !string.IsNullOrEmpty(v.GetString()) : v.ValueKind == JsonValueKind.True);
+                SetInput(id, value.ValueKind == JsonValueKind.String ? MobileJson.Element("") : value.ValueKind == JsonValueKind.Array ? MobileJson.Element(Array.Empty<BridgeAttachment>()) : MobileJson.Element(false));
+        IsDirty = _inputs.Values.Any(v => v.ValueKind == JsonValueKind.String ? !string.IsNullOrEmpty(v.GetString()) : v.ValueKind == JsonValueKind.True || v.ValueKind == JsonValueKind.Array && v.GetArrayLength() > 0);
     }
 
     public void RestoreInputs(Dictionary<string, JsonElement> submitted)
     {
         foreach (var (id, value) in submitted)
-            if (_inputs.TryGetValue(id, out var current) && (current.ValueKind == JsonValueKind.String && string.IsNullOrEmpty(current.GetString()) || current.ValueKind == JsonValueKind.False))
+            if (_inputs.TryGetValue(id, out var current) && (current.ValueKind == JsonValueKind.String && string.IsNullOrEmpty(current.GetString()) || current.ValueKind == JsonValueKind.False || current.ValueKind == JsonValueKind.Array && current.GetArrayLength() == 0))
                 SetInput(id, value);
     }
 
     private void SetInput(string id, JsonElement value)
     {
         if (!_views.TryGetValue(id, out var view)) return;
-        if (view is Entry entry && value.ValueKind == JsonValueKind.String) entry.Text = value.GetString();
+        if (view is AttachmentPickerView picker && value.ValueKind == JsonValueKind.Array) picker.SetFiles(MobileAttachments.Read(value));
+        else if (view is Entry entry && value.ValueKind == JsonValueKind.String) entry.Text = value.GetString();
         else if (view is Grid row && row.Children.LastOrDefault() is Switch toggle && value.ValueKind is JsonValueKind.True or JsonValueKind.False)
             toggle.IsToggled = value.GetBoolean();
     }
@@ -195,6 +198,12 @@ public sealed class MobileRenderer
                 _inputs[node.Id] = MobileJson.Element("");
                 input.TextChanged += (_, args) => { _inputs[node.Id] = MobileJson.Element(args.NewTextValue ?? ""); IsDirty = true; };
                 result = input; break;
+            case "Attachments":
+                var picker = new AttachmentPickerView();
+                _inputs[node.Id] = MobileJson.Element(Array.Empty<BridgeAttachment>());
+                picker.Changed += files => { _inputs[node.Id] = MobileJson.Element(files); IsDirty = true; };
+                picker.RecordingChanged += () => { IsDirty = true; SetActionsEnabled(_actionsEnabled); };
+                result = picker; break;
             case "Toggle":
                 var toggle = new Switch();
                 _inputs[node.Id] = MobileJson.Element(false);
@@ -250,7 +259,8 @@ public sealed class MobileRenderer
     public void DebugSetInput(string id, JsonElement value)
     {
         var control = DebugControl(id);
-        if (control is Entry entry && value.ValueKind == JsonValueKind.String && value.GetString()!.Length <= entry.MaxLength)
+        if (control is AttachmentPickerView picker && value.ValueKind == JsonValueKind.Array) picker.SetFiles(MobileAttachments.Read(value));
+        else if (control is Entry entry && value.ValueKind == JsonValueKind.String && value.GetString()!.Length <= entry.MaxLength)
             entry.Text = value.GetString();
         else if (control is Switch toggle && value.ValueKind is JsonValueKind.True or JsonValueKind.False)
             toggle.IsToggled = value.GetBoolean();
