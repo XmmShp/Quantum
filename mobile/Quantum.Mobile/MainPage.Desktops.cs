@@ -48,9 +48,9 @@ public sealed partial class MainPage
             {
                 _desktopId = device.Id; _currentDesktop = device;
                 _body.Children.Clear();
-                _body.Children.Add(new Label { Text = T("上次操作的结果待确认", "Previous outcome needs checking"), FontSize = 24, TextColor = MobileTheme.Ink });
-                _body.Children.Add(MobileTheme.Caption(T("请在电脑核对操作结果，再解除待确认状态。", "Check the outcome on desktop, then clear the pending state.")));
-                RenderAccountMenu(); ShowNotice(T("请先在电脑核对上次操作的结果。", "Check the previous operation's outcome on desktop first."));
+                _body.Children.Add(new Label { Text = _uncertain ? T("上次操作的结果待确认", "Previous outcome needs checking") : T("正在恢复上次操作…", "Recovering the previous action…"), FontSize = 24, TextColor = MobileTheme.Ink });
+                if (_uncertain) _body.Children.Add(MobileTheme.Caption(T("请在电脑核对操作结果，再解除待确认状态。", "Check the outcome on desktop, then clear the pending state.")));
+                RenderAccountMenu(); if (_uncertain) ShowNotice(T("请先在电脑核对上次操作的结果。", "Check the previous operation's outcome on desktop first."));
             }
             return;
         }

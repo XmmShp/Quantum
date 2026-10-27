@@ -37,6 +37,11 @@ public sealed class MobileBridgeEndToEndTests
         await Until(() => desktop.IsRunning && registrations.ContainsKey("1"));
         await session.LoginAsync(marketplace, "other@example.test", "fixture-password", timeout.Token);
         await Until(() => desktop.IsRunning && registrations.ContainsKey("2") && !registrations.ContainsKey("1"));
+        var registeredId = JsonSerializer.Deserialize<BridgeRegistration>(registrations["2"], MobileJson.Options)!.Device.Id;
+        await desktop.StopAsync(revoke: false);
+        Assert.True(registrations.ContainsKey("2"));
+        await desktop.StartAsync(timeout.Token);
+        Assert.Equal(registeredId, JsonSerializer.Deserialize<BridgeRegistration>(registrations["2"], MobileJson.Options)!.Device.Id);
         await session.LogoutAsync();
         await Until(() => !desktop.IsRunning && registrations.IsEmpty);
         Assert.Empty(gateway.Pages());

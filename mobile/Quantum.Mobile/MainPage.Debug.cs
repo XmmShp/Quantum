@@ -109,6 +109,14 @@ public sealed partial class MainPage
             if (_settingsPage is null || !ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), _settingsPage)) throw new MobileDebugException(409, "debug_settings_unavailable");
             await Navigation.PopAsync(); return DebugState();
         }
+        if (path == "/preview/outcome")
+        {
+            if (!_preview || _pendingId is null) throw new MobileDebugException(409, "debug_not_pending_preview");
+            var status = body.GetProperty("status").GetString();
+            if (status is not ("succeeded" or "failed" or "unknown")) throw new MobileDebugException(400, "debug_invalid_status");
+            Outcome(new(_pendingId, status, "Mock outcome"));
+            return DebugState();
+        }
         if (path == "/preview/update")
         {
             if (!_preview || _snapshot is null) throw new MobileDebugException(409, "debug_not_previewing");
@@ -166,7 +174,7 @@ public sealed partial class MainPage
             }
             else
             {
-                if (_menuExpanded || _settingsPage is not null && ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), _settingsPage) || _navigationExpanded || _uncertain || _pendingId is not null || !_pageContent.IsEnabled || !_preview && (!_connected || _snapshot.ExpiresAt <= _client!.UtcNow))
+                if (_menuExpanded || _settingsPage is not null && ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), _settingsPage) || _navigationExpanded || path == "/press" && (_uncertain || _pendingId is not null) || !_pageContent.IsEnabled || !_preview && _snapshot.ExpiresAt <= _client!.UtcNow)
                     throw new MobileDebugException(409, "debug_action_unavailable");
                 if (path == "/input")
                 {
@@ -223,6 +231,7 @@ public sealed partial class MainPage
         titleBar = new { visible = _titleBar.IsVisible, height = _titleBar.HeightRequest, avatar = _avatarInitial.AutomationId, title = _pageTitle.Text },
         menu = new { expanded = _menuExpanded, visible = _menuOverlay.IsVisible, settingsPinnedToBottom = Grid.GetRow(_menuSettings) == 1, desktopId = _desktopId },
         pending = _pendingId is not null, uncertain = _uncertain,
+        actionFeedback = new { visible = _actionFeedback.IsVisible, text = _actionFeedback.Text },
         status = _status.Text, desktopStatus = _desktopStatus.Text,
         desktopId = _desktopId,
         navigation = new

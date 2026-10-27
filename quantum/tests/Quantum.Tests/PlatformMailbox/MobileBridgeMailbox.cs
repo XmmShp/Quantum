@@ -26,15 +26,21 @@ public sealed class MobileBridgeMailbox
         {
             var name = Text(body, "name");
             var kind = Text(body, "kind");
-            if (name.Length > 80 || kind is not ("desktop" or "mobile") || Devices.Count >= 20)
+            var instance = Instance(body);
+            var existing = instance is null ? null : Devices.SingleOrDefault(d => d.ClientInstanceId == instance && d.Device.Kind == kind);
+            if (name.Length > 80 || kind is not ("desktop" or "mobile") || existing is null && Devices.Count >= 20)
                 throw new ArgumentException("Invalid device or device quota exceeded.");
             var secret = Convert.ToHexStringLower(RandomNumberGenerator.GetBytes(32));
-            var device = new DeviceState
+            var device = existing ?? new DeviceState
             {
                 Device = new(Guid.NewGuid().ToString("N"), name, kind, now, Guid.NewGuid().ToString("N")),
                 SecretHash = Hash(secret), ExpiresAt = now.AddHours(24)
             };
-            Devices.Add(device);
+            device.ClientInstanceId = instance;
+            device.SecretHash = Hash(secret);
+            device.Device = device.Device with { Name = name, SeenAt = now };
+            device.ExpiresAt = now.AddHours(24);
+            if (existing is null) Devices.Add(device);
             return MobileJson.Element(new BridgeRegistration(device.Device, secret));
         }
         var sender = Devices.SingleOrDefault(d => d.Device.Id == request.DeviceId && d.ExpiresAt > now);
@@ -42,6 +48,9 @@ public sealed class MobileBridgeMailbox
                 Encoding.ASCII.GetBytes(sender.SecretHash), Encoding.ASCII.GetBytes(Hash(request.DeviceSecret))))
             throw new BridgeException("mobile_device_revoked", "Register this device again.");
         sender.Device = sender.Device with { SeenAt = now };
+        sender.ExpiresAt = now.AddHours(24);
+        if (request.Operation == "heartbeat" && Instance(body) is { } instanceId)
+            sender.ClientInstanceId = instanceId;
         switch (request.Operation)
         {
             case "heartbeat": return MobileJson.Element(new { serverTime = now });
@@ -162,11 +171,12 @@ public sealed class MobileBridgeMailbox
             return MobileJson.Element(new { accepted = true });
         }
         if (Messages.Count >= 2000 || Outcomes.Count >= 2000) throw new BridgeException("mobile_rate_limited", "Mailbox quota reached.");
+        var expiresAt = now.AddHours(24);
         if (sender.Device.Kind == "mobile")
         {
-            if (desktop.Device.SeenAt < now.AddSeconds(-45)) throw new BridgeException("mobile_desktop_offline", "Desktop is offline.");
             if (send.Kind == "open")
             {
+                expiresAt = now.AddSeconds(30);
                 var open = MobileJson.Read<BridgeOpen>(send.Body);
                 if (!desktop.Pages.Any(p => p.PluginId == open.PluginId && p.PageId == open.PageId))
                     throw new BridgeException("mobile_sharing_disabled", "Page is not shared.");
@@ -180,6 +190,7 @@ public sealed class MobileBridgeMailbox
                 if (invoke.Inputs is null || Encoding.UTF8.GetByteCount(send.Body.GetRawText()) > 16 * 1024)
                     throw new ArgumentException("Invalid action inputs.");
                 if (Outcomes.ContainsKey(send.Id)) throw new BridgeException("mobile_request_conflict", "Action ID has already been used.");
+                expiresAt = snapshot.ExpiresAt;
                 Outcomes[send.Id] = new(desktop.Device.Id, mobile.Device.Id, now.AddHours(24), new(send.Id, "accepted", "Waiting for desktop."));
             }
             else throw new ArgumentException("Unsupported mobile message kind.");
@@ -193,7 +204,9 @@ public sealed class MobileBridgeMailbox
                 throw new ArgumentException("Invalid mobile snapshot.");
             // A small overlap lets an action already in transit use the preceding frame.
             // The desktop still validates its action declaration against the current page.
-            foreach (var key in Snapshots.Where(s => s.Value.DesktopId == desktop.Device.Id && s.Value.MobileId == mobile.Device.Id &&
+            foreach (var key in Snapshots.Where(s => !Messages.Any(m => m.Message.Kind == "action" &&
+                         Outcomes.TryGetValue(m.Message.Id, out var outcome) && outcome.Outcome.Status is "accepted" or "running" &&
+                         MobileJson.Read<BridgeInvoke>(m.Message.Body).ViewId == s.Value.Snapshot.ViewId) && s.Value.DesktopId == desktop.Device.Id && s.Value.MobileId == mobile.Device.Id &&
                          s.Value.Snapshot.PluginId == snapshot.PluginId && s.Value.Snapshot.Page.Id == snapshot.Page.Id)
                          .OrderByDescending(s => s.Value.Snapshot.ExpiresAt).Skip(2).Select(s => s.Key).ToArray())
                 Snapshots.Remove(key);
@@ -221,8 +234,7 @@ public sealed class MobileBridgeMailbox
             Outcomes[outcome.RequestId] = prior with { Outcome = outcome };
         }
         else throw new ArgumentException("Unsupported desktop message kind.");
-        var lifetime = send.Kind is "action" or "open" ? TimeSpan.FromSeconds(30) : TimeSpan.FromHours(24);
-        Messages.Add(new() { Message = new(send.Id, sender.Device.Id, target.Device.Id, send.Kind, send.Body.Clone(), now + lifetime), CreatedAt = now });
+        Messages.Add(new() { Message = new(send.Id, sender.Device.Id, target.Device.Id, send.Kind, send.Body.Clone(), expiresAt), CreatedAt = now });
         return MobileJson.Element(new { accepted = true });
     }
 
@@ -257,6 +269,12 @@ public sealed class MobileBridgeMailbox
         foreach (var key in Outcomes.Where(p => p.Value.ExpiresAt <= now).Select(p => p.Key).ToArray()) Outcomes.Remove(key);
         foreach (var key in Snapshots.Where(p => p.Value.Snapshot.ExpiresAt <= now).Select(p => p.Key).ToArray()) Snapshots.Remove(key);
     }
+    private static string? Instance(JsonElement body)
+    {
+        if (!body.TryGetProperty("clientInstanceId", out var value)) return null;
+        return value.ValueKind == JsonValueKind.String && Guid.TryParseExact(value.GetString(), "N", out var id)
+            ? id.ToString("N") : throw new ArgumentException("Invalid client instance ID.");
+    }
     private static string Text(JsonElement body, string name)
     {
         var value = body.GetProperty(name).GetString();
@@ -266,6 +284,7 @@ public sealed class MobileBridgeMailbox
 
     public sealed class DeviceState
     {
+        public string? ClientInstanceId { get; set; }
         public required BridgeDevice Device { get; set; }
         public required string SecretHash { get; set; }
         public DateTimeOffset ExpiresAt { get; set; }

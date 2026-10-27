@@ -110,15 +110,16 @@ public sealed partial class MainPage
     private void RenderDesktopChoices()
     {
         _desktopChoices.Children.Clear();
-        foreach (var device in _knownDesktops.OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ThenBy(d => d.Id, StringComparer.Ordinal))
+        var onlineDesktops = _knownDesktops.Where(d => MobileDesktopSelection.IsOnline(d, _client?.UtcNow ?? DateTimeOffset.UtcNow)).ToArray();
+        foreach (var device in onlineDesktops.OrderBy(d => d.Name, StringComparer.OrdinalIgnoreCase).ThenBy(d => d.Id, StringComparer.Ordinal))
         {
             var online = MobileDesktopSelection.IsOnline(device, _client?.UtcNow ?? DateTimeOffset.UtcNow);
-            var button = MenuButton((device.Id == _desktopId ? "✓  " : "") + device.Name + (online ? "" : T(" · 离线", " · Offline")), () => SelectDesktopAsync(device, true));
+            var button = MenuButton((device.Id == _desktopId ? "✓  " : "") + device.Name + (onlineDesktops.Count(d => d.Name == device.Name) > 1 ? " · " + device.Id[..6] : "") + (online ? "" : T(" · 离线", " · Offline")), () => SelectDesktopAsync(device, true));
             button.IsEnabled = online;
             button.AutomationId = "mobile-desktop-" + device.Id;
             _desktopChoices.Children.Add(button);
         }
-        if (_knownDesktops.Length == 0) _desktopChoices.Children.Add(MobileTheme.Caption(T("暂无可用电脑", "No desktops available")));
+        if (onlineDesktops.Length == 0) _desktopChoices.Children.Add(MobileTheme.Caption(T("暂无可用电脑", "No desktops available")));
         if (!_preview) _desktopChoices.Children.Add(MenuButton(T("刷新设备", "Refresh devices"), RefreshDesktopChoicesAsync));
     }
 

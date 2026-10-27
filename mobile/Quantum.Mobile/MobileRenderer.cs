@@ -18,6 +18,7 @@ public sealed class MobileRenderer
     private readonly Dictionary<string, Func<Task>> _debugPress = [];
     public string DebugViewId { get; private set; } = "";
 #endif
+    private bool _actionsEnabled = true;
     public bool IsDirty { get; private set; }
     public MobileRenderer(Func<string, Dictionary<string, JsonElement>, Task> invoke) => _invoke = invoke;
     public View Render(MobilePage page)
@@ -48,6 +49,36 @@ public sealed class MobileRenderer
         DebugViewId = Guid.NewGuid().ToString("N");
 #endif
         return root;
+    }
+
+    public void SetActionsEnabled(bool enabled)
+    {
+        _actionsEnabled = enabled;
+        foreach (var (id, view) in _views)
+            if (view is Button) view.IsEnabled = enabled && _nodes[id].Enabled && _nodes[id].ActionId is not null;
+    }
+
+    public void ResetSubmittedInputs(Dictionary<string, JsonElement> submitted)
+    {
+        foreach (var (id, value) in submitted)
+            if (_inputs.TryGetValue(id, out var current) && current.GetRawText() == value.GetRawText())
+                SetInput(id, value.ValueKind == JsonValueKind.String ? MobileJson.Element("") : MobileJson.Element(false));
+        IsDirty = _inputs.Values.Any(v => v.ValueKind == JsonValueKind.String ? !string.IsNullOrEmpty(v.GetString()) : v.ValueKind == JsonValueKind.True);
+    }
+
+    public void RestoreInputs(Dictionary<string, JsonElement> submitted)
+    {
+        foreach (var (id, value) in submitted)
+            if (_inputs.TryGetValue(id, out var current) && (current.ValueKind == JsonValueKind.String && string.IsNullOrEmpty(current.GetString()) || current.ValueKind == JsonValueKind.False))
+                SetInput(id, value);
+    }
+
+    private void SetInput(string id, JsonElement value)
+    {
+        if (!_views.TryGetValue(id, out var view)) return;
+        if (view is Entry entry && value.ValueKind == JsonValueKind.String) entry.Text = value.GetString();
+        else if (view is Grid row && row.Children.LastOrDefault() is Switch toggle && value.ValueKind is JsonValueKind.True or JsonValueKind.False)
+            toggle.IsToggled = value.GetBoolean();
     }
 
     private static IEnumerable<MobileNode> Flatten(MobileNode node)
@@ -134,7 +165,7 @@ public sealed class MobileRenderer
                 case "Toggle": ((Label)((Grid)existing).Children[0]).Text = node.Text; break;
                 case "Button": ((Button)existing).Text = node.Text; break;
             }
-            existing.IsEnabled = node.Enabled && (node.Type != "Button" || node.ActionId is not null);
+            existing.IsEnabled = node.Enabled && (node.Type != "Button" || _actionsEnabled && node.ActionId is not null);
             return existing;
         }
         View result;
@@ -178,12 +209,12 @@ public sealed class MobileRenderer
                 break;
             case "Button":
                 var button = new Button { Text = node.Text, CornerRadius = 10, MinimumHeightRequest = 44, MinimumWidthRequest = 44, FontSize = 13, Padding = new Thickness(14, 8), BackgroundColor = MobileTheme.Accent, TextColor = Colors.White };
-                button.IsEnabled = node.Enabled && node.ActionId is not null;
+                button.IsEnabled = _actionsEnabled && node.Enabled && node.ActionId is not null;
                 async Task PressAsync()
                 {
                     button.IsEnabled = false;
                     try { var current = _nodes[node.Id]; await _invoke(current.ActionId!, current.InputIds.ToDictionary(id => id, id => _inputs[id])); }
-                    finally { var current = _nodes[node.Id]; button.IsEnabled = current.Enabled && current.ActionId is not null; }
+                    finally { button.IsEnabled = _actionsEnabled && _nodes.TryGetValue(node.Id, out var current) && current.Enabled && current.ActionId is not null; }
                 }
                 button.Clicked += async (_, _) => await PressAsync();
 #if DEBUG

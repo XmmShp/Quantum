@@ -7,9 +7,9 @@ public static class MobileFeedback
 {
     public static string Outcome(BridgeOutcome outcome, bool chinese) => outcome.Status switch
     {
-        "accepted" => Pick(chinese, "电脑已接收，等待执行。", "The desktop accepted the action and is waiting to execute it."),
+        "accepted" => Pick(chinese, "已排队，等待电脑处理…", "Queued; waiting for desktop…"),
         "running" => Pick(chinese, "电脑正在执行，请稍候。", "The desktop is working. Please wait."),
-        "succeeded" => Pick(chinese, "操作已完成，请按页面提示刷新数据。", "Completed. Follow the page instructions to refresh the data."),
+        "succeeded" => Pick(chinese, "已完成", "Completed."),
         "failed" => Failure(ErrorCode(outcome.Result), chinese),
         _ => Uncertain(chinese)
     };

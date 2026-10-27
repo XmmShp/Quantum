@@ -77,16 +77,21 @@ public sealed class MobileDesktopBridge(
             if (!session.IsAuthenticated) throw new InvalidOperationException("Sign in to Quantum Platform first.");
             _activeUser = session.User!.UserId;
             _client = new(http, options.BaseAddress, () => session.AccessToken) { Authentication = session.Authentication };
+            Directory.CreateDirectory(journalPath);
+            var instanceFile = Path.Combine(journalPath, "instance-" + Convert.ToHexStringLower(
+                System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(options.BaseAddress.AbsoluteUri + _activeUser))) + ".txt");
+            var instance = File.Exists(instanceFile) ? await File.ReadAllTextAsync(instanceFile, cancellationToken) : Guid.NewGuid().ToString("N");
+            if (!File.Exists(instanceFile)) await File.WriteAllTextAsync(instanceFile, instance, cancellationToken);
             var saved = await readRegistration(_activeUser);
             if (saved is not null)
             {
                 _client.Registration = JsonSerializer.Deserialize<BridgeRegistration>(saved, MobileJson.Options);
-                try { await _client.CallAsync<JsonElement>("heartbeat", cancellationToken: cancellationToken); }
+                try { await _client.CallAsync<JsonElement>("heartbeat", new { clientInstanceId = instance }, cancellationToken); }
                 catch (BridgeException exception) when (exception.Code == "mobile_device_revoked") { _client.Registration = null; }
             }
             if (_client.Registration is null)
             {
-                _client.Registration = await _client.CallAsync<BridgeRegistration>("register", new { name = Environment.MachineName, kind = "desktop" }, cancellationToken);
+                _client.Registration = await _client.CallAsync<BridgeRegistration>("register", new { name = Environment.MachineName, kind = "desktop", clientInstanceId = instance }, cancellationToken);
                 await saveRegistration(_activeUser, JsonSerializer.Serialize(_client.Registration, MobileJson.Options));
             }
             Directory.CreateDirectory(journalPath);
@@ -104,7 +109,7 @@ public sealed class MobileDesktopBridge(
         finally { _lifecycle.Release(); }
     }
 
-    public async Task StopAsync()
+    public async Task StopAsync(bool revoke = true)
     {
         await _lifecycle.WaitAsync();
         try
@@ -113,12 +118,12 @@ public sealed class MobileDesktopBridge(
             gateway.SetSharing([]);
             _cancellation?.Cancel();
             if (_loop is not null) await _loop;
-            if (_client?.Registration is not null)
+            if (revoke && _client?.Registration is not null)
             {
                 try { using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5)); await _client.CallAsync<JsonElement>("revoke", cancellationToken: timeout.Token); }
                 catch (Exception exception) when (exception is HttpRequestException or OperationCanceledException or BridgeException or PlatformAuthenticationException or InvalidOperationException) { }
             }
-            if (_activeUser is { } user) clearRegistration(user);
+            if (revoke && _activeUser is { } user) clearRegistration(user);
             _client = null; _activeUser = null; Status = "Stopped"; Changed?.Invoke();
         }
         finally { _lifecycle.Release(); }
@@ -292,7 +297,7 @@ public sealed class MobileDesktopBridge(
         session.Changed -= SessionChanged;
         await _lifetime.CancelAsync();
         if (_automatic is not null) await _automatic;
-        await StopAsync();
+        await StopAsync(revoke: false);
         _cancellation?.Dispose(); _lifecycle.Dispose(); _lifetime.Dispose(); _wake.Dispose();
     }
     private sealed record JournalEntry(string DesktopId, string MobileId, string RequestId, DateTimeOffset CreatedAt, BridgeOutcome? Outcome, bool Uploaded = false);

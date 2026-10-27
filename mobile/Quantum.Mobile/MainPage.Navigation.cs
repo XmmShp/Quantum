@@ -75,10 +75,9 @@ public sealed partial class MainPage
         };
         var heading = new VerticalStackLayout { Spacing = 0, Children = { handle, new Label { Text = T("插件", "Plugins"), FontSize = 18, FontAttributes = FontAttributes.Bold, TextColor = MobileTheme.Ink } } };
         heading.GestureRecognizers.Add(down);
-        var sheet = new Grid { RowSpacing = 12, RowDefinitions = { new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Star) } };
+        var sheet = new Grid { RowSpacing = 12, RowDefinitions = { new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Star) } };
         sheet.Add(heading);
-        sheet.Add(MobileTheme.Caption(T("长按拖动调整顺序，前四个显示在底栏", "Hold and drag to reorder. The first four appear in the bar.")), 0, 1);
-        sheet.Add(new ScrollView { Content = _navigationItems }, 0, 2);
+        sheet.Add(new ScrollView { Content = _navigationItems }, 0, 1);
         _navigationSheet.Content = sheet;
         _navigationOverlay.Add(_navigationSheet);
         shell.Add(_navigationOverlay, 0, 1);

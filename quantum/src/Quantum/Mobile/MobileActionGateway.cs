@@ -65,10 +65,11 @@ public sealed class MobileActionGateway(PluginCatalog catalog, PluginRpcRouter r
             }
             var snapshot = new BridgeSnapshot(Guid.NewGuid().ToString("N"), desktopSessionId, open.PluginId,
                 plugin.RuntimeId.ToString("N"), now.AddMinutes(5), new Quantum.Mobile.Internal.MobilePage(page.Id, page.Title, Render(page.Root)) { SchemaVersion = page.SchemaVersion });
-            foreach (var key in _views.Where(v => v.Value.MobileId == mobileId && v.Value.Snapshot.PluginId == open.PluginId && v.Value.Snapshot.Page.Id == open.PageId)
-                         .OrderByDescending(v => v.Value.LocalExpiresAt).Skip(replacePrevious ? 0 : 2).Select(v => v.Key).ToArray())
+            // Live frames remain usable until expiry so a queued action can survive disconnection.
+            foreach (var key in _views.Where(v => replacePrevious && v.Value.MobileId == mobileId && v.Value.Snapshot.PluginId == open.PluginId && v.Value.Snapshot.Page.Id == open.PageId)
+                         .Select(v => v.Key).ToArray())
                 _views.Remove(key);
-            if (_views.Count >= 100) throw new BridgeException("mobile_busy", "Too many open pages.");
+            if (_views.Count >= 1000) throw new BridgeException("mobile_busy", "Too many open pages.");
             _views[snapshot.ViewId] = new(mobileId, snapshot, revision, nodes, actions, DateTimeOffset.UtcNow.AddMinutes(5));
             return snapshot;
         }

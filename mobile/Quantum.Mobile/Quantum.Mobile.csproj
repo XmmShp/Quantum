@@ -12,7 +12,7 @@
     <Nullable>enable</Nullable>
     <ApplicationTitle>Quantum Mobile</ApplicationTitle>
     <ApplicationId>io.quantum.mobile</ApplicationId>
-    <ApplicationDisplayVersion>0.1.8</ApplicationDisplayVersion>
+    <ApplicationDisplayVersion>0.1.9</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
     <EmbedAssembliesIntoApk Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'android'">true</EmbedAssembliesIntoApk>
     <WindowsPackageType>None</WindowsPackageType>

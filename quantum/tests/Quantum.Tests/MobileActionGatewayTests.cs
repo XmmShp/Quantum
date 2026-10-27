@@ -70,7 +70,8 @@ public sealed class MobileActionGatewayTests
         await using var fixture = new Fixture();
         var previous = fixture.Open();
         fixture.Plugin.MobilePages.Publish(fixture.Page with { Title = "Updated content" });
-        fixture.Gateway.Open("phone", "desktop-session", new("quantum.plugin.mobile", "notes"), DateTimeOffset.UtcNow, replacePrevious: false);
+        for (var i = 0; i < 6; i++)
+            fixture.Gateway.Open("phone", "desktop-session", new("quantum.plugin.mobile", "notes"), DateTimeOffset.UtcNow, replacePrevious: false);
         var result = await fixture.Gateway.InvokeAsync("in-flight", "phone", new(previous.ViewId,
             previous.Page.Root.Children[1].ActionId!, new() { ["text"] = MobileJson.Element("draft") }), default);
         Assert.Equal("succeeded", result.Status);

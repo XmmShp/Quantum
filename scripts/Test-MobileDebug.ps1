@@ -60,6 +60,16 @@ try{
     if($returned.value.settingsVisible -or $returned.value.page.viewId -ne $view -or !$returned.value.page.dirty){throw 'Returning from settings replaced the plugin draft.'}
     $after=Call '/press' @{viewId=$view;nodeId='save'}
     if($after.value.status -notmatch 'HTTP debug test' -or $after.value.status -notmatch 'true'){throw 'Native button callback did not see the actual bound inputs.'}
+    $content=$after.value.page.tree.children | Where-Object id -eq 'content'
+    if($content.value -ne '' -or !$after.value.pending -or !$after.value.actionFeedback.visible){throw 'Submission did not clear inputs and show immediate queued feedback.'}
+    Reject '/press' @{viewId=$view;nodeId='save'} 409
+    $null=Call '/input' @{viewId=$view;nodeId='content';value='Next draft'}
+    $success=Call '/preview/outcome' @{status='succeeded'}
+    if(($success.value.page.tree.children | Where-Object id -eq 'content').value -ne 'Next draft' -or $success.value.pending){throw 'Delayed success overwrote the next draft.'}
+    $null=Call '/press' @{viewId=$view;nodeId='save'}
+    $failed=Call '/preview/outcome' @{status='failed'}
+    if(($failed.value.page.tree.children | Where-Object id -eq 'content').value -ne 'Next draft' -or $failed.value.pending){throw 'Known failure did not restore the submitted draft.'}
+
     Reject '/input' @{viewId='stale';nodeId='content';value='must not apply'} 409
     Reject '/input' @{viewId=$view;nodeId='content';value=$false} 400
     Reject '/input' @{viewId=$view;nodeId='content';value=('x'*501)} 400
@@ -72,9 +82,16 @@ try{
     $switched=Call '/navigation/select' @{pluginId='mock.status';pageId='mock-status';discardDraft=$true}
     if($switched.value.navigation.expanded -or $switched.value.page.pageId -ne 'mock-status' -or $switched.value.page.viewId -eq $view){throw 'Navigation did not switch to a fresh page and close its sheet.'}
     Reject '/press' @{viewId=$view;nodeId='save'} 409
+    $preview=Call '/navigation/select' @{pluginId='mock';pageId='preview';discardDraft=$true}
+    $view=$preview.value.page.viewId
+    $null=Call '/input' @{viewId=$view;nodeId='content';value='Uncertain outcome'}
+    $null=Call '/press' @{viewId=$view;nodeId='save'}
+    $unknown=Call '/preview/outcome' @{status='unknown'}
+    if(!$unknown.value.pending -or !$unknown.value.uncertain){throw 'Unknown outcome was cleared or made eligible for resubmission.'}
+    Reject '/press' @{viewId=$view;nodeId='save'} 409
     $json=(Call '/state' $null)|ConvertTo-Json -Depth 24
     if($json.Contains($token) -or $json -match 'accessToken|refreshToken|deviceSecret|password'){throw 'Credential material appeared in the debug state.'}
-    [ordered]@{passed=$true;mode='isolated native Mock';pullRefreshCompletesAndRetracts=$true;pullRefreshPreservesDraft=$true;thinAvatarTitleBar=$true;leftAccountMenu=$true;settingsPinnedAtBottom=$true;iconOnlyNavigation=$true;reorderPreservesDraft=$true;readPageTree=$true;nativeTextAndToggleBinding=$true;liveUpdatePreservesDraft=$true;unobstructedViewport=$true;separateSettingsRetainsDraft=$true;nativeButtonCallback=$true;staleViewRejected=$true;wrongTypeAndLengthRejected=$true;unknownButtonRejected=$true;dirtyDraftProtected=$true;bottomNavigationSheet=$true;pluginSwitchCreatesFreshView=$true;credentialsExposed=$false;keyboardOrMouseUsed=$false}|ConvertTo-Json
+    [ordered]@{passed=$true;mode='isolated native Mock';pullRefreshCompletesAndRetracts=$true;pullRefreshPreservesDraft=$true;thinAvatarTitleBar=$true;leftAccountMenu=$true;settingsPinnedAtBottom=$true;iconOnlyNavigation=$true;reorderPreservesDraft=$true;readPageTree=$true;nativeTextAndToggleBinding=$true;liveUpdatePreservesDraft=$true;unobstructedViewport=$true;separateSettingsRetainsDraft=$true;nativeButtonCallback=$true;immediateInputReset=$true;pendingFeedbackVisible=$true;nextDraftPreserved=$true;failedDraftRestored=$true;unknownOutcomeBlocksReplay=$true;staleViewRejected=$true;wrongTypeAndLengthRejected=$true;unknownButtonRejected=$true;dirtyDraftProtected=$true;bottomNavigationSheet=$true;pluginSwitchCreatesFreshView=$true;credentialsExposed=$false;keyboardOrMouseUsed=$false}|ConvertTo-Json
 }finally{
     if($process -and !$process.HasExited){Stop-Process -Id $process.Id}
     foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$previous[$name])}

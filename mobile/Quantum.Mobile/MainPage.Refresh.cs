@@ -112,7 +112,7 @@ public sealed partial class MainPage
     private void ShowNotice(string text)
     {
         _noticeText.Text = text;
-        _reviewPending.IsVisible = _pendingId is not null || _uncertain;
+        _reviewPending.IsVisible = _uncertain;
         _dismissNotice.IsVisible = !_reviewPending.IsVisible;
         _notice.IsVisible = true;
     }

@@ -38,7 +38,7 @@ public sealed partial class MainPage : ContentPage
     private readonly Dictionary<string, BridgeSnapshot> _pageCache = new();
     private View _signInHeader = null!;
     private DateTimeOffset _subscriptionRenewAt;
-    private bool _resetInputsAfterAction;
+
     private bool _awaitingSnapshot;
 
     private readonly SemaphoreSlim _pollGate = new(1);
@@ -94,6 +94,7 @@ public sealed partial class MainPage : ContentPage
         _dismissNotice = Button(T("关闭提示", "Dismiss"), () => { _notice.IsVisible = false; return Task.CompletedTask; });
         _notice.Children.Add(_reviewPending);
         _notice.Children.Add(_dismissNotice);
+        root.Children.Add(_actionFeedback);
         root.Children.Add(_notice);
         root.Children.Add(_body);
         _signInHeader = CreateHeader();
@@ -157,6 +158,8 @@ public sealed partial class MainPage : ContentPage
         var userId = _authentication!.User!.UserId;
         _storageKey = "quantum.mobile." + Convert.ToHexStringLower(SHA256.HashData(Encoding.UTF8.GetBytes(uri.AbsoluteUri + userId)));
         _client = new(_http, uri, () => _authentication.AccessToken) { Authentication = _authentication };
+        var instance = Preferences.Default.Get(_storageKey + ".instance", "");
+        if (instance.Length == 0) { instance = Guid.NewGuid().ToString("N"); Preferences.Default.Set(_storageKey + ".instance", instance); }
         var saved = await SecureStorage.Default.GetAsync(_storageKey);
 
         if (saved is not null)
@@ -165,7 +168,7 @@ public sealed partial class MainPage : ContentPage
 
             _client.Registration = JsonSerializer.Deserialize<BridgeRegistration>(saved, MobileJson.Options);
 
-            try { await _client.CallAsync<JsonElement>("heartbeat"); }
+            try { await _client.CallAsync<JsonElement>("heartbeat", new { clientInstanceId = instance }); }
 
             catch (BridgeException e) when (e.Code == "mobile_device_revoked") { _client.Registration = null; }
 
@@ -175,14 +178,21 @@ public sealed partial class MainPage : ContentPage
 
         {
 
-            _client.Registration = await _client.CallAsync<BridgeRegistration>("register", new { name = DeviceInfo.Current.Name, kind = "mobile" });
+            _client.Registration = await _client.CallAsync<BridgeRegistration>("register", new { name = DeviceInfo.Current.Name, kind = "mobile", clientInstanceId = instance });
 
             await SecureStorage.Default.SetAsync(_storageKey, JsonSerializer.Serialize(_client.Registration, MobileJson.Options));
 
         }
 
         _pendingId = Preferences.Default.Get(_storageKey + ".pending", (string?)null);
+        var queued = await SecureStorage.Default.GetAsync(_storageKey + ".outbox");
+        _outbox = queued is null ? null : JsonSerializer.Deserialize<PendingAction>(queued, MobileJson.Options);
+        if (_outbox is not null) { _pendingId = _outbox.Send.Id; SetActionFeedback(T("正在恢复待发送操作…", "Recovering pending action…")); }
 
+        var failed = await SecureStorage.Default.GetAsync(_storageKey + ".failed-draft");
+        _failedDraft = failed is null ? null : JsonSerializer.Deserialize<PendingAction>(failed, MobileJson.Options);
+        _offerFailedDraft = _failedDraft is not null;
+        if (_failedDraft is not null) EnsureDraftRecovery();
         _preview = false;
         Preferences.Default.Set("quantum.mobile.email", _email.Text?.Trim() ?? "");
 
@@ -253,8 +263,7 @@ public sealed partial class MainPage : ContentPage
         if (_pendingId is not null) { _deferredSnapshot = snapshot; return; }
         if (_awaitingSnapshot) _subscriptionRenewAt = DateTimeOffset.UtcNow.AddMinutes(2);
         _awaitingSnapshot = false;
-        RenderSnapshot(snapshot, !_resetInputsAfterAction);
-        _resetInputsAfterAction = false;
+        RenderSnapshot(snapshot, true);
         _refreshCompletion?.TrySetResult();
     }
 
@@ -283,12 +292,17 @@ public sealed partial class MainPage : ContentPage
             _body.Children.Clear();
             _body.Children.Add(_pageContent);
         }
-        _pageContent.IsEnabled = !_uncertain && _pendingId is null && snapshot.ExpiresAt > (_client?.UtcNow ?? DateTimeOffset.UtcNow);
+        UpdateActionAvailability();
+        if (_offerFailedDraft && _failedDraft is { } draft && snapshot.PluginId == draft.PluginId && snapshot.Page.Id == draft.PageId)
+        {
+            _offerFailedDraft = false;
+            ShowNotice(T("上次未完成的输入已保留，可恢复后继续编辑。", "Your unsuccessful submission was saved. Restore it to continue editing."));
+        }
     }
 
     private async Task ConfirmPendingAsync()
     {
-        if ((_pendingId is not null || _uncertain) && await DisplayAlertAsync(T("确认业务结果", "Confirm the outcome"),
+        if (_uncertain && await DisplayAlertAsync(T("确认业务结果", "Confirm the outcome"),
             T("请先在桌面检查操作是否已经生效。", "Check whether the operation already took effect on desktop."),
             T("已核对", "Checked"), T("取消", "Cancel")))
         {
@@ -306,52 +320,45 @@ public sealed partial class MainPage : ContentPage
         {
 
             _status.Text = "MOCK · " + JsonSerializer.Serialize(inputs);
-
+            if (_pendingId is not null) return;
+            _pendingId = Guid.NewGuid().ToString("N");
+            _outbox = new(new BridgeSend(_pendingId, "mock", "action", MobileJson.Element(new { })),
+                "mock", _snapshot!.PluginId, _snapshot.Page.Id, _snapshot.ExpiresAt, inputs);
+            _renderer?.ResetSubmittedInputs(inputs);
+            SetActionFeedback(T("待发送…", "Queued…"));
+            UpdateActionAvailability();
             return;
 
         }
 
+        if (_savingAction || _uncertain || _pendingId is not null || _awaitingSnapshot || _snapshot is null || _snapshot.ExpiresAt <= _client!.UtcNow)
+        { ShowNotice(T("请先刷新页面或确认之前的结果", "Refresh the page or check the previous result first")); return; }
+        var id = Guid.NewGuid().ToString("N");
+        var pending = new PendingAction(new BridgeSend(id, _desktopId!, "action",
+            MobileJson.Element(new BridgeInvoke(_snapshot.ViewId, actionId, inputs))),
+            _client.Registration!.Device.Id, _snapshot.PluginId, _snapshot.Page.Id, _snapshot.ExpiresAt, inputs);
+        _savingAction = true;
+        SetActionFeedback(T("正在保存…", "Saving…"));
+        UpdateActionAvailability();
         try
-
         {
-
-            if (_uncertain || _pendingId is not null || _awaitingSnapshot || !_connected || _snapshot is null || _snapshot.ExpiresAt <= _client!.UtcNow)
-
-                throw new InvalidOperationException(T("请先同步页面或确认之前的结果", "Sync the page or confirm the previous result first"));
-
-            _pendingId = Guid.NewGuid().ToString("N");
-
-            Preferences.Default.Set(_storageKey + ".pending", _pendingId);
-
-            _pageContent.IsEnabled = false;
-
-            _status.Text = T("正在提交…", "Submitting…");
-
-            await _client!.CallAsync<JsonElement>("send", new BridgeSend(_pendingId, _desktopId!, "action", MobileJson.Element(new BridgeInvoke(_snapshot.ViewId, actionId, inputs))));
-
-            _status.Text = T("平台已接收，等待电脑执行", "Accepted by platform; waiting for desktop");
-
+            // Persist the complete immutable command before acknowledging the tap or touching inputs.
+            await SecureStorage.Default.SetAsync(_storageKey + ".outbox", JsonSerializer.Serialize(pending, MobileJson.Options));
+            _outbox = pending; _pendingId = id;
+            _renderer?.ResetSubmittedInputs(inputs);
+            SetActionFeedback(T("待发送…", "Queued…"));
+            UpdateActionAvailability();
+            _ = FlushOutboxAsync(CancellationToken.None);
         }
-
-        catch (BridgeException exception)
-
-        {
-
-            ClearPending(); _status.Text = MobileFeedback.Failure(exception.Code, Chinese); ShowNotice(_status.Text ?? "");
-
-        }
-
-        catch (Exception)
-
-        {
-
-            _status.Text = T("结果待确认，正在查询；不会自动重做", "Result pending; checking status without repeating the action");
-
-        }
-
+        catch (Exception) { ShowNotice(T("无法保存操作，请重试", "Could not save the action. Please try again.")); }
+        finally { _savingAction = false; UpdateActionAvailability(); }
     }
 
-    private void ClearPending() { _pendingId = null; Preferences.Default.Remove(_storageKey + ".pending"); }
+    private void ClearPending()
+    {
+        _pendingId = null; _outbox = null;
+        if (!_preview) { Preferences.Default.Remove(_storageKey + ".pending"); SecureStorage.Default.Remove(_storageKey + ".outbox"); }
+    }
 
     private void Outcome(BridgeOutcome outcome)
 
@@ -361,6 +368,7 @@ public sealed partial class MainPage : ContentPage
 
         _status.Text = MobileFeedback.Outcome(outcome, Chinese);
 
+        SetActionFeedback(_status.Text ?? "");
         if (outcome.Status is "accepted" or "running") return;
 
         if (_lastOutcomeKey == outcome.RequestId + outcome.Status) return;
@@ -369,12 +377,20 @@ public sealed partial class MainPage : ContentPage
 
         _uncertain = outcome.Status is not ("succeeded" or "failed");
 
+        if (outcome.Status == "failed") RetainFailedDraft();
+        if (outcome.Status == "succeeded" && _outbox is { } completed && _failedDraft is { } failed &&
+            completed.PluginId == failed.PluginId && completed.PageId == failed.PageId)
+        {
+            _failedDraft = null; _offerFailedDraft = false;
+            if (_restoreDraft is not null) _restoreDraft.IsVisible = false;
+            if (!_preview) SecureStorage.Default.Remove(_storageKey + ".failed-draft");
+        }
         if (!_uncertain) ClearPending();
 
-        _pageContent.IsEnabled = false;
+        UpdateActionAvailability();
 
         if (_uncertain || outcome.Status == "failed") ShowNotice(_status.Text ?? "");
-        _resetInputsAfterAction = outcome.Status == "succeeded";
+
         if (!_uncertain && _deferredSnapshot is { } next)
         {
             _deferredSnapshot = null;
@@ -475,11 +491,12 @@ public sealed partial class MainPage : ContentPage
 
                         catch (BridgeException e) when (e.Code == "mobile_not_found")
 
-                        { _status.Text = T("平台未确认该请求，请在电脑核对后重新登录", "Request not confirmed. Check desktop state before signing in again."); }
+                        { if (_outbox is not null) await FlushOutboxAsync(token);
+                          else { _uncertain = true; ShowNotice(T("请在电脑核对之前的操作", "Check the previous action on desktop")); } }
 
                     }
 
-                    if (DateTimeOffset.UtcNow >= nextDevices)
+                    if (DateTimeOffset.UtcNow >= nextDevices || _snapshot is null && !_awaitingSnapshot && _pendingId is null && !_uncertain)
 
                     {
 
@@ -508,7 +525,7 @@ public sealed partial class MainPage : ContentPage
                         await RequestSnapshotAsync(selected.PluginId, selected.PageId);
                     delay = .5;
 
-                    _pageContent.IsEnabled = _connected && !_awaitingSnapshot && !_uncertain && _pendingId is null && _snapshot is not null && _snapshot.ExpiresAt > _client.UtcNow;
+                    UpdateActionAvailability();
 
                 }
 
@@ -523,7 +540,8 @@ public sealed partial class MainPage : ContentPage
 
                 {
 
-                    _connected = false; _pageContent.IsEnabled = false;
+                    _connected = false; UpdateActionAvailability();
+                    if (_pendingId is not null) SetActionFeedback(T("连接中断，操作已保存，正在重连…", "Connection lost. Action saved; reconnecting…"));
 
                     _status.Text = exception is BridgeException e ? e.Code : T("连接中断，正在重连", "Connection interrupted; reconnecting");
 
@@ -551,11 +569,12 @@ public sealed partial class MainPage : ContentPage
 
         try { if (_client is not null) await _client.CallAsync<JsonElement>("revoke"); } catch (Exception) { }
 
-        if (_storageKey.Length > 0) { SecureStorage.Default.Remove(_storageKey); Preferences.Default.Remove(_storageKey + ".pending"); }
+        if (_storageKey.Length > 0) { SecureStorage.Default.Remove(_storageKey); Preferences.Default.Remove(_storageKey + ".pending"); SecureStorage.Default.Remove(_storageKey + ".outbox"); }
 
         if (_authentication is not null) await _authentication.LogoutAsync();
-        _client = null; _snapshot = null; _renderer = null; _pendingId = null; _uncertain = false; _desktopId = null; _currentDesktop = null; _knownDesktops = [];
+        _client = null; _snapshot = null; _renderer = null; _pendingId = null; _outbox = null; _actionFeedback.IsVisible = false; _uncertain = false; _desktopId = null; _currentDesktop = null; _knownDesktops = [];
 
+        _failedDraft = null; if (_restoreDraft is not null) _restoreDraft.IsVisible = false;
         _status.Text = ""; _desktopStatus.Text = ""; _pageCache.Clear(); _deferredSnapshot = null; ShowSignIn();
 
     }
