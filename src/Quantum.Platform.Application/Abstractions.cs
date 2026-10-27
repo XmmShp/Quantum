@@ -128,6 +128,7 @@ public sealed class PluginStorageOptions
     public const string SectionName = "QuantumPlatform:Storage";
 
     public string BasePath { get; set; } = "Files";
+    public string Provider { get; set; } = "Physical";
     public long MaxArchiveBytes { get; set; } = 256L * 1024 * 1024;
     public long MaxExpandedBytes { get; set; } = 1024L * 1024 * 1024;
     public int MaxEntries { get; set; } = 5000;

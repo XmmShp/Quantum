@@ -57,7 +57,7 @@ public sealed partial class PhysicalPluginPackageStore : IPluginPackageStore
             throw new InvalidDataException("The plugin package SHA-256 does not match ExpectedSha256.");
         }
 
-        ValidateArchive(archiveBytes, pluginId, version);
+        ValidateArchive(archiveBytes, pluginId, version, options);
         var relativePath = $"{pluginId}/{version}.zip";
         var destinationPath = ResolvePath(relativePath);
         var destinationDirectory = Path.GetDirectoryName(destinationPath)!;
@@ -100,7 +100,7 @@ public sealed partial class PhysicalPluginPackageStore : IPluginPackageStore
         return Task.CompletedTask;
     }
 
-    private void ValidateArchive(byte[] archiveBytes, string pluginId, string version)
+    internal static void ValidateArchive(byte[] archiveBytes, string pluginId, string version, PluginStorageOptions options)
     {
         using var stream = new MemoryStream(archiveBytes, writable: false);
         using var archive = new ZipArchive(stream, ZipArchiveMode.Read, leaveOpen: false);
