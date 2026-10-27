@@ -54,6 +54,22 @@ public sealed class MobileBridgeMailboxTests
         Assert.Equal("✦", modern[0].GetProperty("icon").GetString());
     }
     [Fact]
+    public void CatalogImageIconsRequireExplicitOptInAndValidateThumbnails()
+    {
+        var desktop = Register("desktop"); var phone = Register("mobile");
+        var bytes = Convert.FromBase64String("iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==");
+        var image = MobileIconImage.Encode(bytes);
+        var page = new BridgePageInfo("plugin.notes", "notes", "Notes") { Icon = "X", IconImage = image };
+        Call(desktop, "catalog", new { pages = new[] { page } });
+        var old = Call(phone, "pages", new { desktopId = desktop.Device.Id, includeIcons = true });
+        Assert.Equal("X", old[0].GetProperty("icon").GetString());
+        Assert.False(old[0].TryGetProperty("iconImage", out _));
+        var modern = Call(phone, "pages", new { desktopId = desktop.Device.Id, includeIcons = true, includeIconImages = true });
+        Assert.Equal(image, modern[0].GetProperty("iconImage").GetString());
+        Assert.Throws<ArgumentException>(() => Call(desktop, "catalog", new { pages = new[] { page with { IconImage = "https://host/icon.ico" } } }));
+        Assert.Throws<ArgumentException>(() => Call(desktop, "catalog", new { pages = new[] { page with { IconImage = new string('x', 600000) } } }));
+    }
+    [Fact]
     public void SameAccountCanReadPagesWithoutAnyBindOrApprovalAndLegacyFlagsCannotBlockIt()
     {
         var desktop = Register("desktop"); var phone = Register("mobile");
