@@ -21,6 +21,9 @@
     <ProjectReference Include="..\..\src\Quantum.Platform.Domain\Quantum.Platform.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\..\src\Quantum.Platform\Services\S3ObjectStore.cs" Link="Host\S3ObjectStore.cs" />
+    <Compile Include="..\..\src\Quantum.Platform\Services\S3PluginPackageStore.cs" Link="Host\S3PluginPackageStore.cs" />
+    <Compile Include="..\..\src\Quantum.Platform\Services\S3MobileAttachmentStore.cs" Link="Host\S3MobileAttachmentStore.cs" />
     <Compile Include="..\..\src\Quantum.Platform\Services\PhysicalMobileAttachmentStore.cs" Link="Host\PhysicalMobileAttachmentStore.cs" />
     <Compile Include="..\..\src\Quantum.Platform\Services\ManagedAssemblyReview.cs" Link="Host\ManagedAssemblyReview.cs" />
     <Compile Include="..\..\src\Quantum.Platform\Services\AgentFnPluginReleaseAutomatedReviewer.cs" Link="Host\AgentFnPluginReleaseAutomatedReviewer.cs" />
@@ -37,6 +40,7 @@
              Link="Host\Services\PhysicalPluginPackageStore.cs" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" />
     <PackageReference Include="ICSharpCode.Decompiler" />
     <PackageReference Include="NOF.Infrastructure.EntityFrameworkCore" />
     <PackageReference Include="NOF.Hosting.AspNetCore" />

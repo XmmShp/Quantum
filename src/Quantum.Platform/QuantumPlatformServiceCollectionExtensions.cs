@@ -33,8 +33,31 @@ public static class QuantumPlatformServiceCollectionExtensions
                 "Non-development environments require enabled email, SmtpHost, a valid FromAddress, and a password when Username is set.")
             .ValidateOnStart();
         services.AddSingleton<IPlatformPasswordHasher, Pbkdf2PlatformPasswordHasher>();
-        services.AddSingleton<IPluginPackageStore, PhysicalPluginPackageStore>();
-        services.AddSingleton<IMobileAttachmentStore, PhysicalMobileAttachmentStore>();
+        if (string.Equals(configuration["QuantumPlatform:Storage:Provider"], "S3", StringComparison.OrdinalIgnoreCase))
+        {
+            services.Configure<S3StorageOptions>(configuration.GetSection("QuantumPlatform:Storage:S3"));
+            services.AddOptions<S3StorageOptions>()
+                .Bind(configuration.GetSection("QuantumPlatform:Storage:S3"))
+                .Validate(options => Uri.TryCreate(options.ServiceUrl, UriKind.Absolute, out var url)
+                    && url.Scheme == Uri.UriSchemeHttps && string.IsNullOrEmpty(url.UserInfo)
+                    && !string.IsNullOrWhiteSpace(options.BucketName)
+                    && !string.IsNullOrWhiteSpace(options.AccessKeyId)
+                    && !string.IsNullOrWhiteSpace(options.SecretAccessKey), "S3 configuration is incomplete.")
+                .ValidateOnStart();
+            services.AddSingleton<IQuantumObjectStore, S3ObjectStore>();
+            services.AddSingleton<IPluginPackageStore, S3PluginPackageStore>();
+            services.AddSingleton<IMobileAttachmentStore, S3MobileAttachmentStore>();
+            services.AddHostedService<S3AttachmentCleanup>();
+        }
+        else if (environment.IsDevelopment())
+        {
+            services.AddSingleton<IPluginPackageStore, PhysicalPluginPackageStore>();
+            services.AddSingleton<IMobileAttachmentStore, PhysicalMobileAttachmentStore>();
+        }
+        else
+        {
+            throw new InvalidOperationException("Production Quantum requires S3 storage.");
+        }
         services.AddSingleton<IEmailVerificationCodeGenerator, CryptographicEmailVerificationCodeGenerator>();
         services.AddSingleton<IRegistrationLock, PostgreSqlRegistrationLock>();
         if (environment.IsDevelopment())

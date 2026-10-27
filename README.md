@@ -26,7 +26,21 @@ tests/
 - 同源网页工作台提供账号注册、插件资料、版本上传和 Reviewer/Admin 审核流程。
 - 管理员审计查询与可配置的安全管理员引导。
 - PostgreSQL 持久化，使用 NOF `NOFDbContext`、Repository、Application Parts、Initialization Steps 与自动迁移。
-- ZIP 路径穿越、重复路径、体积/条目数、manifest、.NET/Web runtime 入口与 `database.migrations` SQL artifact 校验；文件通过同目录临时文件原子写入。
+- ZIP 路径穿越、重复路径、体积/条目数、manifest、.NET/Web runtime 入口与 `database.migrations` SQL artifact 校验；生产文件使用 S3 条件写入，禁止覆盖已有插件版本。
+
+## 生产文件存储
+
+生产环境要求 `QuantumPlatform:Storage:Provider=S3`，插件包和移动附件均保存在 S3，
+应用不挂载本地持久卷。开发环境可以使用本地 `Files`。
+
+`QuantumPlatform:Storage:S3` 配置包含 HTTPS `ServiceUrl`、`Region`、`BucketName`、
+独立的 `KeyPrefix`、`AccessKeyId`、`SecretAccessKey` 和 `ForcePathStyle`。
+凭据通过 Axiops Secret 注入，不写入镜像或仓库。
+
+插件相对路径保持 `<plugin-id>/<version>.zip`，上传使用 SHA-256、ZIP 安全验证与
+S3 `If-None-Match: *`，下载接口和数据库引用不依赖底层存储地址。
+移动附件的分块直接写入 S3，支持重试、乱序和跨实例恢复；完成时校验整体 SHA-256，
+原子发布完整对象并清理分块。完整附件与未完成分块保留24小时，由每小时清理任务处理。
 
 ## 本地开发
 
