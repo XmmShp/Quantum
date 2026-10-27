@@ -196,4 +196,4 @@ Quantum 在启动时统一配置 `JsonSerializerOptions.NOF`：枚举采用字�
 
 ## 导航图标
 
-官方插件使用 `ui.routes[].iconFile` 引用 `wwwroot/icons/plugin.ico`，保留 `icon` 文字作为旧宿主的回退。仅支持标准 ICO，包含 PNG 或 DIB 图层均可。发布包必须包含声明的 ICO，`scripts/verify-plugin-assets.py` 会检查文件是否随包发布。此 manifest 字段要求 Quantum 0.1.16 或更新版本。
+官方插件使用 `ui.routes[].iconFile` 引用 `wwwroot/icons/plugin.ico`，保留 `icon` 文字作为图像加载失败和旧移动客户端的回退。仅支持标准 ICO，包含 PNG 或 DIB 图层均可。发布包必须包含声明的 ICO，`scripts/verify-plugin-assets.py` 会检查文件是否随包发布。此 manifest 字段要求 Quantum 0.1.16 或更新版本。
