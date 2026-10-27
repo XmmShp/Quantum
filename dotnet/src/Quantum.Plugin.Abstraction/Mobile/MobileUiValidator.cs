@@ -7,7 +7,7 @@ public static partial class MobileUiValidator
 {
     private static readonly JsonSerializerOptions JsonOptions = new(JsonSerializerDefaults.Web);
     public const int MaximumPageBytes = 128 * 1024;
-    private static readonly HashSet<string> Types = ["VStack", "HStack", "Scroll", "Text", "TextField", "Toggle", "Button", "Divider", "Spacer", "Progress"];
+    private static readonly HashSet<string> Types = ["VStack", "HStack", "Scroll", "Text", "TextField", "Attachments", "Toggle", "Button", "Divider", "Spacer", "Progress"];
     [GeneratedRegex("^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$", RegexOptions.CultureInvariant)]
     private static partial Regex IdPattern();
     public static void Id(string value)
@@ -18,7 +18,7 @@ public static partial class MobileUiValidator
     {
         ArgumentNullException.ThrowIfNull(page);
         Id(page.Id);
-        if (page.SchemaVersion != 1 || string.IsNullOrWhiteSpace(page.Title) || page.Title.Length > 200)
+        if (page.SchemaVersion is not (1 or 2) || string.IsNullOrWhiteSpace(page.Title) || page.Title.Length > 200)
             throw new ArgumentException("Unsupported mobile page or title.");
         var nodes = new Dictionary<string, MobileNode>(StringComparer.Ordinal);
         Visit(page.Root, 1);
@@ -34,7 +34,7 @@ public static partial class MobileUiValidator
             foreach (var field in action.Constants.Keys.Concat(action.Inputs.Keys)) Id(field);
             foreach (var (field, source) in action.Inputs)
             {
-                if (action.Constants.ContainsKey(field) || !nodes.TryGetValue(source, out var input) || input.Type is not ("TextField" or "Toggle"))
+                if (action.Constants.ContainsKey(field) || !nodes.TryGetValue(source, out var input) || input.Type is not ("TextField" or "Attachments" or "Toggle"))
                     throw new ArgumentException("Invalid or overlapping input mapping.");
             }
         }
@@ -46,6 +46,7 @@ public static partial class MobileUiValidator
         {
             if (node is null || depth > 16 || nodes.Count >= 500) throw new ArgumentException("Mobile tree limit exceeded.");
             Id(node.Id);
+            if (node.Type == "Attachments" && page.SchemaVersion < 2) throw new ArgumentException("Attachments require mobile schema 2.");
             if (!Types.Contains(node.Type) || !nodes.TryAdd(node.Id, node) || node.Children is null ||
                 node.Text?.Length > 2000 || node.Placeholder?.Length > 2000 || node.MaxLength is < 1 or > 2000 ||
                 node.Style is not ("body" or "title" or "caption" or "error")) throw new ArgumentException("Invalid mobile node.");

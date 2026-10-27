@@ -1,3 +1,5 @@
+/** User-selected bytes: four files, 8 MiB each, 16 MiB total per action. */
+export interface MobileAttachment { readonly name: string; readonly contentType: string; readonly dataBase64: string; }
 export interface MobileNode {
   readonly type: string;
   readonly id: string;
@@ -15,7 +17,7 @@ export interface MobileRpcAction {
   readonly inputs: Readonly<Record<string, string>>;
 }
 export interface MobilePage {
-  readonly schemaVersion: 1;
+  readonly schemaVersion: 1 | 2;
   readonly id: string;
   readonly title: string;
   readonly root: MobileNode;
@@ -48,13 +50,16 @@ class ActionBuilder implements MobileRpcAction {
   input(field: string, nodeId: string): ActionBuilder { return new ActionBuilder(this.rpcName, this.constants, { ...this.inputs, [field]: nodeId }); }
 }
 
+const containsAttachments = (node: MobileNode): boolean => node.type === "Attachments" || (node.children ?? []).some(containsAttachments);
+
 export const Mobile = Object.freeze({
-  page: (id: string, title: string, root: MobileNode): MobilePage => ({ schemaVersion: 1, id, title, root }),
+  page: (id: string, title: string, root: MobileNode): MobilePage => ({ schemaVersion: containsAttachments(root) ? 2 : 1, id, title, root }),
   vStack: (id: string, ...children: MobileNode[]) => new NodeBuilder({ type: "VStack", id, children }),
   hStack: (id: string, ...children: MobileNode[]) => new NodeBuilder({ type: "HStack", id, children }),
   scroll: (id: string, child: MobileNode) => new NodeBuilder({ type: "Scroll", id, children: [child] }),
   text: (id: string, text: string) => new NodeBuilder({ type: "Text", id, text }),
   textField: (id: string) => new NodeBuilder({ type: "TextField", id }),
+  attachments: (id: string) => new NodeBuilder({ type: "Attachments", id }),
   toggle: (id: string, text: string) => new NodeBuilder({ type: "Toggle", id, text }),
   button: (id: string, text: string) => new NodeBuilder({ type: "Button", id, text }),
   divider: (id: string) => new NodeBuilder({ type: "Divider", id }),
@@ -68,11 +73,11 @@ export function validateMobilePage(page: MobilePage): void {
     if (Object.keys(value).some(key => !fields.includes(key))) throw new TypeError("Unknown mobile declaration field.");
   };
   const validId = (value: unknown) => typeof value === "string" && /^[A-Za-z0-9][A-Za-z0-9_.-]{0,127}$/.test(value);
-  if (!page || page.schemaVersion !== 1 || !validId(page.id) || typeof page.title !== "string" || !page.title.trim() || page.title.length > 200)
+  if (!page || ![1, 2].includes(page.schemaVersion) || !validId(page.id) || typeof page.title !== "string" || !page.title.trim() || page.title.length > 200)
     throw new TypeError("Invalid mobile page.");
   onlyFields(page, ["schemaVersion", "id", "title", "root"]);
   const nodes = new Map<string, MobileNode>();
-  const types = ["VStack", "HStack", "Scroll", "Text", "TextField", "Toggle", "Button", "Divider", "Spacer", "Progress"];
+  const types = ["VStack", "HStack", "Scroll", "Text", "TextField", "Attachments", "Toggle", "Button", "Divider", "Spacer", "Progress"];
   const visit = (node: MobileNode, depth: number) => {
     if (!node || depth > 16 || nodes.size >= 500 || !validId(node.id) || nodes.has(node.id) || !types.includes(node.type)) throw new TypeError("Invalid mobile tree.");
     onlyFields(node, ["type", "id", "text", "placeholder", "style", "maxLength", "enabled", "action", "children"]);
@@ -84,6 +89,7 @@ export function validateMobilePage(page: MobilePage): void {
     const children = node.children ?? [];
     if (!Array.isArray(children) || (node.type === "Scroll" && children.length !== 1) ||
         (!["VStack", "HStack", "Scroll"].includes(node.type) && children.length !== 0)) throw new TypeError("Invalid mobile children.");
+    if (node.type === "Attachments" && page.schemaVersion < 2) throw new TypeError("Attachments require mobile schema 2.");
     nodes.set(node.id, node);
     children.forEach(child => visit(child, depth + 1));
   };
@@ -98,7 +104,7 @@ export function validateMobilePage(page: MobilePage): void {
     const fields = [...Object.keys(action.constants), ...Object.keys(action.inputs)];
     if (fields.length > 32 || !fields.every(validId)) throw new TypeError("Invalid mobile action fields.");
     for (const [field, source] of Object.entries(action.inputs)) {
-      if (Object.hasOwn(action.constants, field) || !["TextField", "Toggle"].includes(nodes.get(source)?.type ?? ""))
+      if (Object.hasOwn(action.constants, field) || !["TextField", "Attachments", "Toggle"].includes(nodes.get(source)?.type ?? ""))
         throw new TypeError("Invalid mobile input binding.");
     }
   }

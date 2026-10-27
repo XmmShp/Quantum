@@ -26,7 +26,7 @@ test('version-one fixture and .NET nullable defaults use the same declaration co
   assert.equal(page.root.children[3].action.inputs.pinned, 'pinned');
   const dotnetDefaults = { type: 'Text', id: 'text', text: null, placeholder: null, style: 'body', maxLength: 500, enabled: true, action: null, children: [] };
   validateMobilePage(Mobile.page('p', 'Page', dotnetDefaults));
-  assert.throws(() => validateMobilePage({ ...page, schemaVersion: 2 }));
+  assert.throws(() => validateMobilePage({ ...page, schemaVersion: 99 }));
   assert.throws(() => validateMobilePage(Mobile.page('p', 'Page', { ...dotnetDefaults, enabled: 'false' })));
 });
 
@@ -35,4 +35,11 @@ test('plugin declarations reject internal transport fields', () => {
   for (const property of [{ actionId: 'host-assigned' }, { inputIds: [] }, { deviceSecret: 'private' }]) {
     assert.throws(() => validateMobilePage(Mobile.page('p', 'Page', { ...Mobile.button('save', 'Save'), ...property })));
   }
+});
+
+test('attachments use version two and share the .NET input binding contract', () => {
+  const page = Mobile.page('chat', 'Chat', Mobile.vStack('root', Mobile.attachments('files'), Mobile.button('send', 'Send').onClick(Mobile.rpc('plugin.chat.send').input('attachments', 'files'))));
+  assert.equal(page.schemaVersion, 2);
+  validateMobilePage(page);
+  assert.throws(() => validateMobilePage({ ...page, schemaVersion: 1 }));
 });

@@ -530,7 +530,7 @@ export interface QuantumRpcInvoker {
 }
 
 export { Mobile, validateMobilePage } from "./mobile.js";
-export type { MobileNode, MobilePage, MobileRpcAction, QuantumMobilePages } from "./mobile.js";
+export type { MobileAttachment, MobileNode, MobilePage, MobileRpcAction, QuantumMobilePages } from "./mobile.js";
 import type { QuantumMobilePages } from "./mobile.js";
 
 export interface QuantumPluginContext {

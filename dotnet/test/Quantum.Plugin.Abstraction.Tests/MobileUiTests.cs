@@ -9,6 +9,15 @@ public sealed class MobileUiTests
 {
     private static readonly JsonSerializerOptions Options = new(JsonSerializerDefaults.Web) { UnmappedMemberHandling = JsonUnmappedMemberHandling.Disallow };
     [Fact]
+    public void AttachmentsRequireVersionTwoAndBindAsAnInput()
+    {
+        var page = MobileUi.Page("chat", "Chat", MobileUi.VStack("root", MobileUi.Attachments("files"),
+            MobileUi.Button("send", "Send").OnClick(MobileUi.Rpc("plugin.chat.send").Input("attachments", "files"))));
+        Assert.Equal(2, page.SchemaVersion);
+        Assert.Equal("Attachments", MobileUiValidator.Validate(page)["files"].Type);
+        Assert.Throws<ArgumentException>(() => MobileUiValidator.Validate(page with { SchemaVersion = 1 }));
+    }
+    [Fact]
     public void SharedVersionOneFixtureRoundTripsWithoutChangingBindings()
     {
         using var json = System.Text.Json.JsonDocument.Parse(File.ReadAllText(Path.Combine(AppContext.BaseDirectory, "mobile-page-v1.json")));
@@ -18,7 +27,7 @@ public sealed class MobileUiTests
         Assert.Equal("pinned", nodes["save"].Action!.Inputs["pinned"]);
         var restored = JsonSerializer.Deserialize<MobilePage>(JsonSerializer.Serialize(page, Options), Options)!;
         Assert.Equal(nodes.Count, MobileUiValidator.Validate(restored).Count);
-        Assert.Throws<ArgumentException>(() => MobileUiValidator.Validate(page with { SchemaVersion = 2 }));
+        Assert.Throws<ArgumentException>(() => MobileUiValidator.Validate(page with { SchemaVersion = 99 }));
     }
 
     [Fact]

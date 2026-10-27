@@ -68,3 +68,7 @@ TS 的 publish/remove 是实际 iframe→Host capability，不是仅类型声明
 首版覆盖页面发布/替换/移除、固定控件树、不透明动作 ID、声明式参数绑定、设备授权、消息租约与 Ack、请求去重、结果查询及插件运行代失效。平台传输由桌面和手机负责；插件不能选择远程 RPC 名称或读取设备凭据。
 
 本版本尚不包含按会话异步页面 provider、自动刷新推送、动态语言重建、完整显示能力协商和 iOS 实机验收。页面使用显式刷新。断线恢复可能返回 unknown，不保证 exactly-once，也不自动重做结果未知的业务操作。新增控件或变更 schema 需要同时升级校验器与移动 Renderer。协议版本不支持时应拒绝页面，不能忽略必要控件后继续调用动作。
+
+## Attachments (schema 2)
+
+`Mobile.Attachments(id)` / `Mobile.attachments(id)` declares a native file, image and voice picker. A page containing it uses schema version 2; existing pages remain schema 1. Bind its value with the same RPC input mapping used for text fields. The receiving RPC property is an array of `MobileAttachment` (`name`, `contentType`, `dataBase64`), limited to four files, 8 MiB per file and 16 MiB total. Inputs are user-selected bytes, never arbitrary desktop paths. The host transfers files separately from queued commands and only materializes bytes after validating the owning page, device and action. Web declarations use the existing mobile publish bridge and the same validation rules. Requires an updated host and mobile client supporting schema 2.
