@@ -86,6 +86,27 @@ public sealed class MobileBridgeMailboxTests
         var status = restored.Exchange(new("status", phone.Device.Id, phone.Secret, MobileJson.Element(new { requestId = "action" })), Now);
         Assert.Equal("succeeded", status.GetProperty("status").GetString());
     }
+
+    [Fact]
+    public void LiveSnapshotsCoalesceWhileBusinessDeduplicationRemainsIntact()
+    {
+        var desktop = Register("desktop"); var phone = Register("mobile"); PublishCatalog(desktop, phone);
+        var original = Publish(desktop, phone);
+        var action = new BridgeSend("retained-action", desktop.Device.Id, "action", MobileJson.Element(new BridgeInvoke("view", "fixed", [])));
+        Call(phone, "send", action);
+        for (var i = 0; i < 2100; i++)
+        {
+            var snapshot = original with { ViewId = "view-" + i };
+            Call(desktop, "send", new BridgeSend("frame-" + i, phone.Device.Id, "snapshot", MobileJson.Element(snapshot)));
+        }
+        var latest = Assert.Single(MobileJson.Read<BridgeMessage[]>(Call(phone, "poll")));
+        Assert.Equal("view-2099", MobileJson.Read<BridgeSnapshot>(latest.Body).ViewId);
+        Call(phone, "ack", new BridgeAck(latest.Id, latest.Lease!));
+        Assert.Empty(MobileJson.Read<BridgeMessage[]>(Call(phone, "poll")));
+        Call(phone, "send", action);
+        Assert.Single(_mailbox.Messages, m => m.Message.Id == action.Id);
+        Assert.Throws<BridgeException>(() => Call(phone, "send", action with { Body = MobileJson.Element(new BridgeInvoke("view", "changed", [])) }));
+    }
     [Fact]
     public void ExpiredUnstartedActionsBecomeKnownFailuresInsteadOfWaitingForever()
     {
