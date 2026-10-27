@@ -82,6 +82,7 @@ public sealed partial class MainPage
     private void RenderAccountMenu()
     {
         _titleBar.IsVisible = !_isSignIn && (_authentication?.IsAuthenticated == true || _preview);
+        _viewport.IsRefreshEnabled = _titleBar.IsVisible;
         var user = _authentication?.User;
         var name = _preview ? "Quantum Preview" : !string.IsNullOrWhiteSpace(user?.Username) ? user.Username : user?.Email ?? "Quantum";
         _avatarInitial.Text = StringInfo.GetNextTextElement(name).ToUpperInvariant();

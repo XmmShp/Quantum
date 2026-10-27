@@ -23,12 +23,6 @@ public sealed partial class MainPage
             Children =
             {
                 language,
-                Button(T("连接状态", "Connection status"), async () =>
-                {
-                    await Navigation.PopAsync();
-                    _syncPanel.IsVisible = true;
-                }),
-                Button(T("刷新插件列表", "Refresh plugin list"), RefreshNavigationAsync),
                 Button(T("退出登录", "Sign out"), async () =>
                 {
                     await Navigation.PopAsync();

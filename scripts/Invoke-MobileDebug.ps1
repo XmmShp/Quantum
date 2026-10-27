@@ -1,7 +1,7 @@
 param(
     [ValidateRange(1024,65535)][int]$Port=9224,
     [ValidateSet('GET','POST')][string]$Method='GET',
-    [ValidatePattern('^/[a-z/]+$')][string]$Path='/state',
+    [ValidatePattern('^/[a-z/-]+$')][string]$Path='/state',
     [string]$Json='{}'
 )
 $ErrorActionPreference='Stop'

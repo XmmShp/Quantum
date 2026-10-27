@@ -85,7 +85,7 @@ public sealed class MobileDebugServer : IAsyncDisposable
             if (length > MaximumBodyBytes) throw new MobileDebugException(413, "debug_body_too_large");
             var path = request[1];
             var get = path is "/state" or "/devices" or "/pages";
-            var post = path is "/desktop/select" or "/page/open" or "/page/refresh" or "/input" or "/press" or "/preview" or "/preview/close" or "/preview/update" or "/settings/open" or "/settings/close" or "/menu/open" or "/menu/close" or "/navigation/open" or "/navigation/close" or "/navigation/select";
+            var post = path is "/desktop/select" or "/page/open" or "/page/refresh" or "/page/pull-refresh" or "/input" or "/press" or "/preview" or "/preview/close" or "/preview/update" or "/settings/open" or "/settings/close" or "/menu/open" or "/menu/close" or "/navigation/open" or "/navigation/close" or "/navigation/select";
             if (!get && !post) throw new MobileDebugException(404, "debug_route_not_found");
             if (get && request[0] != "GET" || post && request[0] != "POST") throw new MobileDebugException(405, "debug_method_not_allowed");
             if (get && length != 0) throw BadRequest();

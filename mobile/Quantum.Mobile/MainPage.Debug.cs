@@ -51,6 +51,14 @@ public sealed partial class MainPage
     private async Task<object> ExecuteDebugAsync(string path, JsonElement body)
     {
         if (path == "/state") return DebugState();
+        if (path == "/page/pull-refresh")
+        {
+            if (!_titleBar.IsVisible) throw new MobileDebugException(401, "debug_sign_in_required");
+            if (_menuExpanded || _navigationExpanded || _settingsPage is not null && ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), _settingsPage))
+                throw new MobileDebugException(409, "debug_action_unavailable");
+            await RefreshFromPullAsync();
+            return DebugState();
+        }
         if (path is "/menu/open" or "/menu/close")
         {
             if (!_titleBar.IsVisible) throw new MobileDebugException(401, "debug_sign_in_required");
@@ -176,7 +184,8 @@ public sealed partial class MainPage
     private object DebugState() => new
     {
         authenticated = _authentication?.IsAuthenticated == true,
-        connected = _connected, preview = _preview, persistentHeader = !_isSignIn && _signInHeader.Parent is not null, syncPanelVisible = _syncPanel.IsVisible,
+        connected = _connected, preview = _preview, persistentHeader = !_isSignIn && _signInHeader.Parent is not null, syncPanelVisible = _notice.IsVisible,
+        refresh = new { enabled = _viewport.IsRefreshEnabled, active = _viewport.IsRefreshing, count = _refreshCount },
         settingsVisible = _settingsPage is not null && ReferenceEquals(Navigation.NavigationStack.LastOrDefault(), _settingsPage),
         titleBar = new { visible = _titleBar.IsVisible, height = _titleBar.HeightRequest, avatar = _avatarInitial.AutomationId, title = _pageTitle.Text },
         menu = new { expanded = _menuExpanded, visible = _menuOverlay.IsVisible, settingsPinnedToBottom = Grid.GetRow(_menuSettings) == 1, desktopId = _desktopId },

@@ -43,6 +43,7 @@ $state.value.page.tree  # 节点 ID、类型、文字、有效启用状态、当
 | `POST /desktop/select` | `{desktopId}`：选择同账号的在线电脑，无需审批 |
 | `GET /pages` | 当前电脑共享的页面列表 |
 | `POST /page/open` | `{pluginId,pageId,discardDraft?}`：打开实际共享页面 |
+| `POST /page/pull-refresh` | 执行原生下拉刷新绑定，等待新页面显示后结束；不丢弃草稿、不重做业务操作 |
 | `POST /page/refresh` | `{viewId,discardDraft?}`：刷新当前真实页面 |
 | `POST /input` | `{viewId,nodeId,value}`：填写字符串或布尔输入 |
 | `POST /press` | `{viewId,nodeId}`：触发当前页面按钮 |

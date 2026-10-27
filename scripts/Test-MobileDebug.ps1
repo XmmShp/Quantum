@@ -40,9 +40,15 @@ try{
     $title=$live.value.page.tree.children | Where-Object id -eq 'title'
     if($content.value -ne 'HTTP debug test 中文' -or !$pinned.value -or !$live.value.page.dirty -or $title.text -ne 'Live update received'){throw 'A live snapshot replaced draft inputs or failed to update native content.'}
     $view=$live.value.page.viewId
+    $refreshed=Call '/page/pull-refresh' @{}
+    $content=$refreshed.value.page.tree.children | Where-Object id -eq 'content'
+    if($refreshed.value.refresh.active -or !$refreshed.value.refresh.enabled -or $refreshed.value.refresh.count -ne ($live.value.refresh.count+1) -or $refreshed.value.syncPanelVisible){throw 'Pull refresh did not complete and retract without a persistent status panel.'}
+    if($content.value -ne 'HTTP debug test 中文' -or !$refreshed.value.page.dirty -or $refreshed.value.page.viewId -eq $view){throw 'Pull refresh lost the draft or did not render a fresh snapshot.'}
+    $view=$refreshed.value.page.viewId
     if(!$live.value.titleBar.visible -or $live.value.titleBar.height -gt 44 -or $live.value.titleBar.avatar -ne 'mobile-account-avatar'){throw 'Thin avatar title bar is missing.'}
     $menu=Call '/menu/open' @{}
     if(!$menu.value.menu.expanded -or !$menu.value.menu.visible -or !$menu.value.menu.settingsPinnedToBottom){throw 'Left account menu or pinned Settings is missing.'}
+    Reject '/page/pull-refresh' @{} 409
     Reject '/press' @{viewId=$view;nodeId='save'} 409
     $settings=Call '/settings/open' @{}
     if(!$settings.value.settingsVisible -or $settings.value.menu.expanded){throw 'Settings did not replace the account menu with a separate page.'}
@@ -63,7 +69,7 @@ try{
     Reject '/press' @{viewId=$view;nodeId='save'} 409
     $json=(Call '/state' $null)|ConvertTo-Json -Depth 24
     if($json.Contains($token) -or $json -match 'accessToken|refreshToken|deviceSecret|password'){throw 'Credential material appeared in the debug state.'}
-    [ordered]@{passed=$true;mode='isolated native Mock';thinAvatarTitleBar=$true;leftAccountMenu=$true;settingsPinnedAtBottom=$true;readPageTree=$true;nativeTextAndToggleBinding=$true;liveUpdatePreservesDraft=$true;unobstructedViewport=$true;separateSettingsRetainsDraft=$true;nativeButtonCallback=$true;staleViewRejected=$true;wrongTypeAndLengthRejected=$true;unknownButtonRejected=$true;dirtyDraftProtected=$true;bottomNavigationSheet=$true;pluginSwitchCreatesFreshView=$true;credentialsExposed=$false;keyboardOrMouseUsed=$false}|ConvertTo-Json
+    [ordered]@{passed=$true;mode='isolated native Mock';pullRefreshCompletesAndRetracts=$true;pullRefreshPreservesDraft=$true;thinAvatarTitleBar=$true;leftAccountMenu=$true;settingsPinnedAtBottom=$true;readPageTree=$true;nativeTextAndToggleBinding=$true;liveUpdatePreservesDraft=$true;unobstructedViewport=$true;separateSettingsRetainsDraft=$true;nativeButtonCallback=$true;staleViewRejected=$true;wrongTypeAndLengthRejected=$true;unknownButtonRejected=$true;dirtyDraftProtected=$true;bottomNavigationSheet=$true;pluginSwitchCreatesFreshView=$true;credentialsExposed=$false;keyboardOrMouseUsed=$false}|ConvertTo-Json
 }finally{
     if($process -and !$process.HasExited){Stop-Process -Id $process.Id}
     foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$previous[$name])}

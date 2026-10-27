@@ -11,7 +11,7 @@ public sealed partial class MainPage
         _openRequestId = null;
         _status.IsVisible = true;
         _desktopStatus.IsVisible = true;
-        _syncPanel.IsVisible = false;
+        _notice.IsVisible = false;
         await RefreshDesktopChoicesAsync();
         var remembered = Preferences.Default.Get(_storageKey + ".desktop", (string?)null);
         var selected = MobileDesktopSelection.Choose(_knownDesktops, remembered, _client!.UtcNow, Preferences.Default.Get(_storageKey + ".desktop-name", ""));
@@ -49,8 +49,8 @@ public sealed partial class MainPage
                 _desktopId = device.Id; _currentDesktop = device;
                 _body.Children.Clear();
                 _body.Children.Add(new Label { Text = T("上次操作的结果待确认", "Previous outcome needs checking"), FontSize = 24, TextColor = MobileTheme.Ink });
-                _body.Children.Add(MobileTheme.Caption(T("请在电脑核对操作结果，再从下拉状态区解除待确认状态。", "Check the outcome on desktop, then clear the pending state in the pull-down status panel.")));
-                RenderAccountMenu(); _syncPanel.IsVisible = true;
+                _body.Children.Add(MobileTheme.Caption(T("请在电脑核对操作结果，再解除待确认状态。", "Check the outcome on desktop, then clear the pending state.")));
+                RenderAccountMenu(); ShowNotice(T("请先在电脑核对上次操作的结果。", "Check the previous operation's outcome on desktop first."));
             }
             return;
         }

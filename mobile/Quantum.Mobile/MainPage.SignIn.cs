@@ -85,6 +85,8 @@ public sealed partial class MainPage
     {
         ResetNavigation();
         _isSignIn = true;
+        _viewport.IsRefreshEnabled = false;
+        _refreshCompletion?.TrySetCanceled();
         _titleBar.IsVisible = false; _menuOverlay.IsVisible = false; _menuExpanded = false;
         _desktopChoices.IsVisible = false;
         _language.IsEnabled = true;
@@ -93,7 +95,7 @@ public sealed partial class MainPage
         var email = _email.Text ?? Preferences.Default.Get("quantum.mobile.email", "");
         var password = _password.Text;
         _body.Children.Clear();
-        _syncPanel.IsVisible = false;
+        _notice.IsVisible = false;
         _body.Children.Add(_signInHeader);
         _body.Children.Add(new Label { Text = T("连接你的 Quantum", "Connect your Quantum"), FontSize = 28, FontAttributes = FontAttributes.Bold, TextColor = MobileTheme.Ink, Margin = new Thickness(0, 12, 0, 0) });
         _body.Children.Add(new Label { Text = T("让电脑上的插件随身可用。数据和业务仍留在你的电脑上。", "Take your desktop plugins with you. Your data and business operations stay on your computer."), TextColor = MobileTheme.Muted, FontSize = 15, LineHeight = 1.35, Margin = new Thickness(0, 0, 0, 12) });

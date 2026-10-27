@@ -33,7 +33,7 @@ public sealed partial class MainPage : ContentPage
 
     private readonly VerticalStackLayout _pageContent = new() { Spacing = 16 };
 
-    private readonly VerticalStackLayout _syncPanel = new() { Spacing = 8, IsVisible = false };
+    private readonly VerticalStackLayout _notice = new() { Spacing = 8, IsVisible = false };
     private readonly RefreshView _viewport = new();
     private readonly Dictionary<string, BridgeSnapshot> _pageCache = new();
     private View _signInHeader = null!;
@@ -89,15 +89,17 @@ public sealed partial class MainPage : ContentPage
         };
         _status.TextColor = MobileTheme.Muted;
         _desktopStatus.TextColor = MobileTheme.Muted;
-        _syncPanel.Children.Add(_desktopStatus);
-        _syncPanel.Children.Add(_status);
-        _syncPanel.Children.Add(Button(T("收起", "Close"), () => { _syncPanel.IsVisible = false; return Task.CompletedTask; }));
-        _syncPanel.Children.Add(Button(T("核对桌面后清除待确认状态", "Clear pending state after checking desktop"), ConfirmPendingAsync));
-        root.Children.Add(_syncPanel);
+        _notice.Children.Add(_noticeText);
+        _reviewPending = Button(T("核对桌面后清除待确认状态", "Clear pending state after checking desktop"), ConfirmPendingAsync);
+        _dismissNotice = Button(T("关闭提示", "Dismiss"), () => { _notice.IsVisible = false; return Task.CompletedTask; });
+        _notice.Children.Add(_reviewPending);
+        _notice.Children.Add(_dismissNotice);
+        root.Children.Add(_notice);
         root.Children.Add(_body);
         _signInHeader = CreateHeader();
         _viewport.Content = new ScrollView { Content = root };
-        _viewport.Refreshing += (_, _) => { _syncPanel.IsVisible = !_isSignIn; _viewport.IsRefreshing = false; };
+        _viewport.RefreshColor = MobileTheme.Accent;
+        _viewport.Refreshing += async (_, _) => await RefreshFromPullAsync();
         var shell = new Grid { RowDefinitions = { new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Star), new RowDefinition(GridLength.Auto) } };
         shell.Add(_viewport, 0, 1);
 
@@ -247,12 +249,13 @@ public sealed partial class MainPage : ContentPage
     {
         if (_snapshot?.ViewId == snapshot.ViewId) return;
         if (!_preview && snapshot.RequestId != _openRequestId) return;
-        if (_snapshot is not null && snapshot.ExpiresAt < _snapshot.ExpiresAt) return;
+        if (_snapshot is not null && snapshot.RequestId == _snapshot.RequestId && snapshot.ExpiresAt < _snapshot.ExpiresAt) return;
         if (_pendingId is not null) { _deferredSnapshot = snapshot; return; }
         if (_awaitingSnapshot) _subscriptionRenewAt = DateTimeOffset.UtcNow.AddMinutes(2);
         _awaitingSnapshot = false;
         RenderSnapshot(snapshot, !_resetInputsAfterAction);
         _resetInputsAfterAction = false;
+        _refreshCompletion?.TrySetResult();
     }
 
     private BridgeSnapshot? _deferredSnapshot;
@@ -289,7 +292,7 @@ public sealed partial class MainPage : ContentPage
             T("请先在桌面检查操作是否已经生效。", "Check whether the operation already took effect on desktop."),
             T("已核对", "Checked"), T("取消", "Cancel")))
         {
-            ClearPending(); _uncertain = false;
+            ClearPending(); _uncertain = false; _notice.IsVisible = false;
             if (_snapshot is { } snapshot) await RequestSnapshotAsync(snapshot.PluginId, snapshot.Page.Id);
         }
     }
@@ -334,7 +337,7 @@ public sealed partial class MainPage : ContentPage
 
         {
 
-            ClearPending(); _status.Text = MobileFeedback.Failure(exception.Code, Chinese); _syncPanel.IsVisible = true;
+            ClearPending(); _status.Text = MobileFeedback.Failure(exception.Code, Chinese); ShowNotice(_status.Text ?? "");
 
         }
 
@@ -370,7 +373,7 @@ public sealed partial class MainPage : ContentPage
 
         _pageContent.IsEnabled = false;
 
-        if (_uncertain || outcome.Status == "failed") _syncPanel.IsVisible = true;
+        if (_uncertain || outcome.Status == "failed") ShowNotice(_status.Text ?? "");
         _resetInputsAfterAction = outcome.Status == "succeeded";
         if (!_uncertain && _deferredSnapshot is { } next)
         {
@@ -384,7 +387,7 @@ public sealed partial class MainPage : ContentPage
 
     }
 
-    public void Suspend() { _polling?.Cancel(); _connected = false; _pageContent.IsEnabled = false; }
+    public void Suspend() { _refreshCompletion?.TrySetCanceled(); _polling?.Cancel(); _connected = false; _pageContent.IsEnabled = false; }
 
     public void Resume()
 
@@ -451,7 +454,8 @@ public sealed partial class MainPage : ContentPage
                             if (error.RequestId == _openRequestId)
                             {
                                 _status.Text = MobileFeedback.Failure(error.Code, Chinese);
-                                _syncPanel.IsVisible = true;
+                                ShowNotice(_status.Text ?? "");
+                                _refreshCompletion?.TrySetException(new BridgeException(error.Code, _status.Text ?? "Page unavailable."));
                             }
 
                         }
