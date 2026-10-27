@@ -49,6 +49,7 @@ public sealed class PersistentLoginHttpTests
         builder.Services.AddSingleton<IDbContext>(DispatchProxy.Create<IDbContext, SaveOnlyContext>());
         builder.Services.AddSingleton<IPlatformPasswordHasher>(password);
         builder.Services.AddSingleton<IRegistrationLock, Gate>();
+        builder.Services.AddSingleton<IMobileAttachmentStore, MemoryAttachments>();
         builder.Services.AddSingleton<IOptions<PlatformJwtOptions>>(Options.Create(jwt));
         builder.Services.AddSingleton<IRefreshTokenCodec, RefreshTokenCodec>();
         builder.Services.AddSingleton<IPlatformTokenIssuer, JwtPlatformTokenIssuer>();
@@ -59,9 +60,12 @@ public sealed class PersistentLoginHttpTests
             options.MapInboundClaims = false;
             options.TokenValidationParameters = new()
             {
-                ValidIssuer = jwt.Issuer, ValidAudience = jwt.Audience,
+                ValidIssuer = jwt.Issuer,
+                ValidAudience = jwt.Audience,
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwt.SigningKey)),
-                ValidateIssuerSigningKey = true, ValidateIssuer = true, ValidateAudience = true,
+                ValidateIssuerSigningKey = true,
+                ValidateIssuer = true,
+                ValidateAudience = true,
                 LifetimeValidator = (notBefore, expires, _, _) => notBefore <= clock.GetUtcNow().UtcDateTime && expires > clock.GetUtcNow().UtcDateTime
             };
         });
@@ -87,6 +91,26 @@ public sealed class PersistentLoginHttpTests
         foreign.Registration = await foreign.CallAsync<BridgeRegistration>("register", new { name = "foreign-phone", kind = "mobile" });
         Assert.DoesNotContain(await foreign.CallAsync<BridgeDevice[]>("devices"), d => d.Id == desktop.Registration.Device.Id);
         Assert.Equal("mobile_not_found", (await Assert.ThrowsAsync<BridgeException>(() => foreign.CallAsync<BridgePageInfo[]>("pages", new { desktopId = desktop.Registration.Device.Id }))).Code);
+        // The same authenticated NOF HTTP route carries bounded chunks; queued commands contain references only.
+        await desktop.CallAsync<JsonElement>("catalog", new { pages = new[] { new BridgePageInfo("plugin.chat", "chat", "Chat") } });
+        var page = new MobilePage("chat", "Chat", new MobileNode("VStack", "root") { Children = [new("Attachments", "files"), new("Button", "send") { Text = "Send", ActionId = "media-action", InputIds = ["files"] }] }) { SchemaVersion = 2 };
+        var view = new BridgeSnapshot("media-view", desktop.Registration.Device.SessionId, "plugin.chat", "runtime", clock.GetUtcNow().AddMinutes(5), page);
+        await desktop.CallAsync<JsonElement>("send", new BridgeSend("frame", bridge.Registration.Device.Id, "snapshot", MobileJson.Element(view)));
+        var bytes = System.Security.Cryptography.RandomNumberGenerator.GetBytes(MobileAttachments.ChunkBytes + 7);
+        var file = new BridgeAttachment(Guid.NewGuid().ToString("N"), "selected.bin", "application/octet-stream", bytes.Length, Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(bytes)));
+        var create = new { desktopId = desktop.Registration.Device.Id, viewId = view.ViewId, inputId = "files", attachment = file };
+        await bridge.CallAsync<JsonElement>("attachment/create", create);
+        for (var offset = 0; offset < bytes.Length; offset += MobileAttachments.ChunkBytes)
+        {
+            var chunk = bytes.Skip(offset).Take(MobileAttachments.ChunkBytes).ToArray();
+            await bridge.CallAsync<JsonElement>("attachment/write", new { attachmentId = file.Id, offset, dataBase64 = Convert.ToBase64String(chunk) });
+        }
+        await bridge.CallAsync<JsonElement>("attachment/complete", new { attachmentId = file.Id });
+        Assert.True((await bridge.CallAsync<JsonElement>("attachment/create", create)).GetProperty("ready").GetBoolean());
+        var downloaded = await desktop.CallAsync<JsonElement>("attachment/read", new { attachmentId = file.Id, offset = MobileAttachments.ChunkBytes });
+        Assert.Equal(bytes[MobileAttachments.ChunkBytes..], Convert.FromBase64String(downloaded.GetProperty("dataBase64").GetString()!));
+        Assert.Equal("mobile_not_found", (await Assert.ThrowsAsync<BridgeException>(() => foreign.CallAsync<JsonElement>("attachment/read", new { attachmentId = file.Id, offset = 0 }))).Code);
+        await bridge.CallAsync<JsonElement>("send", new BridgeSend("media-command", desktop.Registration.Device.Id, "action", MobileJson.Element(new BridgeInvoke(view.ViewId, "media-action", new() { ["files"] = MobileJson.Element(new[] { file }) }))));
         clock.Advance(TimeSpan.FromMinutes(61));
         await bridge.CallAsync<JsonElement>("heartbeat");
         Assert.NotEqual(accessBefore, authentication.AccessToken);
@@ -105,6 +129,25 @@ public sealed class PersistentLoginHttpTests
         Assert.False(result.RootElement.GetProperty("result").GetProperty("isSuccess").GetBoolean());
         Assert.Equal("authentication_required", result.RootElement.GetProperty("result").GetProperty("errorCode").GetString());
         await app.StopAsync();
+    }
+
+    private sealed class MemoryAttachments : IMobileAttachmentStore
+    {
+        private readonly Dictionary<string, byte[]> _files = [];
+        public Task WriteAsync(string account, BridgeAttachment file, long offset, byte[] data, CancellationToken token)
+        {
+            var key = account + file.Id;
+            if (!_files.TryGetValue(key, out var bytes)) _files[key] = bytes = new byte[(int)file.Size];
+            data.CopyTo(bytes, (int)offset);
+            return Task.CompletedTask;
+        }
+        public Task CompleteAsync(string account, BridgeAttachment file, CancellationToken token)
+        {
+            Assert.Equal(file.Sha256, Convert.ToHexStringLower(System.Security.Cryptography.SHA256.HashData(_files[account + file.Id])));
+            return Task.CompletedTask;
+        }
+        public Task<byte[]> ReadAsync(string account, BridgeAttachment file, long offset, CancellationToken token)
+            => Task.FromResult(_files[account + file.Id].Skip((int)offset).Take(MobileAttachments.ChunkBytes).ToArray());
     }
 
     private sealed class Clock : TimeProvider

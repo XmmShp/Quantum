@@ -1,7 +1,6 @@
 using Quantum.Mobile.Internal;
 using Quantum.Platform.Application;
 using System.Text.Json;
-using Xunit;
 using MobileUi = Quantum.Mobile.Internal.Mobile;
 
 namespace Quantum.Platform.Tests;
@@ -178,6 +177,39 @@ public sealed class MobileBridgeMailboxTests
         Assert.Equal(2, _mailbox.Devices.Count);
         Call(restored, "heartbeat", now: Now.AddHours(23));
         Call(restored, "heartbeat", now: Now.AddHours(25));
+    }
+
+    [Fact]
+    public void AttachmentsAreBoundToTheirViewInputAndDeviceAndMustBeCompleteBeforeSend()
+    {
+        var desktop = Register("desktop"); var phone = Register("mobile"); var other = Register("mobile");
+        PublishCatalog(desktop, phone);
+        var page = MobileUi.Page("notes", "Notes", MobileUi.VStack("root", new MobileNode("Attachments", "files"),
+            new MobileNode("Button", "save") { Text = "Save", ActionId = "fixed", InputIds = ["files"] })) with
+        { SchemaVersion = 2 };
+        var snapshot = new BridgeSnapshot("media-view", desktop.Device.SessionId, "plugin.notes", "runtime", Now.AddMinutes(5), page);
+        Call(desktop, "send", new BridgeSend("media-snapshot", phone.Device.Id, "snapshot", MobileJson.Element(snapshot)));
+        var file = new BridgeAttachment(Guid.NewGuid().ToString("N"), "photo.png", "image/png", 4, new string('a', 64));
+        var create = new { desktopId = desktop.Device.Id, viewId = snapshot.ViewId, inputId = "files", attachment = file };
+        Assert.False(Call(phone, "attachment/create", create).GetProperty("ready").GetBoolean());
+        Assert.Single(_mailbox.Attachments);
+        Call(phone, "attachment/create", create);
+        Assert.Single(_mailbox.Attachments);
+        Assert.Throws<BridgeException>(() => Call(other, "attachment/create", create));
+        Assert.Throws<BridgeException>(() => Call(other, "attachment/write", new { attachmentId = file.Id }));
+        Assert.Throws<BridgeException>(() => Call(desktop, "attachment/read", new { attachmentId = file.Id }));
+        var action = new BridgeSend("media-action", desktop.Device.Id, "action", MobileJson.Element(new BridgeInvoke(snapshot.ViewId, "fixed", new() { ["files"] = MobileJson.Element(new[] { file }) })));
+        Assert.Equal("mobile_attachment_invalid", Assert.Throws<BridgeException>(() => Call(phone, "send", action)).Code);
+        _mailbox.Attachments.Single().Ready = true;
+        Assert.True(Call(phone, "attachment/create", create).GetProperty("ready").GetBoolean());
+        Call(phone, "send", action);
+        Assert.Equal(file, MobileJson.Read<BridgeAttachment>(Call(desktop, "attachment/read", new { attachmentId = file.Id })));
+        var refreshed = snapshot with { ViewId = "new-media-view" };
+        Call(desktop, "send", new BridgeSend("refreshed-media", phone.Device.Id, "snapshot", MobileJson.Element(refreshed)));
+        Assert.True(Call(phone, "attachment/create", new { desktopId = desktop.Device.Id, viewId = refreshed.ViewId, inputId = "files", attachment = file }).GetProperty("ready").GetBoolean());
+        Call(phone, "send", action with { Id = "resubmitted", Body = MobileJson.Element(new BridgeInvoke(refreshed.ViewId, "fixed", new() { ["files"] = MobileJson.Element(new[] { file }) })) });
+        var tampered = action with { Id = "tampered", Body = MobileJson.Element(new BridgeInvoke(snapshot.ViewId, "fixed", new() { ["files"] = MobileJson.Element(new[] { file with { Name = "other.png" } }) })) };
+        Assert.Throws<BridgeException>(() => Call(phone, "send", tampered));
     }
 
 }

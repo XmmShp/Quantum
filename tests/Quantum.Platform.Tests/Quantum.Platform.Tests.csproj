@@ -21,6 +21,7 @@
     <ProjectReference Include="..\..\src\Quantum.Platform.Domain\Quantum.Platform.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="..\..\src\Quantum.Platform\Services\PhysicalMobileAttachmentStore.cs" Link="Host\PhysicalMobileAttachmentStore.cs" />
     <Compile Include="..\..\src\Quantum.Platform\Services\ManagedAssemblyReview.cs" Link="Host\ManagedAssemblyReview.cs" />
     <Compile Include="..\..\src\Quantum.Platform\Services\AgentFnPluginReleaseAutomatedReviewer.cs" Link="Host\AgentFnPluginReleaseAutomatedReviewer.cs" />
     <Compile Include="..\..\src\Quantum.Platform\Services\AgentFnAutomatedReviewOptions.cs" Link="Host\AgentFnAutomatedReviewOptions.cs" />

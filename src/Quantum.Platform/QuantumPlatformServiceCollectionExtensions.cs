@@ -34,6 +34,7 @@ public static class QuantumPlatformServiceCollectionExtensions
             .ValidateOnStart();
         services.AddSingleton<IPlatformPasswordHasher, Pbkdf2PlatformPasswordHasher>();
         services.AddSingleton<IPluginPackageStore, PhysicalPluginPackageStore>();
+        services.AddSingleton<IMobileAttachmentStore, PhysicalMobileAttachmentStore>();
         services.AddSingleton<IEmailVerificationCodeGenerator, CryptographicEmailVerificationCodeGenerator>();
         services.AddSingleton<IRegistrationLock, PostgreSqlRegistrationLock>();
         if (environment.IsDevelopment())
