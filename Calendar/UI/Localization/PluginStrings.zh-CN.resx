@@ -87,4 +87,5 @@
   <data name="The task date is the displayed desktop date; its due time is 12:00. Refresh the data if the date has changed." xml:space="preserve"><value>待办使用上方电脑日期，截止时间为 12:00；跨日后请先更新数据。</value></data>
   <data name="Today's items" xml:space="preserve"><value>今日事项与未完成待办</value></data>
   <data name="Unable to load data. Reconnecting automatically." xml:space="preserve"><value>暂时无法加载数据，正在自动重连。</value></data>
+  <data name="Done" xml:space="preserve"><value>完成</value></data>
 </root>

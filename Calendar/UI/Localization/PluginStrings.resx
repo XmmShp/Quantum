@@ -87,4 +87,5 @@
   <data name="The task date is the displayed desktop date; its due time is 12:00. Refresh the data if the date has changed." xml:space="preserve"><value>The task date is the displayed desktop date; its due time is 12:00. Refresh the data if the date has changed.</value></data>
   <data name="Today's items" xml:space="preserve"><value>Today's items</value></data>
   <data name="Unable to load data. Reconnecting automatically." xml:space="preserve"><value>Unable to load data. Reconnecting automatically.</value></data>
+  <data name="Done" xml:space="preserve"><value>Done</value></data>
 </root>

@@ -40,7 +40,7 @@ public sealed class MobilePagesTests
             Assert.DoesNotContain("refresh", MobileUiValidator.Validate(fixture.Pages.Pages["ledger"]).Keys);
             await Until(() => fixture.Pages.Node("ledger", "expense").Text!.Contains("12.50"));
             Assert.Contains("12.50", fixture.Pages.Node("ledger", "expense").Text);
-            Assert.Contains("支出", fixture.Pages.Node("ledger", "expense").Text);
+            Assert.Contains("支出", fixture.Pages.Node("ledger", "expense-label").Text);
             await fixture.Host.UseServices(OfficialPlugins.Ledger.LedgerPlugin.StopAsync);
             Assert.Empty(fixture.Pages.Pages);
         }

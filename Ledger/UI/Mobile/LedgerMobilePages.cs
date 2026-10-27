@@ -41,40 +41,46 @@ public sealed class LedgerMobilePages : ILedgerMobilePages
         }, Context.Empty, cancellationToken);
         var nodes = new List<MobileNode>
         {
-            Ui.Text("title", L("Ledger")).Appearance("title"),
-            Ui.Text("month", today.ToString("yyyy-MM", CultureInfo.InvariantCulture) + " · CNY"),
+            Ui.Text("month", today.ToString("yyyy-MM", CultureInfo.InvariantCulture) + " · CNY").Appearance("caption")
         };
         if (summary.IsSuccess && entries.IsSuccess)
         {
             var totals = summary.Value!;
-            nodes.Add(Ui.Text("income", L("Income") + ": " + totals.Income.ToString("F2", CultureInfo.InvariantCulture)));
-            nodes.Add(Ui.Text("expense", L("Expense") + ": " + totals.Expense.ToString("F2", CultureInfo.InvariantCulture)));
-            nodes.Add(Ui.Text("balance", L("Balance") + ": " + totals.Balance.ToString("F2", CultureInfo.InvariantCulture)));
-            nodes.Add(Ui.Text("recent-title", L("Recent entries")).Appearance("title"));
+            nodes.Add(Ui.HStack("totals",
+                Ui.VStack("income-card", Ui.Text("income-label", L("Income")).Appearance("caption"), Ui.Text("income", totals.Income.ToString("F2", CultureInfo.InvariantCulture)).Appearance("title")),
+                Ui.VStack("expense-card", Ui.Text("expense-label", L("Expense")).Appearance("caption"), Ui.Text("expense", totals.Expense.ToString("F2", CultureInfo.InvariantCulture)).Appearance("title")),
+                Ui.VStack("balance-card", Ui.Text("balance-label", L("Balance")).Appearance("caption"), Ui.Text("balance", totals.Balance.ToString("F2", CultureInfo.InvariantCulture)).Appearance("title"))));
+            var recent = new List<MobileNode> { Ui.Text("recent-title", L("Recent entries")).Appearance("title") };
             if (entries.Value!.Length == 0)
             {
-                nodes.Add(Ui.Text("empty", L("No items to display.")));
+                recent.Add(Ui.Text("empty", L("No items to display.")).Appearance("caption"));
             }
             foreach (var entry in entries.Value!.Take(15))
             {
-                nodes.Add(Ui.Text("entry-" + entry.Id.ToString("N"),
-                    $"{entry.Date:MM-dd} · {L(entry.Kind == EntryKind.Income ? "Income" : "Expense")} · {entry.Amount.ToString("F2", CultureInfo.InvariantCulture)} · {entry.Category}"));
+                var id = entry.Id.ToString("N");
+                recent.Add(Ui.HStack("entry-row-" + id,
+                    Ui.VStack("entry-detail-" + id, Ui.Text("entry-" + id, entry.Category), Ui.Text("entry-date-" + id, entry.Date.ToString("MM-dd", CultureInfo.InvariantCulture)).Appearance("caption")),
+                    Ui.Text("entry-amount-" + id, (entry.Kind == EntryKind.Income ? "+" : "−") + entry.Amount.ToString("F2", CultureInfo.InvariantCulture)).Appearance("title")));
+                recent.Add(Ui.Divider("entry-line-" + id));
             }
+            if (recent.Last().Type == "Divider")
+            {
+                recent.RemoveAt(recent.Count - 1);
+            }
+            nodes.Add(Ui.VStack("recent", recent.ToArray()));
         }
         else
         {
             nodes.Add(Ui.Text("load-error", L("Unable to load data. Reconnecting automatically.")).Appearance("error"));
         }
-        nodes.AddRange([
-            Ui.Divider("form-divider"), Ui.Text("form-title", L("Quick entry")).Appearance("title"),
-            Ui.TextField("amount").Hint(L("Amount, for example 12.50")).Limit(16),
-            Ui.TextField("category").Hint(L("Category")).Limit(40),
+        nodes.Insert(Math.Min(2, nodes.Count), Ui.VStack("entry-form",
+            Ui.Text("form-title", L("Quick entry")).Appearance("title"),
+            Ui.HStack("entry-fields", Ui.TextField("amount").Hint(L("Amount, for example 12.50")).Limit(16), Ui.TextField("category").Hint(L("Category")).Limit(40)),
             Ui.TextField("note").Hint(L("Notes")).Limit(1000),
-            Ui.Toggle("income-toggle", L("Record as income")),
-            Ui.Text("date-help", L("Saved for today's desktop local date. Unchecked means expense.")).Appearance("caption"),
-            Ui.Button("create", L("Save entry")).OnClick(Ui.Rpc("quantum.plugin.ledger.ledger.mobile-create")
-                .Input("amountText", "amount").Input("category", "category").Input("note", "note").Input("isIncome", "income-toggle"))
-        ]);
+            Ui.HStack("entry-submit", Ui.Toggle("income-toggle", L("Income")),
+                Ui.Button("create", L("Save entry")).OnClick(Ui.Rpc("quantum.plugin.ledger.ledger.mobile-create")
+                    .Input("amountText", "amount").Input("category", "category").Input("note", "note").Input("isIncome", "income-toggle"))),
+            Ui.Text("date-help", L("Saved for today's desktop local date. Unchecked means expense.")).Appearance("caption")));
         _pages.Publish(Ui.Page("ledger", L("Ledger"), Ui.Scroll("scroll", Ui.VStack("root", nodes.ToArray()))));
     }
 

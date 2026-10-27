@@ -63,4 +63,8 @@
   <data name="Thread" xml:space="preserve"><value>Thread</value></data>
   <data name="Unable to load data. Reconnecting automatically." xml:space="preserve"><value>Unable to load data. Reconnecting automatically.</value></data>
   <data name="Showing the latest 10 messages, with long messages shortened. Open the desktop for full history." xml:space="preserve"><value>Showing the latest 10 messages, with long messages shortened. Open the desktop for full history.</value></data>
+  <data name="Recent messages" xml:space="preserve"><value>Recent messages</value></data>
+  <data name="Continue conversation" xml:space="preserve"><value>Continue conversation</value></data>
+  <data name="No items to display." xml:space="preserve"><value>No items to display.</value></data>
+  <data name="Using the current desktop conversation." xml:space="preserve"><value>Using the current desktop conversation.</value></data>
 </root>

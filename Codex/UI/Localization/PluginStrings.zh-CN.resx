@@ -63,4 +63,8 @@
   <data name="Thread" xml:space="preserve"><value>会话</value></data>
   <data name="Unable to load data. Reconnecting automatically." xml:space="preserve"><value>暂时无法加载数据，正在自动重连。</value></data>
   <data name="Showing the latest 10 messages, with long messages shortened. Open the desktop for full history." xml:space="preserve"><value>仅展示最近 10 条消息，较长内容会截断，完整历史请在电脑查看。</value></data>
+  <data name="Recent messages" xml:space="preserve"><value>最近消息</value></data>
+  <data name="Continue conversation" xml:space="preserve"><value>继续对话</value></data>
+  <data name="No items to display." xml:space="preserve"><value>暂无消息</value></data>
+  <data name="Using the current desktop conversation." xml:space="preserve"><value>与电脑当前会话同步</value></data>
 </root>
