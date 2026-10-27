@@ -75,3 +75,5 @@ a svg, button svg { fill: none; height: 18px; pointer-events: none; stroke: curr
 }
 @media (max-width: 360px) { .drawer-toolbar { gap: 8px; grid-template-columns: minmax(0, 1fr) minmax(0, 110px) auto; padding: 12px; } .drawer-connect { padding: 20px; } .drawer-composer { gap: 8px; padding: 12px; } }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+.message-attachment { display: block; font-size: 12px; opacity: .75; overflow-wrap: anywhere; margin-top: 4px; }

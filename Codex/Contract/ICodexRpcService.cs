@@ -33,7 +33,7 @@ public interface ICodexRpcService : IRpcService
     [RpcInvocationName("change-model")]
     Result<CodexIntegrationSnapshot> ChangeModel(CodexChangeModelRequest request);
 
-    [Description("Send a prompt to the current thread and start a model turn. Poll snapshot for progress and results. Rejected while the current turn is still running.")]
+    [Description("Send text, selected images/files or recorded voice to the current thread. Voice is recognized through speech.transcribe before the recognized text starts a turn in the existing conversation. Poll snapshot for progress and errors. Rejected while a turn is running.")]
     [RpcInvocationName("send")]
     Result<CodexIntegrationSnapshot> Send(CodexSendRequest request);
 

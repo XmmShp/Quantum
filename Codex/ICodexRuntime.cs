@@ -26,5 +26,8 @@ public interface ICodexRuntime : ICodexRuntimeEvents
 
     Task SendAsync(string prompt, CancellationToken cancellationToken = default);
 
+    Task SendAsync(CodexSendRequest request, CancellationToken cancellationToken = default)
+        => request.Attachments.Length == 0 ? SendAsync(request.Prompt, cancellationToken) : throw new NotSupportedException("Attachments are unavailable.");
+
     Task DisconnectAsync(CancellationToken cancellationToken = default);
 }

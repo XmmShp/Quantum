@@ -52,7 +52,7 @@ internal sealed class OfficialRpcHarness : IAsyncDisposable
         {
         });
         var service = Assert.Single(result.GetProperty("value").GetProperty("services").EnumerateArray(),
-            item => item.GetProperty("pluginId").GetString() == pluginId);
+            item => item.GetProperty("pluginId").GetString() == pluginId && item.GetProperty("serviceName").GetString() == serviceName);
         Assert.Equal(serviceName, service.GetProperty("serviceName").GetString());
         var methods = service.GetProperty("methods").EnumerateArray().ToArray();
         Assert.Equal(expectedMethods.Order(StringComparer.Ordinal), methods.Select(method =>

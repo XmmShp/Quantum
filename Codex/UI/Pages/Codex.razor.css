@@ -91,3 +91,5 @@ button svg, .identity-mark svg { fill: none; height: 18px; pointer-events: none;
     .connect-card { gap: 16px; padding: 20px; }
 }
 @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+
+.message-attachment { display: block; font-size: 12px; opacity: .75; overflow-wrap: anywhere; margin-top: 4px; }

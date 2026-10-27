@@ -35,6 +35,10 @@ public sealed class CodexMobilePages : ICodexMobilePages
             var snapshot = result.Value!;
             nodes.Add(Ui.HStack("connection", Ui.Text("state", L(snapshot.ConnectionState.ToString())).Appearance("caption"), Ui.Text("model", snapshot.SelectedModel ?? "—").Appearance("caption")));
             nodes.Add(Ui.Text("thread", L("Using the current desktop conversation.")).Appearance("caption"));
+            if (!string.IsNullOrWhiteSpace(snapshot.ErrorMessage))
+            {
+                nodes.Add(Ui.Text("runtime-error", L(snapshot.ErrorMessage)).Appearance("error"));
+            }
             if (snapshot.IsBusy)
             {
                 nodes.Add(Ui.HStack("working", Ui.Progress("busy"), Ui.Text("busy-help", L("A turn is running. Progress updates automatically.")).Appearance("caption")));
@@ -43,6 +47,16 @@ public sealed class CodexMobilePages : ICodexMobilePages
             foreach (var (message, index) in snapshot.Messages.TakeLast(10).Select((message, index) => (message, index)))
             {
                 var text = message.Text.Length > 1600 ? message.Text[..1600] + "…" : message.Text;
+                if (message.IsTranscribing)
+                {
+                    text += "\n" + L("Transcribing voice…");
+                }
+
+                if (message.Attachments.Length > 0)
+                {
+                    text += "\n" + string.Join(" · ", message.Attachments.Select(f => "📎 " + f.Name));
+                }
+
                 history.Add(Ui.VStack("chat-row-" + index,
                     Ui.HStack("chat-meta-" + index, Ui.Text("role-" + index, L(message.Role.ToString())).Appearance("caption"), Ui.Text("time-" + index, message.CreatedAt.ToLocalTime().ToString("HH:mm", CultureInfo.InvariantCulture)).Appearance("caption")),
                     Ui.Text("message-" + index, text)));
@@ -57,12 +71,15 @@ public sealed class CodexMobilePages : ICodexMobilePages
                 history.RemoveAt(history.Count - 1);
             }
             nodes.Add(Ui.VStack("history", history.ToArray()));
-            if (snapshot.ConnectionState == CodexConnectionState.Connected && !snapshot.IsBusy)
+            if (snapshot.ConnectionState == CodexConnectionState.Connected)
             {
+                var send = Ui.Button("send", L("Send")).OnClick(Ui.Rpc("quantum.plugin.codex.codex.send").Input("prompt", "prompt").Input("attachments", "attachments").Constant("speechLanguage", CultureInfo.CurrentUICulture.Name));
+                send.Enabled = !snapshot.IsBusy;
                 nodes.Add(Ui.VStack("compose",
                     Ui.Text("compose-title", L("Continue conversation")).Appearance("title"),
+                    Ui.Attachments("attachments"),
                     Ui.HStack("compose-row", Ui.TextField("prompt").Hint(L("Message")).Limit(2000),
-                        Ui.Button("send", L("Send")).OnClick(Ui.Rpc("quantum.plugin.codex.codex.send").Input("prompt", "prompt"))),
+                        send),
                     Ui.Text("send-warning", L("Sending starts a model turn and may consume usage or run Quantum tools on the desktop.")).Appearance("caption")));
             }
             else if (snapshot.ConnectionState != CodexConnectionState.Connected)

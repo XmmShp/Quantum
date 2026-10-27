@@ -87,13 +87,89 @@ public sealed class CodexConversationTests
         Assert.Equal("Continue", payload.GetProperty("input")[0].GetProperty("text").GetString());
     }
 
-    private sealed class CatalogInvoker : IRpcInvoker
+    [Fact]
+    public async Task VoiceUsesTheSpeechCapabilityAndKeepsTheExistingConversation()
     {
-        public Task<Result<T>> InvokeAsync<T>(string rpcName, object payload, Context context, CancellationToken cancellationToken = default)
-            => Task.FromResult<Result<T>>((T)(object)JsonSerializer.SerializeToElement(new
+        var main = new FakeClient();
+        var transcription = new TaskCompletionSource<string>(TaskCreationOptions.RunContinuationsAsynchronously);
+        var invoker = new CatalogInvoker(transcription.Task);
+        await using var service = new CodexRuntime(invoker, NullLoggerFactory.Instance,
+            NullLogger<CodexRuntime>.Instance, clientFactory: () => main);
+        await service.ConnectAsync(Path.GetTempPath(), CodexRuntime.DefaultModel);
+        var threadId = service.Snapshot.ThreadId;
+        var sending = service.SendAsync(new CodexSendRequest
+        {
+            Prompt = "",
+            Attachments = [new MobileAttachment { Name = "voice.wav", ContentType = "audio/wav", DataBase64 = Convert.ToBase64String(new byte[] { 1, 2, 3 }) }]
+        });
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(5));
+        while (!service.Snapshot.IsBusy)
+        {
+            await Task.Delay(10, timeout.Token);
+        }
+
+        Assert.True(service.Snapshot.Messages.Last().IsTranscribing);
+        Assert.Empty(main.Turns);
+        transcription.SetResult("Recognized speech");
+        await sending.WaitAsync(timeout.Token);
+        Assert.Equal(threadId, main.Turns.Single().ThreadId);
+        Assert.Equal("Recognized speech", service.Snapshot.Messages.Last().Text);
+        Assert.Equal("voice.wav", service.Snapshot.Messages.Last().Attachments.Single().Name);
+        Assert.False(service.Snapshot.Messages.Last().IsTranscribing);
+        Assert.Equal(1, main.ThreadStarts);
+        Assert.Equal(1, invoker.SpeechCalls);
+    }
+
+    [Fact]
+    public void MediaTurnUsesImageAndFileInputsWithoutChangingTheConversation()
+    {
+        var files = new[]
+        {
+            new CodexAttachmentFile { Name = "image.png", ContentType = "image/png", Path = "/selected/image.png", Size = 1 },
+            new CodexAttachmentFile { Name = "document.pdf", ContentType = "application/pdf", Path = "/selected/document.pdf", Size = 1 }
+        };
+        var payload = JsonSerializer.SerializeToElement(CodexAppServerClient.CreateMediaTurnParameters("existing", "Compare", "model", files));
+        Assert.Equal("existing", payload.GetProperty("threadId").GetString());
+        Assert.Equal("localImage", payload.GetProperty("input")[1].GetProperty("type").GetString());
+        Assert.Equal("mention", payload.GetProperty("input")[2].GetProperty("type").GetString());
+        Assert.Equal("/selected/document.pdf", payload.GetProperty("input")[2].GetProperty("path").GetString());
+    }
+
+    [Theory]
+    [InlineData("../outside.txt", "AQ==")]
+    [InlineData("file.txt", "not base64")]
+    public async Task AttachmentValidationFailsBeforeAnyModelTurn(string name, string encoded)
+    {
+        var client = new FakeClient();
+        await using var service = Service(client);
+        await service.ConnectAsync(Path.GetTempPath(), CodexRuntime.DefaultModel);
+        await Assert.ThrowsAsync<NOF.Domain.DomainException>(() => service.SendAsync(new CodexSendRequest
+        {
+            Prompt = "",
+            Attachments = [new MobileAttachment { Name = name, ContentType = "text/plain", DataBase64 = encoded }]
+        }));
+        Assert.Empty(client.Turns);
+        Assert.False(service.Snapshot.IsBusy);
+    }
+
+    private sealed class CatalogInvoker(Task<string>? transcript = null) : IRpcInvoker
+    {
+        public int SpeechCalls
+        {
+            get; private set;
+        }
+        public async Task<Result<T>> InvokeAsync<T>(string rpcName, object payload, Context context, CancellationToken cancellationToken = default)
+        {
+            if (rpcName == "speech.transcribe")
+            {
+                SpeechCalls++;
+                return (T)(object)await (transcript ?? Task.FromResult("Recognized speech")).WaitAsync(cancellationToken);
+            }
+            return (T)(object)JsonSerializer.SerializeToElement(new
             {
                 services = new[] { new { methods = new[] { new { qualifiedName = "quantum.plugin.calendar.calendar.list", description = "Read calendar", returnsValue = true, inputSchema = new { type = "object" } } } } }
-            }));
+            });
+        }
         public Task<Result> InvokeAsync(string rpcName, object payload, Context context, CancellationToken cancellationToken = default)
             => throw new NotSupportedException();
     }
@@ -103,6 +179,12 @@ public sealed class CodexConversationTests
         public event Func<string, JsonElement, Task>? NotificationReceived;
         public event Action<Exception?>? ConnectionClosed { add { } remove { } }
         public event Func<CodexDynamicToolCall, CancellationToken, Task<CodexDynamicToolResult>>? DynamicToolCallReceived { add { } remove { } }
+        public TaskCompletionSource<string>? Transcript
+        {
+            get; init;
+        }
+        public Task<JsonElement> StartMediaTurnAsync(string threadId, string prompt, string model, CodexAttachmentFile[] files, CancellationToken token)
+            => StartTurnAsync(threadId, prompt, model, token);
         public int ThreadStarts
         {
             get; private set;

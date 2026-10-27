@@ -67,4 +67,23 @@
   <data name="Continue conversation" xml:space="preserve"><value>Continue conversation</value></data>
   <data name="No items to display." xml:space="preserve"><value>No items to display.</value></data>
   <data name="Using the current desktop conversation." xml:space="preserve"><value>Using the current desktop conversation.</value></data>
+  <data name="Attach" xml:space="preserve"><value>Attach</value></data>
+  <data name="Stop recording" xml:space="preserve"><value>Stop recording</value></data>
+  <data name="Record voice" xml:space="preserve"><value>Record voice</value></data>
+  <data name="Recording…" xml:space="preserve"><value>Recording…</value></data>
+  <data name="Remove attachment" xml:space="preserve"><value>Remove attachment</value></data>
+  <data name="Could not add attachment. Use up to four files, 8 MiB each and 16 MiB total." xml:space="preserve"><value>Could not add attachment. Use up to four files, 8 MiB each and 16 MiB total.</value></data>
+  <data name="Recording unavailable. Check microphone permission." xml:space="preserve"><value>Recording unavailable. Check microphone permission.</value></data>
+<data name="Transcribing voice…" xml:space="preserve"><value>Transcribing voice…</value></data>
+<data name="Voice transcription or attachment processing failed. Check the selected model and try again." xml:space="preserve"><value>Voice transcription or attachment processing failed. Check the selected model and try again.</value></data>
+<data name="A prompt or attachment is required." xml:space="preserve"><value>A prompt or attachment is required.</value></data>
+<data name="Invalid attachment metadata or size." xml:space="preserve"><value>Invalid attachment metadata or size.</value></data>
+<data name="Invalid attachment encoding." xml:space="preserve"><value>Invalid attachment encoding.</value></data>
+<data name="Attachments exceed the size limit." xml:space="preserve"><value>Attachments exceed the size limit.</value></data>
+<data name="Use PNG, JPEG, GIF or WebP images." xml:space="preserve"><value>Use PNG, JPEG, GIF or WebP images.</value></data>
+<data name="Install a speech.transcribe provider for this desktop platform." xml:space="preserve"><value>Install a speech.transcribe provider for this desktop platform.</value></data>
+<data name="The requested speech language is not installed on this desktop." xml:space="preserve"><value>The requested speech language is not installed on this desktop.</value></data>
+<data name="Speech recognition failed." xml:space="preserve"><value>Speech recognition failed.</value></data>
+<data name="No speech was recognized. Try recording again." xml:space="preserve"><value>No speech was recognized. Try recording again.</value></data>
+<data name="Use the voice recorder or select a PCM WAV recording." xml:space="preserve"><value>Use the voice recorder or select a PCM WAV recording.</value></data>
 </root>

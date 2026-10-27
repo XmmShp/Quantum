@@ -58,14 +58,15 @@
 .quantum-ledger th { background: white; border-bottom: 1px solid var(--ld-line); color: var(--ld-muted); font-size: 11px; font-weight: 400; padding: 10px 8px; position: sticky; top: 0; z-index: 1; }
 .quantum-ledger th:first-child { width: 72px; }
 .quantum-ledger th:nth-child(3) { text-align: right; width: 150px; }
-.quantum-ledger th:last-child { width: 100px; }
+.quantum-ledger th:last-child { width: 148px; }
+.quantum-ledger td:last-child { min-width: 148px; padding-left: 12px; }
 .quantum-ledger td { border-bottom: 1px solid #eeeaf3; padding: 14px 8px; vertical-align: top; }
 .quantum-ledger tbody tr:last-child td { border-bottom: 0; }
 .quantum-ledger td strong { font-weight: 500; overflow-wrap: anywhere; }
 .quantum-ledger td small { color: var(--ld-muted); display: block; font-size: 11px; line-height: 1.6; margin-top: 3px; }
 .ledger-note { overflow-wrap: anywhere; white-space: pre-wrap; }
 .ledger-amount { font-variant-numeric: tabular-nums; font-weight: 500; text-align: right; overflow-wrap: anywhere; }
-.ledger-row-actions { display: flex; gap: 2px; justify-content: flex-end; }
+.ledger-row-actions { display: flex; flex-wrap: nowrap; gap: 4px; justify-content: flex-end; min-width: 124px; }
 .ledger-row-actions svg { height: 16px; width: 16px; }
 .quantum-ledger .ledger-delete:hover { background: #f8e9ed; color: #aa425b; }
 .quantum-ledger .confirm-delete, .quantum-ledger .confirm-delete:hover { background: #b7445a; color: white; }
@@ -134,7 +135,7 @@
     .ledger-month input { font-size: 20px; width: 175px; }
     .ledger-section-title, .ledger-breakdown-heading { padding-left: 12px; padding-right: 12px; }
     .ledger-filters { padding-left: 12px; padding-right: 12px; }
-    .quantum-ledger table { min-width: 440px; }
+    .quantum-ledger table { min-width: 580px; }
     .ledger-dialog { padding: 20px; }
 }
 @media (prefers-reduced-motion: reduce) {

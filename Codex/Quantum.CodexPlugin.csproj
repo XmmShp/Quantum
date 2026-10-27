@@ -8,6 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Quantum.Plugin.Abstraction" />
+    <PackageReference Include="System.Speech" />
   </ItemGroup>
 
   <ItemGroup>

@@ -67,4 +67,23 @@
   <data name="Continue conversation" xml:space="preserve"><value>继续对话</value></data>
   <data name="No items to display." xml:space="preserve"><value>暂无消息</value></data>
   <data name="Using the current desktop conversation." xml:space="preserve"><value>与电脑当前会话同步</value></data>
+  <data name="Attach" xml:space="preserve"><value>附件</value></data>
+  <data name="Stop recording" xml:space="preserve"><value>停止录音</value></data>
+  <data name="Record voice" xml:space="preserve"><value>语音</value></data>
+  <data name="Recording…" xml:space="preserve"><value>录音中…</value></data>
+  <data name="Remove attachment" xml:space="preserve"><value>移除附件</value></data>
+  <data name="Could not add attachment. Use up to four files, 8 MiB each and 16 MiB total." xml:space="preserve"><value>无法添加附件。最多 4 个文件，每个不超过 8 MiB，总计不超过 16 MiB。</value></data>
+  <data name="Recording unavailable. Check microphone permission." xml:space="preserve"><value>无法录音，请检查麦克风权限。</value></data>
+<data name="Transcribing voice…" xml:space="preserve"><value>正在识别语音…</value></data>
+<data name="Voice transcription or attachment processing failed. Check the selected model and try again." xml:space="preserve"><value>语音识别或附件处理失败，请检查当前模型后重试。</value></data>
+<data name="A prompt or attachment is required." xml:space="preserve"><value>请输入消息或添加附件。</value></data>
+<data name="Invalid attachment metadata or size." xml:space="preserve"><value>附件信息或大小无效，请重新选择。</value></data>
+<data name="Invalid attachment encoding." xml:space="preserve"><value>附件数据无效，请重新选择。</value></data>
+<data name="Attachments exceed the size limit." xml:space="preserve"><value>附件超出大小限制。</value></data>
+<data name="Use PNG, JPEG, GIF or WebP images." xml:space="preserve"><value>请选择 PNG、JPEG、GIF 或 WebP 格式的图片。</value></data>
+<data name="Install a speech.transcribe provider for this desktop platform." xml:space="preserve"><value>请为当前桌面平台安装语音识别服务。</value></data>
+<data name="The requested speech language is not installed on this desktop." xml:space="preserve"><value>此电脑尚未安装当前语言的语音识别。</value></data>
+<data name="Speech recognition failed." xml:space="preserve"><value>语音识别失败，请重试。</value></data>
+<data name="No speech was recognized. Try recording again." xml:space="preserve"><value>未识别到语音，请重新录制。</value></data>
+<data name="Use the voice recorder or select a PCM WAV recording." xml:space="preserve"><value>请使用录音按钮，或选择 PCM WAV 录音。</value></data>
 </root>

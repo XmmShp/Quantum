@@ -1,0 +1,34 @@
+@using Microsoft.AspNetCore.Components.Forms
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.Localization
+@using Quantum.OfficialPlugins.Codex.UI.Localization
+@namespace Quantum.OfficialPlugins.Codex.UI.Pages
+@implements IAsyncDisposable
+@inject IStringLocalizer<PluginStrings> L
+
+<div class="media-picker">
+    <div class="media-toolbar">
+        <label class="attach-button" aria-disabled="@Disabled">
+            <span aria-hidden="true">＋</span> @L["Attach"]
+            <InputFile OnChange="PickFilesAsync" multiple disabled="@(Disabled || _recording)" />
+        </label>
+        <button type="button" disabled="@(Disabled || _starting)" class="record-button @(_recording ? "recording" : "")" @onclick="ToggleRecordingAsync">
+            <span aria-hidden="true">@(_recording ? "■" : "●")</span> @L[_recording ? "Stop recording" : "Record voice"]
+        </button>
+        @if (_recording) { <span role="status">@L["Recording…"]</span> }
+    </div>
+    @if (_error is not null) { <div class="media-error" role="alert">@L[_error]</div> }
+    <div class="attachment-chips">
+        @foreach (var file in _files)
+        {
+            <div class="attachment-chip">
+                @if (file.ContentType is "image/png" or "image/jpeg" or "image/webp" or "image/gif")
+                {
+                    <img alt="@file.Name" src="@("data:" + file.ContentType + ";base64," + file.DataBase64)" />
+                }
+                <span title="@file.Name">@file.Name</span>
+                <button type="button" aria-label="@(L["Remove attachment"] + " " + file.Name)" disabled="@Disabled" @onclick="() => RemoveAsync(file)">×</button>
+            </div>
+        }
+    </div>
+</div>

@@ -90,3 +90,13 @@ See [the official plugin development guide](../docs/plugin-development.md).
 ## Mobile preview
 
 This build publishes a mobile page on compatible Quantum hosts. See [mobile setup, supported workflows, refresh behavior and new RPC methods](../docs/mobile.md). The desktop remains responsible for business execution; these mobile adaptations are not yet a marketplace release.
+
+## Images, files and recorded voice
+
+The page, global drawer and mobile page share the same `codex.send` RPC. Its optional `attachments` array uses the SDK `MobileAttachment` value (`name`, `contentType`, `dataBase64`); a prompt may be empty when attachments are present. Limits are four files, 8 MiB per file and 16 MiB total. PNG, JPEG, GIF and WebP are image inputs; other documents are passed as selected local file mentions. No RPC accepts arbitrary local file paths.
+
+Recording is explicit and stops after 45 seconds. All recording controls produce PCM WAV. Voice calls the canonical `speech.transcribe` capability; the included Windows provider uses installed system speech languages and does not access a microphone on the desktop. Recognized text appears in the user's message and continues the existing conversation with its selected model. No audio model, additional API key or Codex inference is needed for transcription. Another compatible provider can implement the same RPC capability. Recognition failure preserves the draft, and no model turn starts until recognition succeeds.
+
+Mobile attachments require the schema-2 SDK/host and updated mobile app. The native picker stages outgoing bytes privately so queued commands can resume after a connection failure; the platform transfers bounded chunks separately from the action mailbox. Completed files can be reused for a restored failed draft. Desktop attachment copies are private application data and are cleaned after seven days. Windows and Android builds are verified locally; iOS/Mac Catalyst recording implementations require validation on macOS/device before release. Mac desktops need a compatible speech provider; the bundled recognizer currently targets Windows.
+
+Protocol: [official App Server documentation](https://learn.chatgpt.com/docs/app-server). The installed CLI schema remains authoritative for image/file inputs; voice is recognized through the independent speech capability.

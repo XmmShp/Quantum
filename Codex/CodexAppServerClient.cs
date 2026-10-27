@@ -126,7 +126,8 @@ internal sealed class CodexAppServerClient : ICodexAppServerClient
                     : new CodexModelOption
                     {
                         Id = id,
-                        DisplayName = string.IsNullOrWhiteSpace(displayName) ? id : displayName
+                        DisplayName = string.IsNullOrWhiteSpace(displayName) ? id : displayName,
+                        InputModalities = model.TryGetProperty("inputModalities", out var modalities) ? modalities.EnumerateArray().Select(m => m.GetString()!).ToArray() : ["text", "image"]
                     };
             })
             .Where(static model => model is not null)
@@ -152,6 +153,56 @@ internal sealed class CodexAppServerClient : ICodexAppServerClient
             model,
             input = new[] { new { type = "text", text = prompt } }
         };
+
+    public Task<JsonElement> StartMediaTurnAsync(string threadId, string prompt, string model, CodexAttachmentFile[] files, CancellationToken cancellationToken)
+        => SendRequestAsync("turn/start", CreateMediaTurnParameters(threadId, prompt, model, files), cancellationToken);
+
+    internal static object CreateMediaTurnParameters(string threadId, string prompt, string model, CodexAttachmentFile[] files)
+    {
+        var input = new List<object>();
+        if (!string.IsNullOrWhiteSpace(prompt))
+        {
+            input.Add(new
+            {
+                type = "text",
+                text = prompt
+            });
+        }
+        foreach (var file in files)
+        {
+            if (file.ContentType.StartsWith("image/", StringComparison.Ordinal))
+            {
+                input.Add(new
+                {
+                    type = "localImage",
+                    path = file.Path
+                });
+            }
+            else if (file.ContentType.StartsWith("audio/", StringComparison.Ordinal))
+            {
+                input.Add(new
+                {
+                    type = "localAudio",
+                    path = file.Path
+                });
+            }
+            else
+            {
+                input.Add(new
+                {
+                    type = "mention",
+                    name = file.Name,
+                    path = file.Path
+                });
+            }
+        }
+        return new
+        {
+            threadId,
+            model,
+            input
+        };
+    }
 
     public async ValueTask DisposeAsync()
     {

@@ -98,6 +98,11 @@
                             <div class="message-role">@L[message.Role.ToString()]</div>
                             <div class="message-text">
                                 @message.Text
+                                            @if (message.IsTranscribing) { <small class="message-attachment" role="status">@L["Transcribing voice…"]</small> }
+                                            @foreach (var attachment in message.Attachments)
+                                            {
+                                                <small class="message-attachment">📎 @attachment.Name</small>
+                                            }
                                 @if (message.IsStreaming)
                                 {
                                     <span class="cursor">▍</span>
@@ -109,10 +114,11 @@
             </div>
 
             <footer class="composer">
+                <CodexMediaInput @ref="_mediaInput" Disabled="@_sending" Value="@_attachments" Changed="@(files => _attachments = files)" RecordingChanged="@(value => _recording = value)" />
                 <textarea rows="2"
                           aria-label="@L["Message Codex…"]"
                           placeholder="@L["Message Codex…"]"
-                          disabled="@_snapshot.IsBusy"
+                          disabled="@_sending"
                           @bind="_prompt"
                           @onkeydown="HandleKeyDownAsync"></textarea>
                 <button type="button" class="send-button" disabled="@(!CanSend)" @onclick="SendAsync">@L["Send"]<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg></button>

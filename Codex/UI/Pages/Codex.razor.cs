@@ -2,6 +2,7 @@ using Microsoft.AspNetCore.Components;
 using Microsoft.AspNetCore.Components.Web;
 using NOF.Contract;
 using Quantum.OfficialPlugins.Codex.Application;
+using Quantum.Plugin.Abstraction;
 
 namespace Quantum.OfficialPlugins.Codex.UI.Pages;
 
@@ -26,6 +27,10 @@ public partial class Codex
     private string _selectedModel = CodexRuntime.DefaultModel;
     private string _prompt = string.Empty;
     private string? _localError;
+    private MobileAttachment[] _attachments = [];
+    private CodexMediaInput? _mediaInput;
+    private bool _recording;
+    private bool _sending;
 
     public Codex(ICodexRpcServiceClient codexClient, ICodexRuntimeEvents codexEvents)
     {
@@ -51,7 +56,7 @@ public partial class Codex
 
     private bool IsConnecting => _snapshot.ConnectionState == CodexConnectionState.Connecting;
 
-    private bool CanSend => !_snapshot.IsBusy && !string.IsNullOrWhiteSpace(_prompt);
+    private bool CanSend => !_sending && !_recording && !_snapshot.IsBusy && (!string.IsNullOrWhiteSpace(_prompt) || _attachments.Length > 0);
 
     private string StateClass => _snapshot.ConnectionState.ToString().ToLowerInvariant();
 
@@ -100,18 +105,37 @@ public partial class Codex
         }
 
         var prompt = _prompt;
-        await RunAsync(async () =>
+        _sending = true;
+        try
         {
-            var result = await _codexClient.SendAsync(new()
+            await RunAsync(async () =>
             {
-                Prompt = prompt
-            }, Context.Empty);
-            ApplySnapshot(result);
-            if (result.IsSuccess)
-            {
-                _prompt = string.Empty;
-            }
-        });
+                var result = await _codexClient.SendAsync(new()
+                {
+                    Prompt = prompt,
+                    Attachments = _attachments,
+                    SpeechLanguage = System.Globalization.CultureInfo.CurrentUICulture.Name
+                }, Context.Empty);
+                ApplySnapshot(result);
+                if (result.IsSuccess)
+                {
+                    if (_prompt == prompt)
+                    {
+                        _prompt = string.Empty;
+                    }
+
+                    _attachments = [];
+                    if (_mediaInput is not null)
+                    {
+                        await _mediaInput.ClearAsync();
+                    }
+                }
+            });
+        }
+        finally
+        {
+            _sending = false;
+        }
     }
 
     private async Task HandleKeyDownAsync(KeyboardEventArgs args)

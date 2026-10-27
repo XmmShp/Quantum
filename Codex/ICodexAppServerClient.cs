@@ -12,5 +12,7 @@ internal interface ICodexAppServerClient : IAsyncDisposable
     Task StartAsync(CancellationToken cancellationToken);
     Task<IReadOnlyList<CodexModelOption>> ListModelsAsync(CancellationToken cancellationToken);
     Task<string> StartThreadAsync(string workingDirectory, string model, JsonArray dynamicTools, CancellationToken cancellationToken);
+    Task<JsonElement> StartMediaTurnAsync(string threadId, string prompt, string model, CodexAttachmentFile[] files, CancellationToken cancellationToken)
+        => files.Length == 0 ? StartTurnAsync(threadId, prompt, model, cancellationToken) : throw new NotSupportedException("Attachments are unavailable.");
     Task<JsonElement> StartTurnAsync(string threadId, string prompt, string model, CancellationToken cancellationToken);
 }

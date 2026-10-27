@@ -52,6 +52,7 @@ internal sealed class CodexRuntime : ICodexRuntime, IAsyncDisposable
     private CodexConnectionState _connectionState;
     private string? _threadId;
     private bool _isBusy;
+    private CancellationTokenSource? _sendingCancellation;
     private string _workingDirectory = Environment.CurrentDirectory;
     private string? _errorMessage;
     private bool _disposed;
@@ -365,16 +366,35 @@ internal sealed class CodexRuntime : ICodexRuntime, IAsyncDisposable
         }
     }
 
-    public async Task SendAsync(string prompt, CancellationToken cancellationToken = default)
+    public Task SendAsync(string prompt, CancellationToken cancellationToken = default)
+        => SendAsync(new CodexSendRequest { Prompt = prompt }, cancellationToken);
+
+    public async Task SendAsync(CodexSendRequest request, CancellationToken cancellationToken = default)
     {
         ObjectDisposedException.ThrowIf(_disposed, this);
-        if (string.IsNullOrWhiteSpace(prompt))
+        cancellationToken.ThrowIfCancellationRequested();
+        if (request.Attachments is null || string.IsNullOrWhiteSpace(request.Prompt) && request.Attachments.Length == 0)
         {
-            throw new DomainException("codex_invalid_request", "Prompt is required.");
+            throw new DomainException("codex_invalid_request", "A prompt or attachment is required.");
         }
+        lock (_sync)
+        {
+            if (_client is null || _threadId is null)
+            {
+                throw new DomainException("codex_invalid_state", "Codex is not connected.");
+            }
+
+            if (_isBusy)
+            {
+                throw new DomainException("codex_invalid_state", "Wait for the current Codex turn to finish.");
+            }
+        }
+        var files = await CodexAttachmentStore.StageAsync(request.Attachments, cancellationToken);
         ICodexAppServerClient client;
         string threadId;
-        string selectedModel;
+        string model;
+        CodexChatMessage message;
+        CancellationToken sendingToken;
         lock (_sync)
         {
             client = _client ?? throw new DomainException("codex_invalid_state", "Codex is not connected.");
@@ -383,32 +403,78 @@ internal sealed class CodexRuntime : ICodexRuntime, IAsyncDisposable
             {
                 throw new DomainException("codex_invalid_state", "Wait for the current Codex turn to finish.");
             }
-
-            selectedModel = _selectedModel;
+            model = _selectedModel;
+            _sendingCancellation?.Dispose();
+            _sendingCancellation = CancellationTokenSource.CreateLinkedTokenSource(_lifetime.Token);
+            sendingToken = _sendingCancellation.Token;
             _isBusy = true;
             _errorMessage = null;
-            _messages.Add(new CodexChatMessage
+            message = new()
             {
                 Id = Guid.NewGuid(),
                 Role = CodexMessageRole.User,
-                Text = prompt.Trim(),
-                CreatedAt = DateTimeOffset.Now
-            });
+                Text = request.Prompt?.Trim() ?? "",
+                CreatedAt = DateTimeOffset.Now,
+                IsTranscribing = files.Any(f => f.ContentType.StartsWith("audio/", StringComparison.Ordinal)),
+                Attachments = files.Select(f => new CodexAttachmentInfo { Name = f.Name, ContentType = f.ContentType, Size = f.Size }).ToArray()
+            };
+            _messages.Add(message);
         }
-
         NotifyChanged();
+        using var operation = CancellationTokenSource.CreateLinkedTokenSource(cancellationToken, sendingToken);
+        await SendPreparedAsync(client, threadId, model, message, files, request.SpeechLanguage, operation.Token);
+    }
+
+    private async Task SendPreparedAsync(ICodexAppServerClient client, string threadId, string model,
+        CodexChatMessage message, CodexAttachmentFile[] files, string? speechLanguage, CancellationToken cancellationToken)
+    {
         try
         {
-            await client.StartTurnAsync(threadId, prompt.Trim(), selectedModel, cancellationToken).ConfigureAwait(false);
+            var prompt = message.Text;
+            foreach (var audio in files.Where(f => f.ContentType.StartsWith("audio/", StringComparison.Ordinal)))
+            {
+                var result = await _rpcInvoker.InvokeAsync<string>("speech.transcribe", new CodexTranscribeRequest
+                {
+                    Audio = new MobileAttachment { Name = audio.Name, ContentType = audio.ContentType, DataBase64 = Convert.ToBase64String(await File.ReadAllBytesAsync(audio.Path, cancellationToken)) },
+                    Language = speechLanguage
+                }, Context.Empty, cancellationToken);
+                if (!result.IsSuccess)
+                {
+                    throw new DomainException(result.ErrorCode, result.Message);
+                }
+
+                var transcript = result.Value;
+                if (string.IsNullOrWhiteSpace(transcript))
+                {
+                    throw new DomainException("codex_speech_empty", "No speech was recognized. Try recording again.");
+                }
+
+                prompt = string.IsNullOrEmpty(prompt) ? transcript : prompt + "\n" + transcript;
+            }
+            lock (_sync)
+            {
+                if (_client != client || _threadId != threadId)
+                {
+                    return;
+                }
+                message.Text = prompt;
+                message.IsTranscribing = false;
+            }
+            NotifyChanged();
+            await client.StartMediaTurnAsync(threadId, prompt, model,
+                files.Where(f => !f.ContentType.StartsWith("audio/", StringComparison.Ordinal)).ToArray(), cancellationToken);
         }
         catch (Exception exception)
         {
             lock (_sync)
             {
-                _isBusy = false;
-                _errorMessage = exception.Message;
+                if (_client == client && _threadId == threadId)
+                {
+                    _isBusy = false;
+                    message.IsTranscribing = false;
+                    _errorMessage = exception.Message;
+                }
             }
-
             NotifyChanged();
             throw;
         }
@@ -419,6 +485,7 @@ internal sealed class CodexRuntime : ICodexRuntime, IAsyncDisposable
         CancellationTokenSource? automaticConnection;
         lock (_sync)
         {
+            _sendingCancellation?.Cancel();
             _automaticConnectionSuppressed = true;
             automaticConnection = _automaticConnection;
         }
@@ -481,6 +548,7 @@ internal sealed class CodexRuntime : ICodexRuntime, IAsyncDisposable
         _automaticConnection?.Dispose();
         _lifetime.Dispose();
         _operationGate.Dispose();
+        _sendingCancellation?.Dispose();
     }
 
     private Task HandleNotificationAsync(string method, JsonElement parameters)

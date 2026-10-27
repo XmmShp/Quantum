@@ -9,7 +9,7 @@ namespace Quantum.LedgerPlugin.Tests;
 
 public sealed class CodexRpcTests
 {
-    private static OfficialRpcHarness Host(ICodexRuntime? fake = null, CapturedMobilePages? pages = null)
+    private static OfficialRpcHarness Host(ICodexRuntime? fake = null, CapturedMobilePages? pages = null, ICodexSpeechRecognizer? speech = null)
     {
         var services = new ServiceCollection();
         if (pages is not null)
@@ -25,7 +25,57 @@ public sealed class CodexRpcTests
             services.AddSingleton(fake);
         }
 
+        if (speech is not null)
+        {
+            services.AddSingleton(speech);
+        }
+
         return new(services, "quantum.plugin.codex", typeof(ICodexRpcService).Assembly);
+    }
+
+    [Fact]
+    public async Task SpeechCapabilityIsDiscoveredAndUsesValidatedBytesThroughHostJson()
+    {
+        var speech = new CapturedSpeech();
+        await using var host = Host(speech: speech);
+        await host.AssertCatalog("quantum.plugin.codex", "speech", ["transcribe"]);
+        var request = new CodexTranscribeRequest
+        {
+            Audio = new MobileAttachment { Name = "voice.wav", ContentType = "audio/wav", DataBase64 = "AQID" },
+            Language = "en-US"
+        };
+        Assert.Equal("Recognized speech", OfficialRpcHarness.Value(await host.Call("speech.transcribe", request)).GetString());
+        Assert.Equal(new byte[] { 1, 2, 3 }, speech.Bytes);
+        Assert.Equal("en-US", speech.Language);
+        var rejected = await host.Call("speech.transcribe", request with
+        {
+            Audio = request.Audio with
+            {
+                ContentType = "audio/mp3"
+            }
+        });
+        Assert.Equal("codex_speech_format", rejected.GetProperty("errorCode").GetString());
+        Assert.Equal(1, speech.Calls);
+    }
+
+    private sealed class CapturedSpeech : ICodexSpeechRecognizer
+    {
+        public byte[] Bytes { get; private set; } = [];
+        public string? Language
+        {
+            get; private set;
+        }
+        public int Calls
+        {
+            get; private set;
+        }
+        public async Task<string> TranscribeAsync(string path, string? language, CancellationToken token)
+        {
+            Calls++;
+            Language = language;
+            Bytes = await File.ReadAllBytesAsync(path, token);
+            return "Recognized speech";
+        }
     }
 
     [Fact]
@@ -65,12 +115,13 @@ public sealed class CodexRpcTests
         await Until(() => MobileUiValidator.Validate(pages.Pages["codex"]).ContainsKey("send"));
         var response = await pages.Click(host, "codex", "send", new()
         {
-            ["prompt"] = System.Text.Json.JsonSerializer.SerializeToElement("来自手机的消息")
+            ["prompt"] = System.Text.Json.JsonSerializer.SerializeToElement("来自手机的消息"),
+            ["attachments"] = System.Text.Json.JsonSerializer.SerializeToElement(Array.Empty<object>())
         });
         Assert.True(response.GetProperty("isSuccess").GetBoolean());
         Assert.Equal("来自手机的消息", fake.LastPrompt);
-        await Until(() => !MobileUiValidator.Validate(pages.Pages["codex"]).ContainsKey("send"));
-        Assert.DoesNotContain(MobileUiValidator.Validate(pages.Pages["codex"]).Keys, key => key == "send");
+        await Until(() => !MobileUiValidator.Validate(pages.Pages["codex"])["send"].Enabled);
+        Assert.False(MobileUiValidator.Validate(pages.Pages["codex"])["send"].Enabled);
         await host.UseServices(OfficialPlugins.Codex.CodexPlugin.StopAsync);
         Assert.Empty(pages.Pages);
     }

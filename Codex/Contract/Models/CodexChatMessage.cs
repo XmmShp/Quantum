@@ -10,5 +10,9 @@ public sealed record CodexChatMessage
 
     public required DateTimeOffset CreatedAt { get; set; }
 
+    public CodexAttachmentInfo[] Attachments { get; set; } = [];
+
+    public bool IsTranscribing { get; set; }
+
     public bool IsStreaming { get; set; } = false;
 }

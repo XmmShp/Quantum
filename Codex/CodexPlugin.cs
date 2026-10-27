@@ -10,6 +10,8 @@ public sealed class CodexPlugin : IQuantumPlugin
     public static void ConfigureServices(IServiceCollection services)
     {
         services.AddRpcServer<CodexRpcService>();
+        services.AddRpcServer<CodexSpeechRpcService>();
+        services.AddSingleton<ICodexSpeechRecognizer, SystemSpeechRecognizer>();
         services.AddScoped<ICodexMobilePages, CodexMobilePages>();
         services.AddSingleton<CodexMobileSync>();
         services.AddScoped<ICodexRpcServiceClient, LocalCodexRpcServiceClient>();
