@@ -45,8 +45,6 @@ public sealed class CalendarMobilePages : ICalendarMobilePages
         {
             Ui.Text("title", L("Calendar")).Appearance("title"),
             Ui.Text("date", L("Desktop date") + ": " + today.ToString("yyyy-MM-dd", CultureInfo.InvariantCulture)),
-            Ui.Text("refresh-help", L("After changes, prepare latest data, then use the phone's Refresh button.")).Appearance("caption"),
-            Ui.Button("refresh", L("Prepare latest data")).OnClick(Ui.Rpc("quantum.plugin.calendar.calendar.mobile-refresh")),
             Ui.Text("today-title", L("Today's items")).Appearance("title")
         };
         if (entries.IsSuccess && tasks.IsSuccess)
@@ -74,7 +72,7 @@ public sealed class CalendarMobilePages : ICalendarMobilePages
         }
         else
         {
-            nodes.Add(Ui.Text("load-error", L("Unable to load data. Prepare latest data to retry.")).Appearance("error"));
+            nodes.Add(Ui.Text("load-error", L("Unable to load data. Reconnecting automatically.")).Appearance("error"));
         }
         nodes.AddRange([
             Ui.Divider("form-divider"),

@@ -32,8 +32,6 @@ public sealed class CodexMobilePages : ICodexMobilePages
         var nodes = new List<MobileNode>
         {
             Ui.Text("title", "Codex").Appearance("title"),
-            Ui.Text("refresh-help", L("After changes, prepare latest data, then use the phone's Refresh button.")).Appearance("caption"),
-            Ui.Button("refresh", L("Prepare latest data")).OnClick(Ui.Rpc("quantum.plugin.codex.codex.mobile-refresh"))
         };
         if (result.IsSuccess)
         {
@@ -44,7 +42,7 @@ public sealed class CodexMobilePages : ICodexMobilePages
             if (snapshot.IsBusy)
             {
                 nodes.Add(Ui.Progress("busy"));
-                nodes.Add(Ui.Text("busy-help", L("A turn is running. Prepare latest data later to read progress.")));
+                nodes.Add(Ui.Text("busy-help", L("A turn is running. Progress updates automatically.")));
             }
             nodes.Add(Ui.Text("history-help", L("Showing the latest 10 messages, with long messages shortened. Open the desktop for full history.")).Appearance("caption"));
             foreach (var (message, index) in snapshot.Messages.TakeLast(10).Select((message, index) => (message, index)))
@@ -66,7 +64,7 @@ public sealed class CodexMobilePages : ICodexMobilePages
         }
         else
         {
-            nodes.Add(Ui.Text("load-error", L("Unable to load data. Prepare latest data to retry.")).Appearance("error"));
+            nodes.Add(Ui.Text("load-error", L("Unable to load data. Reconnecting automatically.")).Appearance("error"));
         }
         _pages.Publish(Ui.Page("codex", "Codex", Ui.Scroll("scroll", Ui.VStack("root", nodes.ToArray()))));
     }

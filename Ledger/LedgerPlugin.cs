@@ -13,6 +13,7 @@ public sealed class LedgerPlugin : IQuantumPlugin
         services.AddSingleton<IDbContextModelCreatingContributor, LedgerModel>();
         services.AddRpcServer<LedgerRpcService>();
         services.AddScoped<ILedgerMobilePages, LedgerMobilePages>();
+        services.AddSingleton<LedgerMobileSync>();
         services.AddMapping<LedgerEntry, LedgerEntryProjection>(LedgerMappings.Projection);
         services.AddScoped<ILedgerRpcServiceClient, LocalLedgerRpcServiceClient>();
     }
@@ -23,13 +24,14 @@ public sealed class LedgerPlugin : IQuantumPlugin
         if (services.GetService<IQuantumMobilePages>() is not null)
         {
             await services.GetRequiredService<ILedgerMobilePages>().PublishAsync(cancellationToken);
+            services.GetRequiredService<LedgerMobileSync>().Start();
         }
     }
 
-    public static Task StopAsync(IServiceProvider services, CancellationToken cancellationToken = default)
+    public static async Task StopAsync(IServiceProvider services, CancellationToken cancellationToken = default)
     {
+        await services.GetRequiredService<LedgerMobileSync>().DisposeAsync();
         services.GetService<IQuantumMobilePages>()?.Remove("ledger");
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.CompletedTask;
     }
 }

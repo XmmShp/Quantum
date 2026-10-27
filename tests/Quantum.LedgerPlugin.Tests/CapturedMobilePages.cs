@@ -5,13 +5,13 @@ namespace Quantum.LedgerPlugin.Tests;
 
 internal sealed class CapturedMobilePages : IQuantumMobilePages
 {
-    public Dictionary<string, MobilePage> Pages { get; } = [];
+    public System.Collections.Concurrent.ConcurrentDictionary<string, MobilePage> Pages { get; } = [];
     public void Publish(MobilePage page)
     {
         MobileUiValidator.Validate(page);
         Pages[page.Id] = page;
     }
-    public void Remove(string pageId) => Pages.Remove(pageId);
+    public void Remove(string pageId) => Pages.TryRemove(pageId, out _);
     public MobileNode Node(string pageId, string nodeId) => MobileUiValidator.Validate(Pages[pageId])[nodeId];
     public async Task<JsonElement> Click(OfficialRpcHarness host, string pageId, string nodeId, Dictionary<string, JsonElement>? inputs = null)
     {

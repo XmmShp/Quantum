@@ -12,15 +12,16 @@ public sealed class CalendarPlugin : IQuantumPlugin
         if (services.GetService<IQuantumMobilePages>() is not null)
         {
             await services.GetRequiredService<ICalendarMobilePages>().PublishAsync(cancellationToken);
+            services.GetRequiredService<CalendarMobileSync>().Start();
         }
     }
 
-    public static Task StopAsync(
+    public static async Task StopAsync(
         IServiceProvider services,
         CancellationToken cancellationToken = default)
     {
+        await services.GetRequiredService<CalendarMobileSync>().DisposeAsync();
         services.GetService<IQuantumMobilePages>()?.Remove("calendar");
         cancellationToken.ThrowIfCancellationRequested();
-        return Task.CompletedTask;
     }
 }

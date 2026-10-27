@@ -13,6 +13,7 @@ public sealed class CalendarPluginInitializer : IAssemblyInitializer
         services.AddSingleton<IDbContextModelCreatingContributor, CalendarDbContextModelCreatingContributor>();
         services.AddRpcServer<CalendarRpcService>();
         services.AddScoped<ICalendarMobilePages, CalendarMobilePages>();
+        services.AddSingleton<CalendarMobileSync>();
         services.AddScoped<ICalendarRpcServiceClient, LocalCalendarRpcServiceClient>();
     }
 }

@@ -43,8 +43,6 @@ public sealed class LedgerMobilePages : ILedgerMobilePages
         {
             Ui.Text("title", L("Ledger")).Appearance("title"),
             Ui.Text("month", today.ToString("yyyy-MM", CultureInfo.InvariantCulture) + " · CNY"),
-            Ui.Text("refresh-help", L("After changes, prepare latest data, then use the phone's Refresh button.")).Appearance("caption"),
-            Ui.Button("refresh", L("Prepare latest data")).OnClick(Ui.Rpc("quantum.plugin.ledger.ledger.mobile-refresh"))
         };
         if (summary.IsSuccess && entries.IsSuccess)
         {
@@ -65,7 +63,7 @@ public sealed class LedgerMobilePages : ILedgerMobilePages
         }
         else
         {
-            nodes.Add(Ui.Text("load-error", L("Unable to load data. Prepare latest data to retry.")).Appearance("error"));
+            nodes.Add(Ui.Text("load-error", L("Unable to load data. Reconnecting automatically.")).Appearance("error"));
         }
         nodes.AddRange([
             Ui.Divider("form-divider"), Ui.Text("form-title", L("Quick entry")).Appearance("title"),

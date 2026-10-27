@@ -11,6 +11,7 @@ public sealed class CodexPlugin : IQuantumPlugin
     {
         services.AddRpcServer<CodexRpcService>();
         services.AddScoped<ICodexMobilePages, CodexMobilePages>();
+        services.AddSingleton<CodexMobileSync>();
         services.AddScoped<ICodexRpcServiceClient, LocalCodexRpcServiceClient>();
         services.AddSingleton<ICodexRuntime, CodexRuntime>();
         services.AddSingleton<ICodexRuntimeEvents>(provider => provider.GetRequiredService<ICodexRuntime>());
@@ -22,6 +23,7 @@ public sealed class CodexPlugin : IQuantumPlugin
         if (services.GetService<IQuantumMobilePages>() is not null)
         {
             await services.GetRequiredService<ICodexMobilePages>().PublishAsync(cancellationToken);
+            services.GetRequiredService<CodexMobileSync>().Start();
         }
     }
 
@@ -29,6 +31,7 @@ public sealed class CodexPlugin : IQuantumPlugin
         IServiceProvider services,
         CancellationToken cancellationToken = default)
     {
+        await services.GetRequiredService<CodexMobileSync>().DisposeAsync();
         services.GetService<IQuantumMobilePages>()?.Remove("codex");
         if (services.GetService<ICodexRuntime>() is IAsyncDisposable service)
         {

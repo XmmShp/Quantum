@@ -80,13 +80,11 @@
   <data name="The calendar item was not found." xml:space="preserve"><value>未找到该日历事项。</value></data>
   <data name="Internal server error" xml:space="preserve"><value>服务器内部错误，请稍后重试。</value></data>
   <data name="Add a task for today" xml:space="preserve"><value>添加今日待办</value></data>
-  <data name="After changes, prepare latest data, then use the phone's Refresh button." xml:space="preserve"><value>操作后先点“准备最新数据”，再点手机顶部“刷新”查看新页面。</value></data>
   <data name="Desktop date" xml:space="preserve"><value>电脑日期</value></data>
   <data name="Mark complete" xml:space="preserve"><value>标记完成</value></data>
   <data name="No items to display." xml:space="preserve"><value>暂无记录。</value></data>
   <data name="Only a limited number of recent items are shown. Open the desktop for the full list." xml:space="preserve"><value>仅显示部分事项，完整列表请在电脑查看。</value></data>
-  <data name="Prepare latest data" xml:space="preserve"><value>准备最新数据</value></data>
   <data name="The task date is the displayed desktop date; its due time is 12:00. Refresh the data if the date has changed." xml:space="preserve"><value>待办使用上方电脑日期，截止时间为 12:00；跨日后请先更新数据。</value></data>
   <data name="Today's items" xml:space="preserve"><value>今日事项与未完成待办</value></data>
-  <data name="Unable to load data. Prepare latest data to retry." xml:space="preserve"><value>无法加载数据，请准备最新数据后重试。</value></data>
+  <data name="Unable to load data. Reconnecting automatically." xml:space="preserve"><value>暂时无法加载数据，正在自动重连。</value></data>
 </root>

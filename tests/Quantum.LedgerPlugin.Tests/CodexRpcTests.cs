@@ -61,17 +61,27 @@ public sealed class CodexRpcTests
         Assert.Equal(0, fake.AutomaticCalls);
         Assert.DoesNotContain(MobileUiValidator.Validate(pages.Pages["codex"]).Keys, key => key == "send");
         OfficialRpcHarness.Value(await host.Call("codex.connect", new CodexConnectRequest { WorkingDirectory = "workspace", Model = "model-a" }));
-        Assert.True((await pages.Click(host, "codex", "refresh")).GetProperty("isSuccess").GetBoolean());
+        Assert.DoesNotContain("refresh", MobileUiValidator.Validate(pages.Pages["codex"]).Keys);
+        await Until(() => MobileUiValidator.Validate(pages.Pages["codex"]).ContainsKey("send"));
         var response = await pages.Click(host, "codex", "send", new()
         {
             ["prompt"] = System.Text.Json.JsonSerializer.SerializeToElement("来自手机的消息")
         });
         Assert.True(response.GetProperty("isSuccess").GetBoolean());
         Assert.Equal("来自手机的消息", fake.LastPrompt);
-        await pages.Click(host, "codex", "refresh");
+        await Until(() => !MobileUiValidator.Validate(pages.Pages["codex"]).ContainsKey("send"));
         Assert.DoesNotContain(MobileUiValidator.Validate(pages.Pages["codex"]).Keys, key => key == "send");
         await host.UseServices(OfficialPlugins.Codex.CodexPlugin.StopAsync);
         Assert.Empty(pages.Pages);
+    }
+
+    private static async Task Until(Func<bool> ready)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+        while (!ready())
+        {
+            await Task.Delay(50, timeout.Token);
+        }
     }
 
     [Fact]

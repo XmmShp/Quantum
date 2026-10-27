@@ -37,7 +37,8 @@ public sealed class MobilePagesTests
             Assert.Equal("Expense", saved.GetProperty("kind").GetString());
             Assert.Equal("2026-10-23", saved.GetProperty("date").GetString());
             Assert.Equal("手机记录", saved.GetProperty("note").GetString());
-            Assert.True((await fixture.Pages.Click(fixture.Host, "ledger", "refresh")).GetProperty("isSuccess").GetBoolean());
+            Assert.DoesNotContain("refresh", MobileUiValidator.Validate(fixture.Pages.Pages["ledger"]).Keys);
+            await Until(() => fixture.Pages.Node("ledger", "expense").Text!.Contains("12.50"));
             Assert.Contains("12.50", fixture.Pages.Node("ledger", "expense").Text);
             Assert.Contains("支出", fixture.Pages.Node("ledger", "expense").Text);
             await fixture.Host.UseServices(OfficialPlugins.Ledger.LedgerPlugin.StopAsync);
@@ -91,7 +92,8 @@ public sealed class MobilePagesTests
         var id = created.GetProperty("id").GetGuid();
         Assert.Equal("Task", created.GetProperty("kind").GetString());
         Assert.Equal("2026-10-23", created.GetProperty("date").GetString());
-        Assert.True((await fixture.Pages.Click(fixture.Host, "calendar", "refresh")).GetProperty("isSuccess").GetBoolean());
+        Assert.DoesNotContain("refresh", MobileUiValidator.Validate(fixture.Pages.Pages["calendar"]).Keys);
+        await Until(() => MobileUiValidator.Validate(fixture.Pages.Pages["calendar"]).ContainsKey("complete-" + id.ToString("N")));
         var complete = await fixture.Pages.Click(fixture.Host, "calendar", "complete-" + id.ToString("N"));
         Assert.True(complete.GetProperty("isSuccess").GetBoolean());
         var entry = OfficialRpcHarness.Value(await fixture.Host.Call("calendar.get", new CalendarEntryRequest { Id = id })).GetProperty("entry");
@@ -110,6 +112,15 @@ public sealed class MobilePagesTests
         await fixture.Host.UseServices(OfficialPlugins.Ledger.LedgerPlugin.StartAsync);
         var failure = await fixture.Host.Call("ledger.mobile-refresh", new RefreshLedgerMobilePageRequest(), expectsValue: false);
         Assert.Equal("mobile_unavailable", failure.GetProperty("errorCode").GetString());
+    }
+
+    private static async Task Until(Func<bool> ready)
+    {
+        using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(8));
+        while (!ready())
+        {
+            await Task.Delay(50, timeout.Token);
+        }
     }
 
     private sealed class TestClock : TimeProvider
