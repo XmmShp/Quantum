@@ -11,6 +11,8 @@ public sealed record BridgePageInfo(string PluginId, string PageId, string Title
 {
     [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public string? Icon { get; init; }
+    [System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? IconImage { get; init; }
 }
 public sealed record BridgeBinding(string DesktopId, string MobileId, string MobileName, bool Approved);
 public sealed record BridgeMessage(string Id, string SenderId, string TargetId, string Kind, JsonElement Body,
