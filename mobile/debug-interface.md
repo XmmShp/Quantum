@@ -51,6 +51,8 @@ $state.value.page.tree  # 节点 ID、类型、文字、有效启用状态、当
 | `POST /menu/close` | 收起账户菜单 |
 | `POST /settings/open` | 从账户菜单进入独立设置页 |
 | `POST /settings/close` | 返回插件页，保留草稿 |
+| `GET /screenshot` | 仅 Windows Debug：捕获本应用控件树，不接管前台窗口；登录页禁止截图 |
+| `POST /navigation/reorder` | `{source,target}`，键为 `pluginId/pageId`；调用与原生拖放相同的排序操作，保留草稿 |
 | `POST /navigation/open` | 展开底部插件菜单 |
 | `POST /navigation/close` | 收起底部插件菜单 |
 | `POST /navigation/select` | `{pluginId,pageId,discardDraft?}`：切换插件，保留草稿保护 |

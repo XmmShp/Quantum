@@ -45,6 +45,9 @@ try{
     if($refreshed.value.refresh.active -or !$refreshed.value.refresh.enabled -or $refreshed.value.refresh.count -ne ($live.value.refresh.count+1) -or $refreshed.value.syncPanelVisible){throw 'Pull refresh did not complete and retract without a persistent status panel.'}
     if($content.value -ne 'HTTP debug test 中文' -or !$refreshed.value.page.dirty -or $refreshed.value.page.viewId -eq $view){throw 'Pull refresh lost the draft or did not render a fresh snapshot.'}
     $view=$refreshed.value.page.viewId
+    if($refreshed.value.navigation.iconButtons.Count -ne 2 -or $refreshed.value.navigation.iconButtons[0] -ne '日' -or $refreshed.value.navigation.iconButtons[1] -ne '✦'){throw 'Bottom bar is not using icon-only plugin navigation.'}
+    $reordered=Call '/navigation/reorder' @{source='mock.status/mock-status';target='mock/preview'}
+    if($reordered.value.page.viewId -ne $view -or !$reordered.value.page.dirty -or $reordered.value.navigation.iconButtons[0] -ne '✦'){throw 'Reordering changed the current draft or failed to update icon order.'}
     if(!$live.value.titleBar.visible -or $live.value.titleBar.height -gt 44 -or $live.value.titleBar.avatar -ne 'mobile-account-avatar'){throw 'Thin avatar title bar is missing.'}
     $menu=Call '/menu/open' @{}
     if(!$menu.value.menu.expanded -or !$menu.value.menu.visible -or !$menu.value.menu.settingsPinnedToBottom){throw 'Left account menu or pinned Settings is missing.'}
@@ -63,13 +66,13 @@ try{
     Reject '/preview' @{} 409
     $opened=Call '/navigation/open' @{}
     if(!$opened.value.navigation.expanded){throw 'Bottom navigation sheet did not open.'}
-    Reject '/navigation/select' @{pluginId='mock';pageId='mock-status'} 409
-    $switched=Call '/navigation/select' @{pluginId='mock';pageId='mock-status';discardDraft=$true}
+    Reject '/navigation/select' @{pluginId='mock.status';pageId='mock-status'} 409
+    $switched=Call '/navigation/select' @{pluginId='mock.status';pageId='mock-status';discardDraft=$true}
     if($switched.value.navigation.expanded -or $switched.value.page.pageId -ne 'mock-status' -or $switched.value.page.viewId -eq $view){throw 'Navigation did not switch to a fresh page and close its sheet.'}
     Reject '/press' @{viewId=$view;nodeId='save'} 409
     $json=(Call '/state' $null)|ConvertTo-Json -Depth 24
     if($json.Contains($token) -or $json -match 'accessToken|refreshToken|deviceSecret|password'){throw 'Credential material appeared in the debug state.'}
-    [ordered]@{passed=$true;mode='isolated native Mock';pullRefreshCompletesAndRetracts=$true;pullRefreshPreservesDraft=$true;thinAvatarTitleBar=$true;leftAccountMenu=$true;settingsPinnedAtBottom=$true;readPageTree=$true;nativeTextAndToggleBinding=$true;liveUpdatePreservesDraft=$true;unobstructedViewport=$true;separateSettingsRetainsDraft=$true;nativeButtonCallback=$true;staleViewRejected=$true;wrongTypeAndLengthRejected=$true;unknownButtonRejected=$true;dirtyDraftProtected=$true;bottomNavigationSheet=$true;pluginSwitchCreatesFreshView=$true;credentialsExposed=$false;keyboardOrMouseUsed=$false}|ConvertTo-Json
+    [ordered]@{passed=$true;mode='isolated native Mock';pullRefreshCompletesAndRetracts=$true;pullRefreshPreservesDraft=$true;thinAvatarTitleBar=$true;leftAccountMenu=$true;settingsPinnedAtBottom=$true;iconOnlyNavigation=$true;reorderPreservesDraft=$true;readPageTree=$true;nativeTextAndToggleBinding=$true;liveUpdatePreservesDraft=$true;unobstructedViewport=$true;separateSettingsRetainsDraft=$true;nativeButtonCallback=$true;staleViewRejected=$true;wrongTypeAndLengthRejected=$true;unknownButtonRejected=$true;dirtyDraftProtected=$true;bottomNavigationSheet=$true;pluginSwitchCreatesFreshView=$true;credentialsExposed=$false;keyboardOrMouseUsed=$false}|ConvertTo-Json
 }finally{
     if($process -and !$process.HasExited){Stop-Process -Id $process.Id}
     foreach($name in $names){[Environment]::SetEnvironmentVariable($name,$previous[$name])}

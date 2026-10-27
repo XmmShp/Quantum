@@ -195,7 +195,7 @@ public sealed partial class MainPage : ContentPage
     private async Task ShowPagesAsync()
     {
         _language.IsEnabled = true;
-        var pages = await _client!.CallAsync<BridgePageInfo[]>("pages", new { desktopId = _desktopId });
+        var pages = await _client!.CallAsync<BridgePageInfo[]>("pages", new { desktopId = _desktopId, includeIcons = true });
         _navigation.Replace(pages);
         RenderNavigation();
         if (pages.Length > 0)
@@ -594,7 +594,7 @@ public sealed partial class MainPage : ContentPage
 
         _status.Text = T("模拟器 · MOCK · 不执行业务", "Simulator · MOCK · No business execution");
 
-        ShowSnapshot(new("preview", "mock", "mock", "mock", DateTimeOffset.UtcNow.AddMinutes(5), page));
+        ShowSnapshot(new("preview", "mock", page.Id == "mock-status" ? "mock.status" : "mock", "mock", DateTimeOffset.UtcNow.AddMinutes(5), page));
         _status.Text = T("模拟器 · MOCK · 不执行业务", "Simulator · MOCK · No business execution");
 
         _pageContent.IsEnabled = true;

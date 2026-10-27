@@ -91,7 +91,7 @@ public sealed class MobileDesktopBridge(
             }
             Directory.CreateDirectory(journalPath);
             var pages = gateway.ShareAllPages();
-            await _client.CallAsync<JsonElement>("catalog", new { pages }, cancellationToken);
+            await PublishCatalogAsync(_client, pages, cancellationToken);
             _catalogSignature = JsonSerializer.Serialize(pages, MobileJson.Options);
             _cancellation?.Dispose();
             _cancellation = new CancellationTokenSource();
@@ -137,7 +137,7 @@ public sealed class MobileDesktopBridge(
                 var signature = JsonSerializer.Serialize(pages, MobileJson.Options);
                 if (signature != _catalogSignature)
                 {
-                    await client.CallAsync<JsonElement>("catalog", new { pages }, token);
+                    await PublishCatalogAsync(client, pages, token);
                     _catalogSignature = signature;
                 }
                 if (DateTimeOffset.UtcNow >= nextJournalScan)
@@ -276,6 +276,15 @@ public sealed class MobileDesktopBridge(
     }
     private static Task<JsonElement> AckAsync(BridgeClient client, BridgeMessage message, CancellationToken token)
         => client.CallAsync<JsonElement>("ack", new BridgeAck(message.Id, message.Lease!), token);
+    private static async Task PublishCatalogAsync(BridgeClient client, BridgePageInfo[] pages, CancellationToken token)
+    {
+        try { await client.CallAsync<JsonElement>("catalog", new { pages }, token); }
+        catch (BridgeException exception) when (exception.Code == "mobile_invalid_request" && pages.Any(p => p.Icon is not null))
+        {
+            // Icons are optional metadata; older platforms must retain core mobile access.
+            await client.CallAsync<JsonElement>("catalog", new { pages = pages.Select(p => p with { Icon = null }).ToArray() }, token);
+        }
+    }
     private static Task<JsonElement> SendAsync(BridgeClient client, BridgeSend message, CancellationToken token)
         => client.CallAsync<JsonElement>("send", message, token);
     public async ValueTask DisposeAsync()

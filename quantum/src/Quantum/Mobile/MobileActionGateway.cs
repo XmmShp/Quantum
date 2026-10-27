@@ -32,7 +32,7 @@ public sealed class MobileActionGateway(PluginCatalog catalog, PluginRpcRouter r
     public BridgePageInfo[] Pages()
     {
         lock (_gate) return catalog.Plugins.Where(p => _shared.Contains(p.Manifest.Id.ToString()) && p.RpcRuntime?.IsActive != false)
-            .SelectMany(p => p.MobilePages.Snapshot().Select(page => new BridgePageInfo(p.Manifest.Id.ToString(), page.Id, page.Title))).ToArray();
+            .SelectMany(p => p.MobilePages.Snapshot().Select(page => new BridgePageInfo(p.Manifest.Id.ToString(), page.Id, page.Title) { Icon = p.Routes.Where(r => r.Definition.ShowInNavigation).OrderBy(r => r.Definition.Order).Select(r => r.Definition.Icon).FirstOrDefault() ?? "◇" })).ToArray();
     }
 
     public BridgeSnapshot Open(string mobileId, string desktopSessionId, BridgeOpen open, DateTimeOffset now, bool replacePrevious = true)

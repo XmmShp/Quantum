@@ -51,6 +51,39 @@ public sealed partial class MainPage
     private async Task<object> ExecuteDebugAsync(string path, JsonElement body)
     {
         if (path == "/state") return DebugState();
+        if (path == "/screenshot")
+        {
+            if (_isSignIn) throw new MobileDebugException(409, "debug_sign_in_page");
+#if WINDOWS
+            var bitmap = new Microsoft.UI.Xaml.Media.Imaging.RenderTargetBitmap();
+            await bitmap.RenderAsync((Microsoft.UI.Xaml.UIElement)(Handler?.PlatformView ?? throw new MobileDebugException(409, "debug_window_unavailable")));
+            using var pixelsReader = Windows.Storage.Streams.DataReader.FromBuffer(await bitmap.GetPixelsAsync());
+            var pixels = new byte[pixelsReader.UnconsumedBufferLength];
+            pixelsReader.ReadBytes(pixels);
+            using var stream = new Windows.Storage.Streams.InMemoryRandomAccessStream();
+            var encoder = await Windows.Graphics.Imaging.BitmapEncoder.CreateAsync(Windows.Graphics.Imaging.BitmapEncoder.PngEncoderId, stream);
+            encoder.SetPixelData(Windows.Graphics.Imaging.BitmapPixelFormat.Bgra8, Windows.Graphics.Imaging.BitmapAlphaMode.Premultiplied,
+                (uint)bitmap.PixelWidth, (uint)bitmap.PixelHeight, 96, 96, pixels);
+            await encoder.FlushAsync();
+            using var reader = new Windows.Storage.Streams.DataReader(stream.GetInputStreamAt(0));
+            await reader.LoadAsync((uint)stream.Size);
+            var png = new byte[(int)stream.Size];
+            reader.ReadBytes(png);
+            return new { image = Convert.ToBase64String(png), width = bitmap.PixelWidth, height = bitmap.PixelHeight };
+#else
+            throw new MobileDebugException(501, "debug_screenshot_unavailable");
+#endif
+        }
+        if (path == "/navigation/reorder")
+        {
+            if (!_bottomBar.IsVisible) throw new MobileDebugException(409, "debug_navigation_unavailable");
+            var from = body.GetProperty("source").GetString()!;
+            var to = body.GetProperty("target").GetString()!;
+            if (!_navigation.Pages.Any(p => MobileNavigationState.Key(p) == from) || !_navigation.Pages.Any(p => MobileNavigationState.Key(p) == to))
+                throw new MobileDebugException(404, "debug_page_not_shared");
+            ReorderNavigation(from, to);
+            return DebugState();
+        }
         if (path == "/page/pull-refresh")
         {
             if (!_titleBar.IsVisible) throw new MobileDebugException(401, "debug_sign_in_required");
@@ -83,7 +116,7 @@ public sealed partial class MainPage
             {
                 Children = _snapshot.Page.Root.Children.Select(node => node.Id == "title" ? node with { Text = "Live update received" } : node).ToArray()
             } };
-            ShowSnapshot(new(Guid.NewGuid().ToString("N"), "mock", "mock", "mock", DateTimeOffset.UtcNow.AddMinutes(5), page));
+            ShowSnapshot(new(Guid.NewGuid().ToString("N"), "mock", _snapshot.PluginId, "mock", DateTimeOffset.UtcNow.AddMinutes(5), page));
             return DebugState();
         }
         if (_restoring || _signingIn) throw new MobileDebugException(409, "debug_app_busy");
@@ -161,11 +194,11 @@ public sealed partial class MainPage
             return DebugState();
         }
         if (_desktopId is null) throw new MobileDebugException(409, "debug_select_desktop_first");
-        if (path == "/pages") return await _client.CallAsync<BridgePageInfo[]>("pages", new { desktopId = _desktopId });
+        if (path == "/pages") return await _client.CallAsync<BridgePageInfo[]>("pages", new { desktopId = _desktopId, includeIcons = true });
         if (path == "/page/open")
         {
             var open = body.Deserialize<DebugOpenRequest>(DebugJson)!;
-            var pages = await _client.CallAsync<BridgePageInfo[]>("pages", new { desktopId = _desktopId });
+            var pages = await _client.CallAsync<BridgePageInfo[]>("pages", new { desktopId = _desktopId, includeIcons = true });
             if (!pages.Any(p => p.PluginId == open.PluginId && p.PageId == open.PageId)) throw new MobileDebugException(404, "debug_page_not_shared");
             CheckDebugDraft(open.DiscardDraft);
             await OpenAsync(open.PluginId, open.PageId);
@@ -195,7 +228,9 @@ public sealed partial class MainPage
         navigation = new
         {
             visible = _bottomBar.IsVisible, expanded = _navigationExpanded,
-            pages = _navigation.Pages.Select(p => new { p.PluginId, p.PageId, p.Title, active = p.PluginId == _navigation.PluginId && p.PageId == _navigation.PageId }).ToArray()
+            iconButtons = (_bottomBar.Content as VerticalStackLayout)?.Children.OfType<Grid>().LastOrDefault()?.Children.OfType<Button>().Select(b => b.Text).ToArray(),
+            shortcuts = _navigation.Shortcuts().Select(p => new { p.PluginId, p.PageId, p.Icon }).ToArray(),
+            pages = _navigation.Pages.Select(p => new { p.PluginId, p.PageId, p.Title, p.Icon, active = p.PluginId == _navigation.PluginId && p.PageId == _navigation.PageId }).ToArray()
         },
         page = _snapshot is { } snapshot && _renderer is { } renderer ? new
         {
@@ -212,7 +247,7 @@ public sealed partial class MainPage
         var status = new MobilePage("mock-status", T("状态预览", "Status preview"),
             new MobileNode("VStack", "root") { Children = [new("Text", "title") { Text = T("连接与导航预览", "Connection and navigation preview") }, new("Text", "mock-info") { Text = "MOCK · No platform or business calls" }] });
         _previewNavigation[status.Id] = status;
-        _navigation.Replace(_previewNavigation.Values.Select(p => new BridgePageInfo("mock", p.Id, p.Title)));
+        _navigation.Replace(_previewNavigation.Values.Select(p => new BridgePageInfo(p.Id == "mock-status" ? "mock.status" : "mock", p.Id, p.Title) { Icon = p.Id == "mock-status" ? "✦" : "日" }));
         _navigation.Select("mock", page.Id);
         RenderNavigation();
     }

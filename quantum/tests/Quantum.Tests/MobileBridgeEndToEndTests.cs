@@ -46,12 +46,14 @@ public sealed class MobileBridgeEndToEndTests
         }
     }
 
-    [Fact]
-    public async Task AuthenticatedPollingInvokesRealRpcOnceAndPersistsOutcome()
+    [Theory]
+    [InlineData(false)]
+    [InlineData(true)]
+    public async Task AuthenticatedPollingInvokesRealRpcOnceAndPersistsOutcome(bool legacyIcons)
     {
         using var timeout = new CancellationTokenSource(TimeSpan.FromSeconds(25));
         var token = timeout.Token;
-        using var http = new HttpClient(new PlatformHandler());
+        using var http = new HttpClient(new PlatformHandler(legacyIcons));
         var options = new QuantumMarketplaceOptions(new Uri("https://quantum.test/"), "0.1.0");
         var session = new QuantumMarketplaceSession(() => Task.FromResult<string?>(null), _ => Task.CompletedTask, () => Task.CompletedTask);
         var marketplace = new QuantumMarketplaceClient(http, options, session);
@@ -164,7 +166,7 @@ public sealed class MobileBridgeEndToEndTests
         }
     }
 
-    private sealed class PlatformHandler : HttpMessageHandler
+    private sealed class PlatformHandler(bool rejectIcons = false) : HttpMessageHandler
     {
         private readonly object _gate = new();
         private MobileBridgeMailbox _mailbox = new();
@@ -187,6 +189,9 @@ public sealed class MobileBridgeEndToEndTests
                     Assert.Equal("/rpc/mobile", request.RequestUri!.AbsolutePath);
                     try
                     {
+                        var bridgeRequest = MobileJson.Read<BridgeRequest>(root.GetProperty("params"));
+                        if (rejectIcons && bridgeRequest.Operation == "catalog" && bridgeRequest.Body.GetProperty("pages").EnumerateArray().Any(p => p.TryGetProperty("icon", out _)))
+                            throw new JsonException("Legacy catalog does not support icon metadata.");
                         var value = _mailbox.Exchange(MobileJson.Read<BridgeRequest>(root.GetProperty("params")), DateTimeOffset.UtcNow);
                         _mailbox = JsonSerializer.Deserialize<MobileBridgeMailbox>(JsonSerializer.Serialize(_mailbox, MobileJson.Options), MobileJson.Options)!;
                         result = new { isSuccess = true, value };

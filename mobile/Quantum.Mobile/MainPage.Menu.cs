@@ -33,6 +33,7 @@ public sealed partial class MainPage
         _avatarInitial.WidthRequest = _avatarInitial.HeightRequest = 32;
         _avatarInitial.MinimumHeightRequest = _avatarInitial.MinimumWidthRequest = 32;
         _avatarInitial.CornerRadius = 16;
+        _avatarInitial.BorderWidth = 0;
         _avatarInitial.Padding = 0;
         _avatarInitial.BackgroundColor = Color.FromArgb("#EEE8F7");
         _avatarInitial.TextColor = MobileTheme.Accent;

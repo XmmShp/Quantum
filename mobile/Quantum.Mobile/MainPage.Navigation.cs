@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Microsoft.Maui.Controls.Shapes;
 using Quantum.Mobile.Internal;
 
@@ -11,6 +12,8 @@ public sealed partial class MainPage
     private readonly Border _navigationSheet = new();
     private readonly VerticalStackLayout _navigationItems = new() { Spacing = 8 };
     private bool _navigationExpanded;
+    private DateTimeOffset _suppressNavClickUntil;
+    private bool _navigationDragging;
 #if DEBUG
     private readonly Dictionary<string, MobilePage> _previewNavigation = [];
 #endif
@@ -20,12 +23,13 @@ public sealed partial class MainPage
         _bottomBar.BackgroundColor = Colors.White;
         _bottomBar.Stroke = MobileTheme.Line;
         _bottomBar.StrokeThickness = 1;
-        _bottomBar.Padding = new Thickness(12, 6, 12, 12);
+        _bottomBar.Padding = new Thickness(16, 5, 16, 8);
         shell.Add(_bottomBar, 0, 2);
         var up = new PanGestureRecognizer();
         double drag = 0;
         up.PanUpdated += async (_, e) =>
         {
+            if (_navigationDragging || DateTimeOffset.UtcNow < _suppressNavClickUntil) return;
             if (e.StatusType == GestureStatus.Started) drag = 0;
             if (e.StatusType == GestureStatus.Running) drag = e.TotalY;
             if (e.StatusType == GestureStatus.Completed && drag < -24) await OpenNavigationAsync();
@@ -65,13 +69,13 @@ public sealed partial class MainPage
                 else await _navigationSheet.TranslateToAsync(0, 0, 140, Easing.CubicOut);
             }
         };
-        var heading = new VerticalStackLayout { Spacing = 0, Children = { handle, new Label { Text = T("插件", "Plugins"), FontSize = 25, FontAttributes = FontAttributes.Bold, TextColor = MobileTheme.Ink } } };
+        var heading = new VerticalStackLayout { Spacing = 0, Children = { handle, new Label { Text = T("插件", "Plugins"), FontSize = 18, FontAttributes = FontAttributes.Bold, TextColor = MobileTheme.Ink } } };
         heading.GestureRecognizers.Add(down);
-        _navigationSheet.Content = new VerticalStackLayout
-        {
-            Spacing = 16,
-            Children = { heading, new ScrollView { Content = _navigationItems, MaximumHeightRequest = 420 } }
-        };
+        var sheet = new Grid { RowSpacing = 12, RowDefinitions = { new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Star) } };
+        sheet.Add(heading);
+        sheet.Add(MobileTheme.Caption(T("长按拖动调整顺序，前四个显示在底栏", "Hold and drag to reorder. The first four appear in the bar.")), 0, 1);
+        sheet.Add(new ScrollView { Content = _navigationItems }, 0, 2);
+        _navigationSheet.Content = sheet;
         _navigationOverlay.Add(_navigationSheet);
         shell.Add(_navigationOverlay, 0, 1);
         Grid.SetRowSpan(_navigationOverlay, 2);
@@ -91,20 +95,22 @@ public sealed partial class MainPage
             buttons.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Star));
             var page = shortcuts[i];
             var selected = page.PluginId == _navigation.PluginId && page.PageId == _navigation.PageId;
-            var button = Button(page.Title, () => SelectNavigationPageAsync(page));
+            var button = Button(page.Icon ?? "◇", async () => { if (DateTimeOffset.UtcNow >= _suppressNavClickUntil) await SelectNavigationPageAsync(page); });
             button.AutomationId = "mobile-nav-" + i;
-            button.FontSize = 13; button.Padding = new Thickness(8, 10);
-            button.LineBreakMode = LineBreakMode.TailTruncation;
-            button.MaximumHeightRequest = 56;
+            button.FontSize = 22;
+            button.Padding = 0;
+            button.HeightRequest = button.MinimumHeightRequest = 44;
+            button.CornerRadius = 12;
+            button.BorderWidth = 0;
+            button.WidthRequest = 48;
+            button.HorizontalOptions = LayoutOptions.Center;
+            SemanticProperties.SetDescription(button, page.Title);
+            ToolTipProperties.SetText(button, page.Title);
+            AddReorderGestures(button, page);
             button.BackgroundColor = selected ? Color.FromArgb("#EEE8F7") : Colors.Transparent;
             button.TextColor = selected ? MobileTheme.Accent : MobileTheme.Muted;
             buttons.Add(button, i, 0);
         }
-        buttons.ColumnDefinitions.Add(new ColumnDefinition(GridLength.Auto));
-        var more = Button(T("全部 ⌃", "All ⌃"), OpenNavigationAsync);
-        more.AutomationId = "mobile-nav-expand";
-        more.BackgroundColor = Colors.Transparent; more.TextColor = MobileTheme.Ink; more.FontSize = 13;
-        buttons.Add(more, shortcuts.Length, 0);
         var grip = new Border
         {
             WidthRequest = 32, HeightRequest = 3, BackgroundColor = MobileTheme.Line, StrokeThickness = 0,
@@ -115,7 +121,9 @@ public sealed partial class MainPage
         foreach (var page in _navigation.Pages)
         {
             var selected = page.PluginId == _navigation.PluginId && page.PageId == _navigation.PageId;
-            var button = Button((selected ? "✓  " : "") + page.Title, () => SelectNavigationPageAsync(page));
+            var button = Button((page.Icon ?? "◇") + "   " + page.Title, async () => { if (DateTimeOffset.UtcNow >= _suppressNavClickUntil) await SelectNavigationPageAsync(page); });
+            button.FontSize = 14; button.Padding = new Thickness(12, 10);
+            AddReorderGestures(button, page);
             button.LineBreakMode = LineBreakMode.TailTruncation;
             button.BackgroundColor = selected ? Color.FromArgb("#EEE8F7") : MobileTheme.Canvas;
             button.TextColor = selected ? MobileTheme.Accent : MobileTheme.Ink;
@@ -125,10 +133,55 @@ public sealed partial class MainPage
         RenderAccountMenu();
     }
 
+    private void AddReorderGestures(View view, BridgePageInfo page)
+    {
+        var key = MobileNavigationState.Key(page);
+        var drag = new DragGestureRecognizer { CanDrag = true };
+        drag.DragStarting += (_, e) =>
+        {
+            e.Data.Properties["quantum.mobile.page"] = key;
+            e.Data.Text = page.Title;
+            _navigationDragging = true;
+            _suppressNavClickUntil = DateTimeOffset.UtcNow.AddSeconds(1);
+            view.Opacity = .55;
+        };
+        drag.DropCompleted += (_, _) => { _navigationDragging = false; view.Opacity = 1; _suppressNavClickUntil = DateTimeOffset.UtcNow.AddMilliseconds(400); };
+        var drop = new DropGestureRecognizer { AllowDrop = true };
+        drop.DragOver += (_, e) => e.AcceptedOperation = e.Data.Properties.ContainsKey("quantum.mobile.page") ? DataPackageOperation.Copy : DataPackageOperation.None;
+        drop.Drop += (_, e) =>
+        {
+            if (e.Data.Properties.TryGetValue("quantum.mobile.page", out var source) && source is string from)
+                ReorderNavigation(from, key);
+        };
+        view.GestureRecognizers.Add(drag);
+        view.GestureRecognizers.Add(drop);
+    }
+
+    private void ReorderNavigation(string source, string target)
+    {
+        if (!_navigation.Pages.Any(p => MobileNavigationState.Key(p) == source) || !_navigation.Pages.Any(p => MobileNavigationState.Key(p) == target)) return;
+        _navigationDragging = false;
+        _navigation.Move(source, target);
+        if (!_preview && _storageKey.Length > 0 && _desktopId is not null)
+            Preferences.Default.Set(_storageKey + ".nav-order." + _desktopId, JsonSerializer.Serialize(_navigation.Order));
+        RenderNavigation();
+    }
+
+    private void RestoreNavigationOrder()
+    {
+        if (_storageKey.Length == 0 || _desktopId is null) return;
+        try
+        {
+            var order = Preferences.Default.Get(_storageKey + ".nav-order." + _desktopId, "[]");
+            _navigation.RestoreOrder(JsonSerializer.Deserialize<string[]>(order) ?? []);
+        }
+        catch (JsonException) { _navigation.RestoreOrder([]); }
+    }
+
     private async Task RefreshNavigationAsync()
     {
         if (_preview || _client is null || _desktopId is null) return;
-        var pages = await _client.CallAsync<BridgePageInfo[]>("pages", new { desktopId = _desktopId });
+        var pages = await _client.CallAsync<BridgePageInfo[]>("pages", new { desktopId = _desktopId, includeIcons = true });
         _navigation.Replace(pages);
         RenderNavigation();
     }
@@ -138,7 +191,7 @@ public sealed partial class MainPage
         if (_navigationExpanded || !_bottomBar.IsVisible) return;
         await CloseMenuAsync();
         _navigationExpanded = true;
-        _navigationSheet.MaximumHeightRequest = Math.Max(220, Math.Min(560, Height * .72));
+        _navigationSheet.HeightRequest = Math.Min(Math.Max(180, Height * .72), Math.Min(560, Math.Max(220, 120 + _navigation.Pages.Length * 52)));
         _navigationSheet.TranslationY = 80;
         _navigationOverlay.IsVisible = true;
         await _navigationSheet.TranslateToAsync(0, 0, 160, Easing.CubicOut);

@@ -66,8 +66,16 @@ public sealed partial class MainPage
             _body.Children.Add(new ActivityIndicator { IsRunning = true, Color = MobileTheme.Accent, HeightRequest = 32 });
             _pageCache.Clear();
             _snapshot = null; _renderer = null; _deferredSnapshot = null; _openRequestId = null;
+            var previousId = Preferences.Default.Get(_storageKey + ".desktop", "");
+            if (!confirm && previousId.Length > 0 && previousId != device.Id && Preferences.Default.Get(_storageKey + ".desktop-name", "") == device.Name)
+            {
+                var oldOrder = Preferences.Default.Get(_storageKey + ".nav-order." + previousId, "[]");
+                if (Preferences.Default.Get(_storageKey + ".nav-order." + device.Id, "[]") == "[]")
+                    Preferences.Default.Set(_storageKey + ".nav-order." + device.Id, oldOrder);
+            }
             _desktopId = device.Id;
             _currentDesktop = device;
+            RestoreNavigationOrder();
             _connected = MobileDesktopSelection.IsOnline(device, _client!.UtcNow);
             Preferences.Default.Set(_storageKey + ".desktop", device.Id);
             Preferences.Default.Set(_storageKey + ".desktop-name", device.Name);

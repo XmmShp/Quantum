@@ -1,3 +1,4 @@
+using Microsoft.Maui.Controls.Shapes;
 using Microsoft.Maui.Graphics;
 using Quantum.Mobile.Internal;
 using System.Text.Json;
@@ -10,6 +11,7 @@ public sealed class MobileRenderer
     private readonly Dictionary<string, JsonElement> _inputs = [];
     private readonly Dictionary<string, View> _views = [];
     private Dictionary<string, MobileNode> _nodes = [];
+    private string _contentRootId = "";
     private readonly Func<string, Dictionary<string, JsonElement>, Task> _invoke;
 #if DEBUG
     private readonly Dictionary<string, View> _debugControls = [];
@@ -21,6 +23,7 @@ public sealed class MobileRenderer
     public View Render(MobilePage page)
     {
         MobileUiValidator.Validate(page, wire: true);
+        _contentRootId = page.Root.Type == "Scroll" ? page.Root.Children[0].Id : page.Root.Id;
         _inputs.Clear(); _views.Clear(); _nodes = Flatten(page.Root).ToDictionary(n => n.Id); IsDirty = false;
 #if DEBUG
         _debugControls.Clear(); _debugPress.Clear(); DebugViewId = Guid.NewGuid().ToString("N");
@@ -30,6 +33,7 @@ public sealed class MobileRenderer
     public View Update(MobilePage page)
     {
         MobileUiValidator.Validate(page, wire: true);
+        _contentRootId = page.Root.Type == "Scroll" ? page.Root.Children[0].Id : page.Root.Id;
         var previous = _nodes;
         _nodes = Flatten(page.Root).ToDictionary(n => n.Id);
         foreach (var id in _views.Keys.Where(id => !_nodes.ContainsKey(id) || previous[id].Type != _nodes[id].Type).ToArray())
@@ -73,22 +77,59 @@ public sealed class MobileRenderer
         container.Content = content;
     }
 
+    private static void StyleText(Label label, MobileNode node)
+    {
+        label.FontSize = node.Style == "title" ? 18 : node.Style == "caption" ? 12 : 14;
+        label.FontAttributes = node.Style == "title" ? FontAttributes.Bold : FontAttributes.None;
+        label.TextColor = node.Style == "error" ? MobileTheme.Error : node.Style == "caption" ? MobileTheme.Muted : MobileTheme.Ink;
+        label.LineHeight = 1.2;
+    }
+
+    private void StyleGroup(Border border, MobileNode node)
+    {
+        var card = node.Id != _contentRootId && node.Children.Any(n => n.Type == "Text" && n.Style == "title" ||
+            n.Type == "HStack" && n.Children.FirstOrDefault() is { Type: "Text", Style: "title" });
+        ((VerticalStackLayout)border.Content!).Spacing = node.Id == _contentRootId ? 12 : card ? 8 : 4;
+        border.Padding = card ? new Thickness(12) : new Thickness(0);
+        border.BackgroundColor = card ? Colors.White : Colors.Transparent;
+        border.Stroke = MobileTheme.Line;
+        border.StrokeThickness = card ? 1 : 0;
+    }
+
+    private void LayoutRow(Grid row, MobileNode node)
+    {
+        var children = node.Children.Select(Node).ToArray();
+        Reconcile(row, children);
+        row.ColumnDefinitions.Clear();
+        for (var i = 0; i < children.Length; i++)
+        {
+            var flexible = node.Children[i].Type is "VStack" or "Text" or "TextField" or "Toggle";
+            row.ColumnDefinitions.Add(new ColumnDefinition(flexible ? GridLength.Star : GridLength.Auto));
+            Grid.SetColumn(children[i], i);
+            children[i].VerticalOptions = LayoutOptions.Center;
+        }
+    }
+
     private View Node(MobileNode node)
     {
         if (_views.TryGetValue(node.Id, out var existing))
         {
             switch (node.Type)
             {
-                case "VStack": case "HStack": Reconcile((Layout)existing, node.Children.Select(Node).ToArray()); break;
+                case "VStack":
+                    var group = (Border)existing;
+                    Reconcile((Layout)group.Content!, node.Children.Select(Node).ToArray());
+                    StyleGroup(group, node);
+                    break;
+                case "HStack": LayoutRow((Grid)existing, node); break;
                 case "Scroll": SetContent((ContentView)existing, Node(node.Children[0])); break;
                 case "Text":
                     var label = (Label)existing;
                     label.Text = node.Text;
-                    label.FontSize = node.Style == "title" ? 26 : node.Style == "caption" ? 13 : 17;
-                    label.TextColor = node.Style == "error" ? Colors.IndianRed : null;
+                    StyleText(label, node);
                     break;
                 case "TextField": ((Entry)existing).Placeholder = node.Placeholder ?? node.Text; ((Entry)existing).MaxLength = node.MaxLength; break;
-                case "Toggle": ((Label)((HorizontalStackLayout)existing).Children[0]).Text = node.Text; break;
+                case "Toggle": ((Label)((Grid)existing).Children[0]).Text = node.Text; break;
                 case "Button": ((Button)existing).Text = node.Text; break;
             }
             existing.IsEnabled = node.Enabled && (node.Type != "Button" || node.ActionId is not null);
@@ -98,28 +139,26 @@ public sealed class MobileRenderer
         switch (node.Type)
         {
             case "VStack":
-                var vertical = new VerticalStackLayout { Spacing = 14 };
+                var vertical = new VerticalStackLayout { Spacing = node.Id == _contentRootId ? 12 : 8 };
                 Reconcile(vertical, node.Children.Select(Node).ToArray());
-                result = vertical; break;
+                var group = new Border { Content = vertical, StrokeShape = new RoundRectangle { CornerRadius = 14 } };
+                StyleGroup(group, node);
+                result = group; break;
             case "HStack":
-                var horizontal = new HorizontalStackLayout { Spacing = 12 };
-                Reconcile(horizontal, node.Children.Select(Node).ToArray());
+                var horizontal = new Grid { ColumnSpacing = 10 };
+                LayoutRow(horizontal, node);
                 result = horizontal; break;
             case "Scroll":
                 var container = new ContentView();
                 SetContent(container, Node(node.Children[0]));
                 result = container; break;
             case "Text":
-                result = new Label
-                {
-                    Text = node.Text,
-                    FontSize = node.Style == "title" ? 26 : node.Style == "caption" ? 13 : 17,
-                    TextColor = node.Style == "error" ? Colors.IndianRed : null,
-                    LineBreakMode = LineBreakMode.WordWrap
-                };
+                var label = new Label { Text = node.Text, LineBreakMode = LineBreakMode.WordWrap };
+                StyleText(label, node);
+                result = label;
                 break;
             case "TextField":
-                var input = new Entry { Placeholder = node.Placeholder ?? node.Text, MaxLength = node.MaxLength };
+                var input = new Entry { Placeholder = node.Placeholder ?? node.Text, MaxLength = node.MaxLength, FontSize = 14, TextColor = MobileTheme.Ink, PlaceholderColor = MobileTheme.Muted, BackgroundColor = MobileTheme.Canvas, MinimumHeightRequest = 40 };
                 _inputs[node.Id] = MobileJson.Element("");
                 input.TextChanged += (_, args) => { _inputs[node.Id] = MobileJson.Element(args.NewTextValue ?? ""); IsDirty = true; };
                 result = input; break;
@@ -130,10 +169,13 @@ public sealed class MobileRenderer
 #if DEBUG
                 _debugControls[node.Id] = toggle;
 #endif
-                result = new HorizontalStackLayout { Spacing = 12, Children = { new Label { Text = node.Text, VerticalOptions = LayoutOptions.Center }, toggle } };
+                var toggleRow = new Grid { ColumnSpacing = 8, ColumnDefinitions = { new ColumnDefinition(GridLength.Star), new ColumnDefinition(GridLength.Auto) } };
+                toggleRow.Add(new Label { Text = node.Text, FontSize = 13, TextColor = MobileTheme.Ink, VerticalOptions = LayoutOptions.Center });
+                toggleRow.Add(toggle, 1);
+                result = toggleRow;
                 break;
             case "Button":
-                var button = new Button { Text = node.Text, CornerRadius = 12, MinimumHeightRequest = 48 };
+                var button = new Button { Text = node.Text, CornerRadius = 10, MinimumHeightRequest = 44, MinimumWidthRequest = 44, FontSize = 13, Padding = new Thickness(14, 8), BackgroundColor = MobileTheme.Accent, TextColor = Colors.White };
                 button.IsEnabled = node.Enabled && node.ActionId is not null;
                 async Task PressAsync()
                 {
@@ -146,9 +188,9 @@ public sealed class MobileRenderer
                 _debugPress[node.Id] = PressAsync;
 #endif
                 result = button; break;
-            case "Divider": result = new BoxView { HeightRequest = 1, Color = Colors.Gray, Opacity = .25 }; break;
-            case "Spacer": result = new BoxView { HeightRequest = 16, Opacity = 0 }; break;
-            case "Progress": result = new ActivityIndicator { IsRunning = true }; break;
+            case "Divider": result = new BoxView { HeightRequest = 1, Color = MobileTheme.Line, Margin = new Thickness(0, 2) }; break;
+            case "Spacer": result = new BoxView { HeightRequest = 8, Opacity = 0 }; break;
+            case "Progress": result = new ActivityIndicator { IsRunning = true, Color = MobileTheme.Accent, HeightRequest = 24 }; break;
             default: throw new ArgumentException("Unsupported mobile control.");
         }
         if (node.Type != "Button") result.IsEnabled = node.Enabled;
