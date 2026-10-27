@@ -37,4 +37,18 @@
           DestinationFiles="$(CodexScopedCssBundleTarget)"
           SkipUnchangedFiles="true" />
   </Target>
+
+  <!-- Publish does not include the custom Build copy in its static asset manifest. -->
+  <Target Name="PublishCodexScopedCssBundle" BeforeTargets="ComputeFilesToPublish">
+    <PropertyGroup>
+      <ScopedCssPublishSource>$(IntermediateOutputPath)scopedcss/projectbundle/$(PackageId).bundle.scp.css</ScopedCssPublishSource>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(ScopedCssPublishSource)')"
+           Text="The Codex scoped CSS bundle is required for publishing: $(ScopedCssPublishSource)" />
+    <ItemGroup>
+      <ResolvedFileToPublish Include="$(ScopedCssPublishSource)"
+                             RelativePath="wwwroot/$(PackageId).bundle.scp.css"
+                             CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
 </Project>
