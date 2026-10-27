@@ -280,6 +280,10 @@ public sealed record PluginRouteDefinition
 
     public string? Icon { get; }
 
+    public string? IconFile { get; init; }
+
+    public string? IconImage { get; init; }
+
     public int Order { get; }
 
     public bool ShowInNavigation { get; }
@@ -332,7 +336,8 @@ public sealed record PluginRouteDefinition
             Icon,
             Order,
             ShowInNavigation,
-            localizedTitles);
+            localizedTitles)
+        { IconFile = IconFile, IconImage = IconImage };
 
     public string? GetTitle(CultureInfo culture)
     {

@@ -302,10 +302,13 @@ public sealed class MobileDesktopBridge(
     private static async Task PublishCatalogAsync(BridgeClient client, BridgePageInfo[] pages, CancellationToken token)
     {
         try { await client.CallAsync<JsonElement>("catalog", new { pages }, token); }
+        catch (BridgeException exception) when (exception.Code == "mobile_invalid_request" && pages.Any(p => p.IconImage is not null))
+        {
+            await PublishCatalogAsync(client, pages.Select(p => p with { IconImage = null }).ToArray(), token);
+        }
         catch (BridgeException exception) when (exception.Code == "mobile_invalid_request" && pages.Any(p => p.Icon is not null))
         {
-            // Icons are optional metadata; older platforms must retain core mobile access.
-            await client.CallAsync<JsonElement>("catalog", new { pages = pages.Select(p => p with { Icon = null }).ToArray() }, token);
+            await client.CallAsync<JsonElement>("catalog", new { pages = pages.Select(p => p with { Icon = null, IconImage = null }).ToArray() }, token);
         }
     }
     private static Task<JsonElement> SendAsync(BridgeClient client, BridgeSend message, CancellationToken token)

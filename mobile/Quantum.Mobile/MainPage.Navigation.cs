@@ -112,7 +112,7 @@ public sealed partial class MainPage
             AddReorderGestures(button, page);
             button.BackgroundColor = selected ? Color.FromArgb("#EEE8F7") : Colors.Transparent;
             button.TextColor = selected ? MobileTheme.Accent : MobileTheme.Muted;
-            buttons.Add(button, i, 0);
+            buttons.Add(NavigationIconView(button, page), i, 0);
         }
         var grip = new Border
         {
@@ -147,7 +147,7 @@ public sealed partial class MainPage
             AddReorderGestures(label, page);
             var tile = new Grid { RowSpacing = 4, Padding = new Thickness(2, 4), MinimumHeightRequest = 80,
                 RowDefinitions = { new RowDefinition(GridLength.Auto), new RowDefinition(GridLength.Auto) } };
-            tile.Add(button); tile.Add(label, 0, 1);
+            tile.Add(NavigationIconView(button, page)); tile.Add(label, 0, 1);
             if (index % 4 == 0) _navigationItems.RowDefinitions.Add(new RowDefinition(GridLength.Auto));
             _navigationItems.Add(tile, index % 4, index / 4);
             index++;
@@ -158,6 +158,25 @@ public sealed partial class MainPage
             _navigationItems.Add(empty); Grid.SetColumnSpan(empty, 4);
         }
         RenderAccountMenu();
+    }
+
+    private static View NavigationIconView(Button button, BridgePageInfo page)
+    {
+        if (page.IconImage is null) return button;
+        try
+        {
+            var bytes = MobileIconImage.Decode(page.IconImage);
+            button.Text = null;
+            var image = new Image
+            {
+                Source = ImageSource.FromStream(() => new MemoryStream(bytes, writable: false)),
+                WidthRequest = 24, HeightRequest = 24, Aspect = Aspect.AspectFit,
+                HorizontalOptions = LayoutOptions.Center, VerticalOptions = LayoutOptions.Center,
+                InputTransparent = true
+            };
+            return new Grid { Children = { button, image } };
+        }
+        catch (ArgumentException) { return button; }
     }
 
     private void AddReorderGestures(View view, BridgePageInfo page)
@@ -208,7 +227,7 @@ public sealed partial class MainPage
     private async Task RefreshNavigationAsync()
     {
         if (_preview || _client is null || _desktopId is null) return;
-        var pages = await _client.CallAsync<BridgePageInfo[]>("pages", new { desktopId = _desktopId, includeIcons = true });
+        var pages = await _client.CallAsync<BridgePageInfo[]>("pages", new { desktopId = _desktopId, includeIcons = true, includeIconImages = true });
         _navigation.Replace(pages);
         RenderNavigation();
     }

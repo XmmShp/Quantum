@@ -54,7 +54,11 @@ public sealed class JsonPluginManifestReader
                     route.Icon,
                     route.Order,
                     route.ShowInNavigation))
-                .WithLocalizedTitles(route.Titles)),
+                .WithLocalizedTitles(route.Titles) with
+            {
+                IconFile = route.IconFile,
+                IconImage = PluginIconAsset.Load(fullRootPath, route.IconFile)
+            }),
             new PluginWebContributions(document.Web.Head, document.Web.PostBlazor),
             document.Database is null
                 ? null
@@ -181,6 +185,8 @@ public sealed class JsonPluginManifestReader
             = new Dictionary<string, string>();
 
         public string? Icon { get; init; }
+
+        public string? IconFile { get; init; }
 
         public int Order { get; init; }
 

@@ -222,3 +222,18 @@ WKWebView 仍应各做一次实机验证，尤其关注 sandbox iframe 加载和
 Web runtime 的 .NET 快照切换和 iframe 激活分属两个异步阶段：新 iframe 激活失败时宿主会报告错误并拒绝旧
 runtime 的后续 RPC，但当前版本还不能把 .NET 侧已经提交的插件快照自动回滚。入口 bundle 应尽量把可失败的初始化放在
 `activate`，并在发布前同时验证 WebView2 与 WKWebView。
+
+## 静态导航图标
+
+.NET 与 Web 插件的 `plugin.json` 都可在 `ui.routes` 中声明 `"iconFile": "icons/plugin.ico"`，路径相对于插件包的 `wwwroot`。仅接受标准 `.ico`，支持内含 PNG 或 DIB 的多尺寸图标，文件不超过 1 MiB、单帧不超过 256px。禁止绝对路径、URL、路径穿越和符号链接。文件必须随插件一起打包。
+
+`icon` 继续作为文字回退。宿主加载时将 ICO 归一为透明的 64px PNG，桌面导航、移动端底栏与上拉图标菜单共用此图像；转换结果随插件加载缓存，浏览页面和短轮询不会重复读取文件。移动端按需协商图像元数据，旧客户端和旧平台继续使用文字图标。此能力属于宿主 manifest，不增加 .NET/TypeScript SDK 运行时 API。
+
+```json
+{
+  "path": "/plugins/example",
+  "component": "Example.UI.Pages.Home",
+  "icon": "◇",
+  "iconFile": "icons/plugin.ico"
+}
+```

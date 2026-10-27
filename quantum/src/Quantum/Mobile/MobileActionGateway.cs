@@ -31,8 +31,19 @@ public sealed class MobileActionGateway(PluginCatalog catalog, PluginRpcRouter r
 
     public BridgePageInfo[] Pages()
     {
-        lock (_gate) return catalog.Plugins.Where(p => _shared.Contains(p.Manifest.Id.ToString()) && p.RpcRuntime?.IsActive != false)
-            .SelectMany(p => p.MobilePages.Snapshot().Select(page => new BridgePageInfo(p.Manifest.Id.ToString(), page.Id, page.Title) { Icon = p.Routes.Where(r => r.Definition.ShowInNavigation).OrderBy(r => r.Definition.Order).Select(r => r.Definition.Icon).FirstOrDefault() ?? "◇" })).ToArray();
+        lock (_gate)
+        {
+            var pages = catalog.Plugins.Where(p => _shared.Contains(p.Manifest.Id.ToString()) && p.RpcRuntime?.IsActive != false)
+            .SelectMany(p => p.MobilePages.Snapshot().Select(page => new BridgePageInfo(p.Manifest.Id.ToString(), page.Id, page.Title) { Icon = p.Routes.Where(r => r.Definition.ShowInNavigation).OrderBy(r => r.Definition.Order).Select(r => r.Definition.Icon).FirstOrDefault() ?? "◇", IconImage = p.Routes.Where(r => r.Definition.ShowInNavigation).OrderBy(r => r.Definition.Order).Select(r => r.Definition.IconImage).FirstOrDefault() })).ToArray();
+            var remaining = MobileIconImage.MaximumCatalogCharacters;
+            return pages.Select(page =>
+            {
+                if (page.IconImage is not { } image) return page;
+                if (image.Length > remaining) return page with { IconImage = null };
+                remaining -= image.Length;
+                return page;
+            }).ToArray();
+        }
     }
 
     public BridgeSnapshot Open(string mobileId, string desktopSessionId, BridgeOpen open, DateTimeOffset now, bool replacePrevious = true)

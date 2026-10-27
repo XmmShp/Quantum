@@ -900,3 +900,5 @@ body:has(.quantum-ledger) {
     display: none;
   }
 }
+
+.nav-icon-image { display: block; width: 24px; height: 24px; object-fit: contain; }

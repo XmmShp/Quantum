@@ -6,6 +6,8 @@
 
   <ItemGroup>
     <PackageVersion Include="Microsoft.Maui.Controls" Version="10.0.20" />
+    <PackageVersion Include="SkiaSharp" Version="3.119.4" />
+    <PackageVersion Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Version="3.119.4" />
     <PackageVersion Include="Velopack" Version="1.2.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.Web" Version="10.0.7" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebView.Maui" Version="10.0.20" />

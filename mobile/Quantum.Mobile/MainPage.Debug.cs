@@ -202,11 +202,11 @@ public sealed partial class MainPage
             return DebugState();
         }
         if (_desktopId is null) throw new MobileDebugException(409, "debug_select_desktop_first");
-        if (path == "/pages") return await _client.CallAsync<BridgePageInfo[]>("pages", new { desktopId = _desktopId, includeIcons = true });
+        if (path == "/pages") return await _client.CallAsync<BridgePageInfo[]>("pages", new { desktopId = _desktopId, includeIcons = true, includeIconImages = true });
         if (path == "/page/open")
         {
             var open = body.Deserialize<DebugOpenRequest>(DebugJson)!;
-            var pages = await _client.CallAsync<BridgePageInfo[]>("pages", new { desktopId = _desktopId, includeIcons = true });
+            var pages = await _client.CallAsync<BridgePageInfo[]>("pages", new { desktopId = _desktopId, includeIcons = true, includeIconImages = true });
             if (!pages.Any(p => p.PluginId == open.PluginId && p.PageId == open.PageId)) throw new MobileDebugException(404, "debug_page_not_shared");
             CheckDebugDraft(open.DiscardDraft);
             await OpenAsync(open.PluginId, open.PageId);
@@ -239,9 +239,9 @@ public sealed partial class MainPage
             visible = _bottomBar.IsVisible, expanded = _navigationExpanded,
             gridColumns = _navigationItems.ColumnDefinitions.Count,
             tiles = _navigationItems.Children.OfType<Grid>().Select(tile => new { row = Grid.GetRow(tile), column = Grid.GetColumn(tile) }).ToArray(),
-            iconButtons = (_bottomBar.Content as VerticalStackLayout)?.Children.OfType<Grid>().LastOrDefault()?.Children.OfType<Button>().Select(b => b.Text).ToArray(),
-            shortcuts = _navigation.Shortcuts().Select(p => new { p.PluginId, p.PageId, p.Icon }).ToArray(),
-            pages = _navigation.Pages.Select(p => new { p.PluginId, p.PageId, p.Title, p.Icon, active = p.PluginId == _navigation.PluginId && p.PageId == _navigation.PageId }).ToArray()
+            iconButtons = (_bottomBar.Content as VerticalStackLayout)?.Children.OfType<Grid>().LastOrDefault()?.Children.SelectMany(v => v is Button button ? new[] { button } : v is Grid grid ? grid.Children.OfType<Button>() : []).Select(b => b.Text).ToArray(),
+            shortcuts = _navigation.Shortcuts().Select(p => new { p.PluginId, p.PageId, p.Icon, hasImage = p.IconImage is not null }).ToArray(),
+            pages = _navigation.Pages.Select(p => new { p.PluginId, p.PageId, p.Title, p.Icon, hasImage = p.IconImage is not null, active = p.PluginId == _navigation.PluginId && p.PageId == _navigation.PageId }).ToArray()
         },
         page = _snapshot is { } snapshot && _renderer is { } renderer ? new
         {

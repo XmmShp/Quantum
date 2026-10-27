@@ -26,7 +26,7 @@
                                  class="nav-item"
                                  aria-label="@title"
                                  title="@title">
-                            <span class="nav-icon" aria-hidden="true">@(route.Definition.Icon ?? "◇")</span>
+                            <PluginIcon Image="@route.Definition.IconImage" Glyph="@route.Definition.Icon" />
                         </NavLink>
                     }
                 }

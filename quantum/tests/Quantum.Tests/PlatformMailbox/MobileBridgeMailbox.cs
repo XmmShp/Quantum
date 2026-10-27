@@ -84,6 +84,10 @@ public sealed class MobileBridgeMailbox
                         if (string.IsNullOrWhiteSpace(page.Title) || page.Title.Length > 200) throw new ArgumentException("Invalid page title.");
                         if (page.Icon is { } icon && (icon.Length > 64 || icon.Any(char.IsControl))) throw new ArgumentException("Invalid page icon.");
                     }
+                    if (pages.Sum(p => (long)(p.IconImage?.Length ?? 0)) > MobileIconImage.MaximumCatalogCharacters)
+                        throw new ArgumentException("Plugin icon catalog exceeds the size limit.");
+                    foreach (var page in pages)
+                        if (page.IconImage is { } image) MobileIconImage.Decode(image);
                     sender.Pages = pages;
                     // A catalog publication is an authorization epoch change. Invalidate old phone views.
                     foreach (var key in Snapshots.Where(p => p.Value.DesktopId == sender.Device.Id).Select(p => p.Key).ToArray()) Snapshots.Remove(key);
@@ -94,7 +98,12 @@ public sealed class MobileBridgeMailbox
                     RequireKind(sender, "mobile");
                     var desktop = Target(Text(body, "desktopId"), "desktop");
                     var includeIcons = body.TryGetProperty("includeIcons", out var icons) && icons.ValueKind == JsonValueKind.True;
-                    return MobileJson.Element(includeIcons ? desktop.Pages : desktop.Pages.Select(p => p with { Icon = null }).ToArray());
+                    var includeImages = body.TryGetProperty("includeIconImages", out var images) && images.ValueKind == JsonValueKind.True;
+                    return MobileJson.Element(desktop.Pages.Select(p => p with
+                    {
+                        Icon = includeIcons ? p.Icon : null,
+                        IconImage = includeImages ? p.IconImage : null
+                    }).ToArray());
                 }
             case "attachment/create":
                 {

@@ -9,7 +9,7 @@
     <Nullable>enable</Nullable>
     <ApplicationTitle>Quantum</ApplicationTitle>
     <ApplicationId>io.quantum.desktop</ApplicationId>
-    <ApplicationDisplayVersion>0.1.15</ApplicationDisplayVersion>
+    <ApplicationDisplayVersion>0.1.16</ApplicationDisplayVersion>
     <ApplicationVersion>1</ApplicationVersion>
     <Version>$(ApplicationDisplayVersion)</Version>
     <SupportedOSPlatformVersion Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'maccatalyst'">15.0</SupportedOSPlatformVersion>
@@ -37,6 +37,8 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="SkiaSharp" />
+    <PackageReference Include="SkiaSharp.NativeAssets.Linux.NoDependencies" Condition="$([MSBuild]::IsOSPlatform('linux'))" />
     <PackageReference Include="Velopack" />
     <ProjectReference Include="../Quantum.Mobile.Internal/Quantum.Mobile.Internal.csproj" />
     <PackageReference Include="Quantum.Plugin.Abstraction" />

@@ -547,3 +547,18 @@ community-pack.zip
 4. 任一插件失败会拒绝整个 ZIP。全部通过后，界面展示“新安装 / 升级 / 跳过”清单并要求确认。
 
 确认后宿主才以文件事务更新 `Modules` 并热切换完整运行时快照。文件替换、runtime staging 或生命周期启动失败时会恢复旧插件目录和旧 runtime。SQL migration 仍遵循 forward-only 规则：一旦在确认后的启动阶段提交，不会随着后续生命周期失败反向执行。
+
+## 静态导航图标
+
+.NET 与 Web 插件的 `plugin.json` 都可在 `ui.routes` 中声明 `"iconFile": "icons/plugin.ico"`，路径相对于插件包的 `wwwroot`。仅接受标准 `.ico`，支持内含 PNG 或 DIB 的多尺寸图标，文件不超过 1 MiB、单帧不超过 256px。禁止绝对路径、URL、路径穿越和符号链接。文件必须随插件一起打包。
+
+`icon` 继续作为文字回退。宿主加载时将 ICO 归一为透明的 64px PNG，桌面导航、移动端底栏与上拉图标菜单共用此图像；转换结果随插件加载缓存，浏览页面和短轮询不会重复读取文件。移动端按需协商图像元数据，旧客户端和旧平台继续使用文字图标。此能力属于宿主 manifest，不增加 .NET/TypeScript SDK 运行时 API。
+
+```json
+{
+  "path": "/plugins/example",
+  "component": "Example.UI.Pages.Home",
+  "icon": "◇",
+  "iconFile": "icons/plugin.ico"
+}
+```
