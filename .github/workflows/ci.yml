@@ -117,7 +117,9 @@ jobs:
             echo "client_jwks_secret=QUANTUM_CLIENT_PRIVATE_JWKS" >> "$GITHUB_OUTPUT"
           fi
       - name: Build release payload
-        run: dotnet build "${{ steps.plugin.outputs.directory }}/Quantum.${{ steps.plugin.outputs.directory }}Plugin.csproj" -c Release --verbosity minimal
+        run: |
+          dotnet build "${{ steps.plugin.outputs.directory }}/Quantum.${{ steps.plugin.outputs.directory }}Plugin.csproj" -c Release --verbosity minimal
+          python3 scripts/verify-plugin-assets.py "${{ steps.plugin.outputs.directory }}/bin/Release/net10.0"
       - name: Check publishing credentials
         env:
           QUANTUM_CLIENT_ID: ${{ secrets[steps.plugin.outputs.client_id_secret] }}

@@ -8,7 +8,7 @@
 
   <ItemGroup>
     <PackageReference Include="Quantum.Plugin.Abstraction" />
-    <PackageReference Include="System.Speech" />
+    <PackageReference Include="System.Speech" GeneratePathProperty="true" />
   </ItemGroup>
 
   <ItemGroup>
@@ -20,9 +20,17 @@
   </ItemGroup>
 
   <ItemGroup>
+    <Content Update="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
     <Content Update="plugin.json" CopyToOutputDirectory="PreserveNewest" />
     <None Update="README.md;THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
   </ItemGroup>
+
+  <Target Name="CopyCodexSpeechRuntime" AfterTargets="Build">
+    <Copy SourceFiles="$(PkgSystem_Speech)/lib/$(TargetFramework)/System.Speech.dll"
+          DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(PkgSystem_Speech)/runtimes/win/lib/$(TargetFramework)/System.Speech.dll"
+          DestinationFolder="$(TargetDir)runtimes/win/lib/$(TargetFramework)" SkipUnchangedFiles="true" />
+  </Target>
 
   <Target Name="CopyCodexScopedCssBundle"
           AfterTargets="Build"
