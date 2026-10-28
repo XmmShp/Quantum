@@ -1,5 +1,11 @@
 # Quantum Mobile development preview
 
+0.1.11 adds file-based plugin icons from standard ICO assets to the four-slot bottom bar and pull-up grid, with text fallback and saved drag ordering. The desktop converts ICO frames to portable thumbnails; older platform/client versions continue using text icons.
+
+0.1.10 adds native image/file selection and explicit microphone recording for compatible plugin pages. Attachments are staged privately, uploaded in resumable chunks and verified before desktop execution. Failed submissions retain recoverable drafts. Official CodeX supports attachments and recorded voice with recognized text; its Windows desktop speech provider uses installed recognition languages. Windows/Android are included; iOS and macOS device verification remains pending.
+
+0.1.9 improves transient-disconnection handling with durable command queues, stable same-account device identity and immediate submission feedback. Temporary connectivity loss retains pending actions and the next draft; uncertain outcomes are checked before retrying to avoid duplicate business operations.
+
 0.1.8 fixes clipping at the top-left of mobile pages by keeping layout-only containers square; rounded clipping is reserved for padded cards. The pull-up plugin menu now uses a four-column icon-and-label grid instead of full-width list rows. Grid tiles keep page selection and long-press drag reordering, with an adaptive scrollable sheet for larger catalogs.
 
 0.1.7 replaces the text-based bottom bar with up to four plugin icons from the desktop navigation metadata. Pull up the bar for the complete plugin list; there is no All button. Hold and drag icons or list items to reorder them, with order saved per account/desktop. Opening a fifth plugin leaves pinned positions unchanged. Native typography, flexible rows, compact buttons and grouped cards improve density across mobile pages. Updated official Calendar, Ledger and Codex pages use inline task actions, three-column totals, compact transaction rows and separated conversation metadata/composition without changing SDK contracts or business RPCs.
