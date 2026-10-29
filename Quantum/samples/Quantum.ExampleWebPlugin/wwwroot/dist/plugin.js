@@ -1,4 +1,4 @@
-// node_modules/@io7/quantum-plugin-sdk/dist/mobile.js
+// ../../../Quantum.Sdk/typescript/dist/mobile.js
 var NodeBuilder = class _NodeBuilder {
   type;
   id;
@@ -46,13 +46,15 @@ var ActionBuilder = class _ActionBuilder {
     return new _ActionBuilder(this.rpcName, this.constants, { ...this.inputs, [field]: nodeId });
   }
 };
+var containsAttachments = (node) => node.type === "Attachments" || (node.children ?? []).some(containsAttachments);
 var Mobile = Object.freeze({
-  page: (id, title, root) => ({ schemaVersion: 1, id, title, root }),
+  page: (id, title, root) => ({ schemaVersion: containsAttachments(root) ? 2 : 1, id, title, root }),
   vStack: (id, ...children) => new NodeBuilder({ type: "VStack", id, children }),
   hStack: (id, ...children) => new NodeBuilder({ type: "HStack", id, children }),
   scroll: (id, child) => new NodeBuilder({ type: "Scroll", id, children: [child] }),
   text: (id, text) => new NodeBuilder({ type: "Text", id, text }),
   textField: (id) => new NodeBuilder({ type: "TextField", id }),
+  attachments: (id) => new NodeBuilder({ type: "Attachments", id }),
   toggle: (id, text) => new NodeBuilder({ type: "Toggle", id, text }),
   button: (id, text) => new NodeBuilder({ type: "Button", id, text }),
   divider: (id) => new NodeBuilder({ type: "Divider", id }),
@@ -61,7 +63,7 @@ var Mobile = Object.freeze({
   rpc: (name) => new ActionBuilder(name)
 });
 
-// node_modules/@io7/quantum-plugin-sdk/dist/index.js
+// ../../../Quantum.Sdk/typescript/dist/index.js
 var PluginId = Object.freeze({
   maximumLength: 128,
   of(value) {
