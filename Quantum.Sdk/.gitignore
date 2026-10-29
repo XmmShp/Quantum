@@ -1,0 +1,7 @@
+**/bin/
+**/obj/
+typescript/dist/
+typescript/node_modules/
+artifacts/
+*.nupkg
+*.snupkg
