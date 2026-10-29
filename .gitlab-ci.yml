@@ -79,7 +79,7 @@ publish-platform-image:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
-    - docker build --pull -f Quantum.Platform/Dockerfile --label "org.opencontainers.image.source=$CI_PROJECT_URL" --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" -t "$CI_REGISTRY_IMAGE/platform:$CI_COMMIT_SHA" .
+    - docker build --pull --output type=image,oci-artifact=false -f Quantum.Platform/Dockerfile --label "org.opencontainers.image.source=$CI_PROJECT_URL" --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" -t "$CI_REGISTRY_IMAGE/platform:$CI_COMMIT_SHA" .
     - docker push "$CI_REGISTRY_IMAGE/platform:$CI_COMMIT_SHA"
     - docker run --rm --entrypoint /bin/sh "$CI_REGISTRY_IMAGE/platform:$CI_COMMIT_SHA" -c 'test -z "$(find /app -maxdepth 1 -type f -name "appsettings*.json" -print)"'
     - image="$(docker image inspect --format '{{index .RepoDigests 0}}' "$CI_REGISTRY_IMAGE/platform:$CI_COMMIT_SHA")"
