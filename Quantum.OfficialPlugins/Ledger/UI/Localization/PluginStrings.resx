@@ -1,0 +1,235 @@
+<?xml version='1.0' encoding='utf-8'?>
+<root>
+  <resheader name="resmimetype">
+    <value>text/microsoft-resx</value>
+  </resheader>
+  <resheader name="version">
+    <value>2.0</value>
+  </resheader>
+  <resheader name="reader">
+    <value>System.Resources.ResXResourceReader, System.Windows.Forms</value>
+  </resheader>
+  <resheader name="writer">
+    <value>System.Resources.ResXResourceWriter, System.Windows.Forms</value>
+  </resheader>
+  <data name="Ledger" xml:space="preserve">
+    <value>Ledger</value>
+  </data>
+  <data name="PERSONAL FINANCE" xml:space="preserve">
+    <value>PERSONAL FINANCE</value>
+  </data>
+  <data name="A little clarity, every day." xml:space="preserve">
+    <value>A little clarity, every day.</value>
+  </data>
+  <data name="Keep track of what comes in and what goes out." xml:space="preserve">
+    <value>Keep track of what comes in and what goes out.</value>
+  </data>
+  <data name="Add entry" xml:space="preserve">
+    <value>Add entry</value>
+  </data>
+  <data name="Dismiss" xml:space="preserve">
+    <value>Dismiss</value>
+  </data>
+  <data name="Previous month" xml:space="preserve">
+    <value>Previous month</value>
+  </data>
+  <data name="Next month" xml:space="preserve">
+    <value>Next month</value>
+  </data>
+  <data name="Month" xml:space="preserve">
+    <value>Month</value>
+  </data>
+  <data name="CNY · Stored locally" xml:space="preserve">
+    <value>CNY · Stored locally</value>
+  </data>
+  <data name="Monthly summary" xml:space="preserve">
+    <value>Monthly summary</value>
+  </data>
+  <data name="Income" xml:space="preserve">
+    <value>Income</value>
+  </data>
+  <data name="Expense" xml:space="preserve">
+    <value>Expense</value>
+  </data>
+  <data name="This month" xml:space="preserve">
+    <value>This month</value>
+  </data>
+  <data name="Net balance" xml:space="preserve">
+    <value>Net balance</value>
+  </data>
+  <data name="Income minus expense" xml:space="preserve">
+    <value>Income minus expense</value>
+  </data>
+  <data name="Transactions" xml:space="preserve">
+    <value>Transactions</value>
+  </data>
+  <data name="Refresh" xml:space="preserve">
+    <value>Refresh</value>
+  </data>
+  <data name="Search" xml:space="preserve">
+    <value>Search</value>
+  </data>
+  <data name="Search category or note" xml:space="preserve">
+    <value>Search category or note</value>
+  </data>
+  <data name="Type" xml:space="preserve">
+    <value>Type</value>
+  </data>
+  <data name="All types" xml:space="preserve">
+    <value>All types</value>
+  </data>
+  <data name="Loading…" xml:space="preserve">
+    <value>Loading…</value>
+  </data>
+  <data name="Room for a fresh start." xml:space="preserve">
+    <value>Room for a fresh start.</value>
+  </data>
+  <data name="Add a transaction or adjust your filters." xml:space="preserve">
+    <value>Add a transaction or adjust your filters.</value>
+  </data>
+  <data name="Date" xml:space="preserve">
+    <value>Date</value>
+  </data>
+  <data name="Category / note" xml:space="preserve">
+    <value>Category / note</value>
+  </data>
+  <data name="Amount" xml:space="preserve">
+    <value>Amount</value>
+  </data>
+  <data name="Actions" xml:space="preserve">
+    <value>Actions</value>
+  </data>
+  <data name="Edit" xml:space="preserve">
+    <value>Edit</value>
+  </data>
+  <data name="Delete" xml:space="preserve">
+    <value>Delete</value>
+  </data>
+  <data name="WHERE IT GOES" xml:space="preserve">
+    <value>WHERE IT GOES</value>
+  </data>
+  <data name="Spending by category" xml:space="preserve">
+    <value>Spending by category</value>
+  </data>
+  <data name="All expenses in the selected month" xml:space="preserve">
+    <value>All expenses in the selected month</value>
+  </data>
+  <data name="No expenses yet." xml:space="preserve">
+    <value>No expenses yet.</value>
+  </data>
+  <data name="Edit entry" xml:space="preserve">
+    <value>Edit entry</value>
+  </data>
+  <data name="Amount (CNY)" xml:space="preserve">
+    <value>Amount (CNY)</value>
+  </data>
+  <data name="Category" xml:space="preserve">
+    <value>Category</value>
+  </data>
+  <data name="Note" xml:space="preserve">
+    <value>Note</value>
+  </data>
+  <data name="Cancel" xml:space="preserve">
+    <value>Cancel</value>
+  </data>
+  <data name="Save" xml:space="preserve">
+    <value>Save</value>
+  </data>
+  <data name="Delete this entry?" xml:space="preserve">
+    <value>Delete this entry?</value>
+  </data>
+  <data name="This action cannot be undone." xml:space="preserve">
+    <value>This action cannot be undone.</value>
+  </data>
+  <data name="Records keep their original dates and may belong to other months." xml:space="preserve">
+    <value>Records keep their original dates and may belong to other months.</value>
+  </data>
+  <data name="Food" xml:space="preserve">
+    <value>Food</value>
+  </data>
+  <data name="Transport" xml:space="preserve">
+    <value>Transport</value>
+  </data>
+  <data name="Shopping" xml:space="preserve">
+    <value>Shopping</value>
+  </data>
+  <data name="Housing" xml:space="preserve">
+    <value>Housing</value>
+  </data>
+  <data name="Health" xml:space="preserve">
+    <value>Health</value>
+  </data>
+  <data name="Entertainment" xml:space="preserve">
+    <value>Entertainment</value>
+  </data>
+  <data name="Salary" xml:space="preserve">
+    <value>Salary</value>
+  </data>
+  <data name="Other" xml:space="preserve">
+    <value>Other</value>
+  </data>
+  <data name="Operation failed. Please refresh and try again." xml:space="preserve">
+    <value>Operation failed. Please refresh and try again.</value>
+  </data>
+  <data name="Entry saved." xml:space="preserve">
+    <value>Entry saved.</value>
+  </data>
+  <data name="Entry deleted." xml:space="preserve">
+    <value>Entry deleted.</value>
+  </data>
+  <data name="Invalid record ID." xml:space="preserve">
+    <value>Invalid record ID.</value>
+  </data>
+  <data name="Invalid entry type." xml:space="preserve">
+    <value>Invalid entry type.</value>
+  </data>
+  <data name="Date must be between 1900 and 9998." xml:space="preserve">
+    <value>Date must be between 1900 and 9998.</value>
+  </data>
+  <data name="Amount must be positive, at most 999,999,999.99, with up to two decimal places." xml:space="preserve">
+    <value>Amount must be positive, at most 999,999,999.99, with up to two decimal places.</value>
+  </data>
+  <data name="Category must contain 1–40 characters and no control characters." xml:space="preserve">
+    <value>Category must contain 1–40 characters and no control characters.</value>
+  </data>
+  <data name="Note cannot exceed 1,000 characters." xml:space="preserve">
+    <value>Note cannot exceed 1,000 characters.</value>
+  </data>
+  <data name="Related entries" xml:space="preserve"><value>Related entries</value></data>
+  <data name="No related entries." xml:space="preserve"><value>No related entries.</value></data>
+  <data name="Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Record no longer exists. Refresh and try again." xml:space="preserve"><value>Record no longer exists. Refresh and try again.</value></data>
+  <data name="A little ink, a little time." xml:space="preserve"><value>A little ink, a little time.</value></data>
+  <data name="Click again to delete" xml:space="preserve"><value>Click again to delete</value></data>
+  <data name="Entry month" xml:space="preserve"><value>Entry month</value></data>
+  <data name="Add relation" xml:space="preserve"><value>Add relation</value></data>
+  <data name="Choose an entry" xml:space="preserve"><value>Choose an entry</value></data>
+  <data name="Remove relation" xml:space="preserve"><value>Remove relation</value></data>
+  <data name="{0} related" xml:space="preserve"><value>{0} related</value></data>
+  <data name="Related entry does not exist." xml:space="preserve"><value>Related entry does not exist.</value></data>
+  <data name="An entry cannot link to itself or an empty ID." xml:space="preserve"><value>An entry cannot link to itself or an empty ID.</value></data>
+  <data name="Linked calendar items" xml:space="preserve"><value>Linked calendar items</value></data>
+  <data name="Choose a calendar item" xml:space="preserve"><value>Choose a calendar item</value></data>
+  <data name="No linked calendar items." xml:space="preserve"><value>No linked calendar items.</value></data>
+  <data name="Calendar item no longer exists." xml:space="preserve"><value>Calendar item no longer exists.</value></data>
+  <data name="Calendar unavailable. Saved links are preserved." xml:space="preserve"><value>Calendar unavailable. Saved links are preserved.</value></data>
+  <data name="Calendar links require at most 100 non-empty IDs." xml:space="preserve"><value>Calendar links require at most 100 non-empty IDs.</value></data>
+  <data name="Task" xml:space="preserve"><value>Task</value></data>
+  <data name="Event" xml:space="preserve"><value>Event</value></data>
+  <data name="Completed" xml:space="preserve"><value>Completed</value></data>
+  <data name="Category is required." xml:space="preserve"><value>Category is required.</value></data>
+  <data name="Note is required." xml:space="preserve"><value>Note is required.</value></data>
+  <data name="Entry is required." xml:space="preserve"><value>Entry is required.</value></data>
+  <data name="Internal server error" xml:space="preserve"><value>Internal server error</value></data>
+  <data name="Amount, for example 12.50" xml:space="preserve"><value>Amount, for example 12.50</value></data>
+  <data name="Balance" xml:space="preserve"><value>Balance</value></data>
+  <data name="Enter an amount using a dot decimal separator without grouping or currency symbols." xml:space="preserve"><value>Enter an amount using a dot decimal separator without grouping or currency symbols.</value></data>
+  <data name="No items to display." xml:space="preserve"><value>No items to display.</value></data>
+  <data name="Notes" xml:space="preserve"><value>Notes</value></data>
+  <data name="Quick entry" xml:space="preserve"><value>Quick entry</value></data>
+  <data name="Recent entries" xml:space="preserve"><value>Recent entries</value></data>
+  <data name="Record as income" xml:space="preserve"><value>Record as income</value></data>
+  <data name="Save entry" xml:space="preserve"><value>Save entry</value></data>
+  <data name="Saved for today's desktop local date. Unchecked means expense." xml:space="preserve"><value>Saved for today's desktop local date. Unchecked means expense.</value></data>
+  <data name="Unable to load data. Reconnecting automatically." xml:space="preserve"><value>Unable to load data. Reconnecting automatically.</value></data>
+</root>

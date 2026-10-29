@@ -1,0 +1,7 @@
+<Solution>
+  <Project Path="Calendar/Quantum.CalendarPlugin.csproj" />
+  <Project Path="Codex/Quantum.CodexPlugin.csproj" />
+  <Project Path="Ledger/Quantum.LedgerPlugin.csproj" />
+  <Project Path="tests/Quantum.LedgerPlugin.Tests/Quantum.LedgerPlugin.Tests.csproj" />
+  <Project Path="tests/Quantum.OfficialPlugins.Tests/Quantum.OfficialPlugins.Tests.csproj" />
+</Solution>

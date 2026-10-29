@@ -1,0 +1,177 @@
+name: Build and publish
+
+on:
+  workflow_dispatch:
+    inputs:
+      plugin:
+        description: Plugin to publish or resume
+        type: choice
+        options: [Calendar, Codex, Ledger]
+        required: true
+      resume_sha256:
+        description: SHA-256 of an existing submitted archive (empty for a new submission)
+        type: string
+        required: false
+  pull_request:
+  push:
+    branches: [main]
+    tags:
+      - "calendar-v*"
+      - "codex-v*"
+      - "ledger-v*"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "24"
+      - run: node --test scripts/test-codex-media.mjs
+      - run: dotnet restore Quantum.OfficialPlugins.slnx
+      - run: dotnet build Quantum.OfficialPlugins.slnx -c Release --no-restore --verbosity minimal
+      - run: dotnet test tests/Quantum.OfficialPlugins.Tests/Quantum.OfficialPlugins.Tests.csproj -c Release --no-build --verbosity quiet
+      - run: dotnet test tests/Quantum.LedgerPlugin.Tests/Quantum.LedgerPlugin.Tests.csproj -c Release --no-build --verbosity quiet
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - run: python -m pip install cryptography==50.0.2 --quiet
+      - run: python -m unittest discover -s tests/publishing -p 'test_*.py'
+      - name: Verify published plugin static assets
+        run: |
+          set -euo pipefail
+          for plugin in Calendar Codex Ledger; do
+            dotnet publish "$plugin/Quantum.${plugin}Plugin.csproj" -c Release --no-restore --output ".publish-validation/$plugin" --verbosity quiet
+            python scripts/verify-plugin-assets.py ".publish-validation/$plugin"
+          done
+
+  publish:
+    if: startsWith(github.ref, 'refs/tags/') || github.event_name == 'workflow_dispatch'
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    concurrency:
+      group: official-plugin-${{ github.ref }}
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+      - name: Select and validate plugin
+        id: plugin
+        shell: bash
+        env:
+          SELECTED_PLUGIN: ${{ inputs.plugin }}
+        run: |
+          set -euo pipefail
+          selection="$GITHUB_REF_NAME"
+          if [[ "$GITHUB_EVENT_NAME" == workflow_dispatch ]]; then
+            case "$SELECTED_PLUGIN" in
+              Calendar) selection="calendar-v$(jq -r '.version' Calendar/plugin.json)" ;;
+              Codex) selection="codex-v$(jq -r '.version' Codex/plugin.json)" ;;
+              Ledger) selection="ledger-v$(jq -r '.version' Ledger/plugin.json)" ;;
+              *) exit 1 ;;
+            esac
+          fi
+          case "$selection" in
+            calendar-v*) directory="Calendar"; expected_id="quantum.plugin.calendar"; tag_version="${selection#calendar-v}" ;;
+            codex-v*) directory="Codex"; expected_id="quantum.plugin.codex"; tag_version="${selection#codex-v}" ;;
+            ledger-v*) directory="Ledger"; expected_id="quantum.plugin.ledger"; tag_version="${selection#ledger-v}" ;;
+            *) echo "Unsupported release tag: $GITHUB_REF_NAME" >&2; exit 1 ;;
+          esac
+          manifest_id="$(jq -r '.id' "$directory/plugin.json")"
+          manifest_version="$(jq -r '.version' "$directory/plugin.json")"
+          test "$manifest_id" = "$expected_id"
+          test "$manifest_version" = "$tag_version"
+          echo "directory=$directory" >> "$GITHUB_OUTPUT"
+          echo "version=$manifest_version" >> "$GITHUB_OUTPUT"
+          echo "id=$expected_id" >> "$GITHUB_OUTPUT"
+          if [[ "$directory" == Codex ]]; then
+            echo 'quantum_support=>=0.1.16' >> "$GITHUB_OUTPUT"
+          else
+            echo 'quantum_support=>=0.1.16' >> "$GITHUB_OUTPUT"
+          fi
+          if [[ "$directory" == Calendar ]]; then
+            echo 'release_notes=新增移动端今日事项、待办创建与完成；使用已发布 SDK 和 NOF 原生 RPC，保留按独立能力路由的记账可选联动。需要 Quantum 0.1.16 或更新版本。' >> "$GITHUB_OUTPUT"
+          elif [[ "$directory" == Ledger ]]; then
+            echo 'release_notes=新增移动端本月收支、最近记录和快速记账；统一 SDK、NOF RPC 与 Contract 风格，保留日历可选联动。需要 Quantum 0.1.16 或更新版本。' >> "$GITHUB_OUTPUT"
+          else
+            echo 'release_notes=支持桌面页面、侧边抽屉与移动端发送图片、文件和语音；通过独立语音识别能力将录音转为原会话中的文字。需要 Quantum 0.1.16 或更新版本。' >> "$GITHUB_OUTPUT"
+          fi
+          if [[ "$directory" == Codex ]]; then
+            echo "client_id_secret=QUANTUM_CODEX_CLIENT_ID" >> "$GITHUB_OUTPUT"
+            echo "client_jwks_secret=QUANTUM_CODEX_CLIENT_PRIVATE_JWKS" >> "$GITHUB_OUTPUT"
+          elif [[ "$directory" == Ledger ]]; then
+            echo "client_id_secret=QUANTUM_LEDGER_CLIENT_ID" >> "$GITHUB_OUTPUT"
+            echo "client_jwks_secret=QUANTUM_LEDGER_CLIENT_PRIVATE_JWKS" >> "$GITHUB_OUTPUT"
+          else
+            echo "client_id_secret=QUANTUM_CLIENT_ID" >> "$GITHUB_OUTPUT"
+            echo "client_jwks_secret=QUANTUM_CLIENT_PRIVATE_JWKS" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Build release payload
+        run: |
+          dotnet build "${{ steps.plugin.outputs.directory }}/Quantum.${{ steps.plugin.outputs.directory }}Plugin.csproj" -c Release --verbosity minimal
+          python3 scripts/verify-plugin-assets.py "${{ steps.plugin.outputs.directory }}/bin/Release/net10.0"
+      - name: Check publishing credentials
+        env:
+          QUANTUM_CLIENT_ID: ${{ secrets[steps.plugin.outputs.client_id_secret] }}
+          QUANTUM_CLIENT_PRIVATE_JWKS: ${{ secrets[steps.plugin.outputs.client_jwks_secret] }}
+        run: |
+          test -n "$QUANTUM_CLIENT_ID" || { echo "::error::Missing QUANTUM_CLIENT_ID Actions secret"; exit 1; }
+          test -n "$QUANTUM_CLIENT_PRIVATE_JWKS" || { echo "::error::Missing QUANTUM_CLIENT_PRIVATE_JWKS Actions secret"; exit 1; }
+      - name: Install Quantum Platform CLI
+        run: dotnet tool install --global Quantum.Platform.Cli --version 0.1.1
+      - uses: actions/setup-python@v6
+        if: inputs.resume_sha256 != ''
+        with:
+          python-version: '3.13'
+      - name: Recover and verify original submission
+        if: inputs.resume_sha256 != ''
+        env:
+          QUANTUM_CLIENT_ID: ${{ secrets[steps.plugin.outputs.client_id_secret] }}
+          QUANTUM_CLIENT_PRIVATE_JWKS: ${{ secrets[steps.plugin.outputs.client_jwks_secret] }}
+          EXPECTED_SHA256: ${{ inputs.resume_sha256 }}
+          PLUGIN_ID: ${{ steps.plugin.outputs.id }}
+          PLUGIN_VERSION: ${{ steps.plugin.outputs.version }}
+        run: |
+          python -m pip install cryptography==50.0.2 --quiet
+          python scripts/download-release.py --plugin-id "$PLUGIN_ID" --version "$PLUGIN_VERSION" --sha256 "$EXPECTED_SHA256" --output .publish/original.zip
+      - name: Publish and wait for automated review
+        env:
+          QUANTUM_CLIENT_ID: ${{ secrets[steps.plugin.outputs.client_id_secret] }}
+          QUANTUM_CLIENT_PRIVATE_JWKS: ${{ secrets[steps.plugin.outputs.client_jwks_secret] }}
+          RESUME_SHA256: ${{ inputs.resume_sha256 }}
+          RELEASE_NOTES: ${{ steps.plugin.outputs.release_notes }}
+        run: |
+          set -euo pipefail
+          source="${{ steps.plugin.outputs.directory }}/bin/Release/net10.0"
+          if [[ -n "$RESUME_SHA256" ]]; then
+            source=".publish/original.zip"
+          else
+            # Quantum uses plugin.json and wwwroot directly; these Razor Host
+            # manifests carry build timestamps and machine-specific paths.
+            find "$source" -maxdepth 1 -name '*.staticwebassets.*.json' -delete
+          fi
+          quantum-cli plugins publish \
+            "$source" \
+            --quantum-version-support "${{ steps.plugin.outputs.quantum_support }}" \
+            --release-notes "${RELEASE_NOTES:-Official release $GITHUB_REF_NAME}" \
+            --wait-seconds 900 \
+            --output subprocess | tee publish-result.json
+          jq -e '.ok == true and .status == "Published"' publish-result.json
+          {
+            echo '### Quantum plugin published'
+            jq -r '"Plugin: `\(.pluginId)@\(.version)`\n\nStatus: \(.status)\n\nSHA-256: `\(.sha256)`"' publish-result.json
+          } >> "$GITHUB_STEP_SUMMARY"
+      - uses: actions/upload-artifact@v4
+        with:
+          name: publish-result-${{ github.ref_name }}
+          path: publish-result.json

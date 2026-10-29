@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Your local intelligence hub" xml:space="preserve"><value>你的本地智能中枢</value></data>
+  <data name="Let local Codex understand and invoke capabilities from every Quantum plugin." xml:space="preserve"><value>让本机 Codex 理解并调用 Quantum 中的插件能力。</value></data>
+  <data name="Connected" xml:space="preserve"><value>已连接</value></data>
+  <data name="Connecting" xml:space="preserve"><value>连接中</value></data>
+  <data name="Disconnected" xml:space="preserve"><value>未连接</value></data>
+  <data name="Connection failed" xml:space="preserve"><value>连接失败</value></data>
+  <data name="Connect local Codex" xml:space="preserve"><value>连接本机 Codex</value></data>
+  <data name="The plugin starts codex app-server and reuses your existing local sign-in." xml:space="preserve"><value>插件会启动 codex app-server，并复用本机已有登录状态。</value></data>
+  <data name="Working directory" xml:space="preserve"><value>工作目录</value></data>
+  <data name="Model" xml:space="preserve"><value>模型</value></data>
+  <data name="Connect" xml:space="preserve"><value>连接</value></data>
+  <data name="Disconnect" xml:space="preserve"><value>断开</value></data>
+  <data name="New conversation" xml:space="preserve"><value>新对话</value></data>
+  <data name="Quantum tools" xml:space="preserve"><value>项 Quantum 工具</value></data>
+  <data name="{0} Quantum tools" xml:space="preserve"><value>{0} 项 Quantum 工具</value></data>
+  <data name="Close" xml:space="preserve"><value>关闭</value></data>
+  <data name="Open Codex" xml:space="preserve"><value>打开 Codex</value></data>
+  <data name="Close Codex" xml:space="preserve"><value>关闭 Codex</value></data>
+  <data name="Open Codex on its full page" xml:space="preserve"><value>在完整页面打开 Codex</value></data>
+  <data name="Open full page" xml:space="preserve"><value>在完整页面打开</value></data>
+  <data name="Start a conversation" xml:space="preserve"><value>开始对话</value></data>
+  <data name="Ask Codex to inspect your calendar, create a task, or use RPCs published by other plugins." xml:space="preserve"><value>你可以让 Codex 查询日历、创建待办，或调用其他插件公开的 RPC。</value></data>
+  <data name="Message Codex…" xml:space="preserve"><value>输入消息…</value></data>
+  <data name="Send" xml:space="preserve"><value>发送</value></data>
+  <data name="Automatically connects to local Codex. Connection errors appear here; you can retry." xml:space="preserve"><value>自动连接本机 Codex；连接失败会显示原因，可手动重试。</value></data>
+  <data name="Retry connection" xml:space="preserve"><value>重试连接</value></data>
+  <data name="Automatic connection timed out. Check the local Codex installation and sign-in, then retry." xml:space="preserve"><value>自动连接超时。请检查本机 Codex 安装和登录状态后重试。</value></data>
+  <data name="Your Quantum assistant" xml:space="preserve"><value>Quantum 助手</value></data>
+  <data name="Current conversation" xml:space="preserve"><value>当前会话</value></data>
+  <data name="Dismiss error" xml:space="preserve"><value>关闭错误提示</value></data>
+  <data name="User" xml:space="preserve"><value>你</value></data>
+  <data name="Assistant" xml:space="preserve"><value>Codex</value></data>
+  <data name="System" xml:space="preserve"><value>状态</value></data>
+  <data name="Tool" xml:space="preserve"><value>工具</value></data>
+  <data name="The installed Codex CLI is too old for the selected model. Run `npm install -g @openai/codex@latest`, then disconnect and reconnect." xml:space="preserve"><value>当前 Codex CLI 版本过旧，无法使用所选模型。请运行 `npm install -g @openai/codex@latest`，然后断开并重新连接。</value></data>
+  <data name="The Codex request failed." xml:space="preserve"><value>Codex 请求失败。</value></data>
+  <data name="The Codex turn failed." xml:space="preserve"><value>Codex 本轮运行失败。</value></data>
+  <data name="The Codex app-server connection closed." xml:space="preserve"><value>Codex App Server 连接已关闭。</value></data>
+  <data name="The Codex app-server process could not be started." xml:space="preserve"><value>无法启动 Codex App Server 进程。</value></data>
+  <data name="Codex did not return a thread id." xml:space="preserve"><value>Codex 未返回会话 ID。</value></data>
+  <data name="Could not register a Codex request." xml:space="preserve"><value>无法注册 Codex 请求。</value></data>
+  <data name="Codex is not connected." xml:space="preserve"><value>Codex 尚未连接。</value></data>
+  <data name="Wait for the current Codex turn to finish." xml:space="preserve"><value>请等待当前 Codex 轮次结束。</value></data>
+  <data name="No Codex conversation is active." xml:space="preserve"><value>当前没有活动的 Codex 会话。</value></data>
+  <data name="Codex connection did not complete." xml:space="preserve"><value>Codex 连接未完成。</value></data>
+  <data name="The RPC catalog contains a method without a name." xml:space="preserve"><value>RPC 目录中存在未命名的方法。</value></data>
+  <data name="Working directory is required." xml:space="preserve"><value>工作目录不能为空。</value></data>
+  <data name="Model is required." xml:space="preserve"><value>请选择模型。</value></data>
+  <data name="Prompt is required." xml:space="preserve"><value>提示词不能为空。</value></data>
+  <data name="Internal server error" xml:space="preserve"><value>服务器内部错误，请稍后重试。</value></data>
+  <data name="A turn is running. Progress updates automatically." xml:space="preserve"><value>正在执行，进度将自动更新。</value></data>
+  <data name="Connect Codex and choose its working directory on the desktop first. Opening this page never starts a process." xml:space="preserve"><value>请先在电脑连接 Codex 并选择工作目录；打开此页不会启动进程。</value></data>
+  <data name="Failed" xml:space="preserve"><value>连接失败</value></data>
+  <data name="Message" xml:space="preserve"><value>消息</value></data>
+  <data name="Send to desktop Codex" xml:space="preserve"><value>发送到电脑 Codex</value></data>
+  <data name="Sending starts a model turn and may consume usage or run Quantum tools on the desktop." xml:space="preserve"><value>发送会启动模型任务，可能消耗用量并在电脑上调用 Quantum 工具。</value></data>
+  <data name="Thread" xml:space="preserve"><value>会话</value></data>
+  <data name="Unable to load data. Reconnecting automatically." xml:space="preserve"><value>暂时无法加载数据，正在自动重连。</value></data>
+  <data name="Showing the latest 10 messages, with long messages shortened. Open the desktop for full history." xml:space="preserve"><value>仅展示最近 10 条消息，较长内容会截断，完整历史请在电脑查看。</value></data>
+  <data name="Recent messages" xml:space="preserve"><value>最近消息</value></data>
+  <data name="Continue conversation" xml:space="preserve"><value>继续对话</value></data>
+  <data name="No items to display." xml:space="preserve"><value>暂无消息</value></data>
+  <data name="Using the current desktop conversation." xml:space="preserve"><value>与电脑当前会话同步</value></data>
+  <data name="Attach" xml:space="preserve"><value>附件</value></data>
+  <data name="Stop recording" xml:space="preserve"><value>停止录音</value></data>
+  <data name="Record voice" xml:space="preserve"><value>语音</value></data>
+  <data name="Recording…" xml:space="preserve"><value>录音中…</value></data>
+  <data name="Remove attachment" xml:space="preserve"><value>移除附件</value></data>
+  <data name="Could not add attachment. Use up to four files, 8 MiB each and 16 MiB total." xml:space="preserve"><value>无法添加附件。最多 4 个文件，每个不超过 8 MiB，总计不超过 16 MiB。</value></data>
+  <data name="Recording unavailable. Check microphone permission." xml:space="preserve"><value>无法录音，请检查麦克风权限。</value></data>
+<data name="Transcribing voice…" xml:space="preserve"><value>正在识别语音…</value></data>
+<data name="Voice transcription or attachment processing failed. Check the selected model and try again." xml:space="preserve"><value>语音识别或附件处理失败，请检查当前模型后重试。</value></data>
+<data name="A prompt or attachment is required." xml:space="preserve"><value>请输入消息或添加附件。</value></data>
+<data name="Invalid attachment metadata or size." xml:space="preserve"><value>附件信息或大小无效，请重新选择。</value></data>
+<data name="Invalid attachment encoding." xml:space="preserve"><value>附件数据无效，请重新选择。</value></data>
+<data name="Attachments exceed the size limit." xml:space="preserve"><value>附件超出大小限制。</value></data>
+<data name="Use PNG, JPEG, GIF or WebP images." xml:space="preserve"><value>请选择 PNG、JPEG、GIF 或 WebP 格式的图片。</value></data>
+<data name="Install a speech.transcribe provider for this desktop platform." xml:space="preserve"><value>请为当前桌面平台安装语音识别服务。</value></data>
+<data name="The requested speech language is not installed on this desktop." xml:space="preserve"><value>此电脑尚未安装当前语言的语音识别。</value></data>
+<data name="Speech recognition failed." xml:space="preserve"><value>语音识别失败，请重试。</value></data>
+<data name="No speech was recognized. Try recording again." xml:space="preserve"><value>未识别到语音，请重新录制。</value></data>
+<data name="Use the voice recorder or select a PCM WAV recording." xml:space="preserve"><value>请使用录音按钮，或选择 PCM WAV 录音。</value></data>
+</root>

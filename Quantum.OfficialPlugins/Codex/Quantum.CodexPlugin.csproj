@@ -1,0 +1,63 @@
+<Project Sdk="Microsoft.NET.Sdk.Razor">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <PackageId>Quantum.CodexPlugin</PackageId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Quantum.Plugin.Abstraction" />
+    <PackageReference Include="System.Speech" GeneratePathProperty="true" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Localization" />
+    <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" />
+    <PackageReference Include="NOF.Application" />
+    <PackageReference Include="NOF.Contract" />
+    <PackageReference Include="NOF.Infrastructure" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Update="wwwroot\**\*" CopyToOutputDirectory="PreserveNewest" />
+    <Content Update="plugin.json" CopyToOutputDirectory="PreserveNewest" />
+    <None Update="README.md;THIRD-PARTY-NOTICES.md" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="CopyCodexSpeechRuntime" AfterTargets="Build">
+    <Copy SourceFiles="$(PkgSystem_Speech)/lib/$(TargetFramework)/System.Speech.dll"
+          DestinationFolder="$(TargetDir)" SkipUnchangedFiles="true" />
+    <Copy SourceFiles="$(PkgSystem_Speech)/runtimes/win/lib/$(TargetFramework)/System.Speech.dll"
+          DestinationFolder="$(TargetDir)runtimes/win/lib/$(TargetFramework)" SkipUnchangedFiles="true" />
+  </Target>
+
+  <Target Name="CopyCodexScopedCssBundle"
+          AfterTargets="Build"
+          Condition="'$(DesignTimeBuild)' != 'true'">
+    <PropertyGroup>
+      <CodexScopedCssBundleSource>$(IntermediateOutputPath)scopedcss\projectbundle\$(PackageId).bundle.scp.css</CodexScopedCssBundleSource>
+      <CodexScopedCssBundleTarget>$(TargetDir)wwwroot\$(PackageId).bundle.scp.css</CodexScopedCssBundleTarget>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(CodexScopedCssBundleSource)')"
+           Text="The Codex scoped CSS bundle was not generated: $(CodexScopedCssBundleSource)" />
+    <MakeDir Directories="$(TargetDir)wwwroot" />
+    <Copy SourceFiles="$(CodexScopedCssBundleSource)"
+          DestinationFiles="$(CodexScopedCssBundleTarget)"
+          SkipUnchangedFiles="true" />
+  </Target>
+
+  <!-- Publish does not include the custom Build copy in its static asset manifest. -->
+  <Target Name="PublishCodexScopedCssBundle" BeforeTargets="ComputeFilesToPublish">
+    <PropertyGroup>
+      <ScopedCssPublishSource>$(IntermediateOutputPath)scopedcss/projectbundle/$(PackageId).bundle.scp.css</ScopedCssPublishSource>
+    </PropertyGroup>
+    <Error Condition="!Exists('$(ScopedCssPublishSource)')"
+           Text="The Codex scoped CSS bundle is required for publishing: $(ScopedCssPublishSource)" />
+    <ItemGroup>
+      <ResolvedFileToPublish Include="$(ScopedCssPublishSource)"
+                             RelativePath="wwwroot/$(PackageId).bundle.scp.css"
+                             CopyToPublishDirectory="PreserveNewest" />
+    </ItemGroup>
+  </Target>
+</Project>

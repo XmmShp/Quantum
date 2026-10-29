@@ -1,0 +1,24 @@
+<Project>
+  <PropertyGroup>
+    <ManagePackageVersionsCentrally>true</ManagePackageVersionsCentrally>
+    <NofVersion>11.0.0-nightly.1473609.75efa591</NofVersion>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageVersion Include="System.Speech" Version="10.0.0" />
+    <PackageVersion Include="Microsoft.Extensions.Localization" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.EntityFrameworkCore.Sqlite" Version="10.0.7" />
+    <PackageVersion Include="Microsoft.Extensions.Hosting" Version="10.0.7" />
+    <PackageVersion Include="NOF.Infrastructure.EntityFrameworkCore" Version="$(NofVersion)" />
+    <PackageVersion Include="Microsoft.Extensions.Logging.Abstractions" Version="10.0.7" />
+    <PackageVersion Include="NOF.Abstraction" Version="$(NofVersion)" />
+    <PackageVersion Include="NOF.Application" Version="$(NofVersion)" />
+    <PackageVersion Include="NOF.Contract" Version="$(NofVersion)" />
+    <PackageVersion Include="NOF.Domain" Version="$(NofVersion)" />
+    <PackageVersion Include="NOF.Infrastructure" Version="$(NofVersion)" />
+    <PackageVersion Include="Quantum.Plugin.Abstraction" Version="0.1.1-nightly.20261027.28" />
+    <PackageVersion Include="Microsoft.NET.Test.Sdk" Version="18.0.1" />
+    <PackageVersion Include="xunit" Version="2.9.3" />
+    <PackageVersion Include="xunit.runner.visualstudio" Version="3.1.5" />
+  </ItemGroup>
+</Project>

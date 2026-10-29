@@ -1,0 +1,89 @@
+<?xml version="1.0" encoding="utf-8"?>
+<root>
+  <resheader name="resmimetype"><value>text/microsoft-resx</value></resheader>
+  <resheader name="version"><value>2.0</value></resheader>
+  <resheader name="reader"><value>System.Resources.ResXResourceReader, System.Windows.Forms</value></resheader>
+  <resheader name="writer"><value>System.Resources.ResXResourceWriter, System.Windows.Forms</value></resheader>
+  <data name="Your local intelligence hub" xml:space="preserve"><value>Your local intelligence hub</value></data>
+  <data name="Let local Codex understand and invoke capabilities from every Quantum plugin." xml:space="preserve"><value>Let local Codex understand and invoke capabilities from every Quantum plugin.</value></data>
+  <data name="Connected" xml:space="preserve"><value>Connected</value></data>
+  <data name="Connecting" xml:space="preserve"><value>Connecting</value></data>
+  <data name="Disconnected" xml:space="preserve"><value>Disconnected</value></data>
+  <data name="Connection failed" xml:space="preserve"><value>Connection failed</value></data>
+  <data name="Connect local Codex" xml:space="preserve"><value>Connect local Codex</value></data>
+  <data name="The plugin starts codex app-server and reuses your existing local sign-in." xml:space="preserve"><value>The plugin starts codex app-server and reuses your existing local sign-in.</value></data>
+  <data name="Working directory" xml:space="preserve"><value>Working directory</value></data>
+  <data name="Model" xml:space="preserve"><value>Model</value></data>
+  <data name="Connect" xml:space="preserve"><value>Connect</value></data>
+  <data name="Disconnect" xml:space="preserve"><value>Disconnect</value></data>
+  <data name="New conversation" xml:space="preserve"><value>New conversation</value></data>
+  <data name="Quantum tools" xml:space="preserve"><value>Quantum tools</value></data>
+  <data name="{0} Quantum tools" xml:space="preserve"><value>{0} Quantum tools</value></data>
+  <data name="Close" xml:space="preserve"><value>Close</value></data>
+  <data name="Open Codex" xml:space="preserve"><value>Open Codex</value></data>
+  <data name="Close Codex" xml:space="preserve"><value>Close Codex</value></data>
+  <data name="Open Codex on its full page" xml:space="preserve"><value>Open Codex on its full page</value></data>
+  <data name="Open full page" xml:space="preserve"><value>Open full page</value></data>
+  <data name="Start a conversation" xml:space="preserve"><value>Start a conversation</value></data>
+  <data name="Ask Codex to inspect your calendar, create a task, or use RPCs published by other plugins." xml:space="preserve"><value>Ask Codex to inspect your calendar, create a task, or use RPCs published by other plugins.</value></data>
+  <data name="Message Codex…" xml:space="preserve"><value>Message Codex…</value></data>
+  <data name="Send" xml:space="preserve"><value>Send</value></data>
+  <data name="Automatically connects to local Codex. Connection errors appear here; you can retry." xml:space="preserve"><value>Automatically connects to local Codex. Connection errors appear here; you can retry.</value></data>
+  <data name="Retry connection" xml:space="preserve"><value>Retry connection</value></data>
+  <data name="Automatic connection timed out. Check the local Codex installation and sign-in, then retry." xml:space="preserve"><value>Automatic connection timed out. Check the local Codex installation and sign-in, then retry.</value></data>
+  <data name="Your Quantum assistant" xml:space="preserve"><value>Your Quantum assistant</value></data>
+  <data name="Current conversation" xml:space="preserve"><value>Current conversation</value></data>
+  <data name="Dismiss error" xml:space="preserve"><value>Dismiss error</value></data>
+  <data name="User" xml:space="preserve"><value>User</value></data>
+  <data name="Assistant" xml:space="preserve"><value>Assistant</value></data>
+  <data name="System" xml:space="preserve"><value>System</value></data>
+  <data name="Tool" xml:space="preserve"><value>Tool</value></data>
+  <data name="The installed Codex CLI is too old for the selected model. Run `npm install -g @openai/codex@latest`, then disconnect and reconnect." xml:space="preserve"><value>The installed Codex CLI is too old for the selected model. Run `npm install -g @openai/codex@latest`, then disconnect and reconnect.</value></data>
+  <data name="The Codex request failed." xml:space="preserve"><value>The Codex request failed.</value></data>
+  <data name="The Codex turn failed." xml:space="preserve"><value>The Codex turn failed.</value></data>
+  <data name="The Codex app-server connection closed." xml:space="preserve"><value>The Codex app-server connection closed.</value></data>
+  <data name="The Codex app-server process could not be started." xml:space="preserve"><value>The Codex app-server process could not be started.</value></data>
+  <data name="Codex did not return a thread id." xml:space="preserve"><value>Codex did not return a thread id.</value></data>
+  <data name="Could not register a Codex request." xml:space="preserve"><value>Could not register a Codex request.</value></data>
+  <data name="Codex is not connected." xml:space="preserve"><value>Codex is not connected.</value></data>
+  <data name="Wait for the current Codex turn to finish." xml:space="preserve"><value>Wait for the current Codex turn to finish.</value></data>
+  <data name="No Codex conversation is active." xml:space="preserve"><value>No Codex conversation is active.</value></data>
+  <data name="Codex connection did not complete." xml:space="preserve"><value>Codex connection did not complete.</value></data>
+  <data name="The RPC catalog contains a method without a name." xml:space="preserve"><value>The RPC catalog contains a method without a name.</value></data>
+  <data name="Working directory is required." xml:space="preserve"><value>Working directory is required.</value></data>
+  <data name="Model is required." xml:space="preserve"><value>Model is required.</value></data>
+  <data name="Prompt is required." xml:space="preserve"><value>Prompt is required.</value></data>
+  <data name="Internal server error" xml:space="preserve"><value>Internal server error</value></data>
+  <data name="A turn is running. Progress updates automatically." xml:space="preserve"><value>A turn is running. Progress updates automatically.</value></data>
+  <data name="Connect Codex and choose its working directory on the desktop first. Opening this page never starts a process." xml:space="preserve"><value>Connect Codex and choose its working directory on the desktop first. Opening this page never starts a process.</value></data>
+  <data name="Failed" xml:space="preserve"><value>Failed</value></data>
+  <data name="Message" xml:space="preserve"><value>Message</value></data>
+  <data name="Send to desktop Codex" xml:space="preserve"><value>Send to desktop Codex</value></data>
+  <data name="Sending starts a model turn and may consume usage or run Quantum tools on the desktop." xml:space="preserve"><value>Sending starts a model turn and may consume usage or run Quantum tools on the desktop.</value></data>
+  <data name="Thread" xml:space="preserve"><value>Thread</value></data>
+  <data name="Unable to load data. Reconnecting automatically." xml:space="preserve"><value>Unable to load data. Reconnecting automatically.</value></data>
+  <data name="Showing the latest 10 messages, with long messages shortened. Open the desktop for full history." xml:space="preserve"><value>Showing the latest 10 messages, with long messages shortened. Open the desktop for full history.</value></data>
+  <data name="Recent messages" xml:space="preserve"><value>Recent messages</value></data>
+  <data name="Continue conversation" xml:space="preserve"><value>Continue conversation</value></data>
+  <data name="No items to display." xml:space="preserve"><value>No items to display.</value></data>
+  <data name="Using the current desktop conversation." xml:space="preserve"><value>Using the current desktop conversation.</value></data>
+  <data name="Attach" xml:space="preserve"><value>Attach</value></data>
+  <data name="Stop recording" xml:space="preserve"><value>Stop recording</value></data>
+  <data name="Record voice" xml:space="preserve"><value>Record voice</value></data>
+  <data name="Recording…" xml:space="preserve"><value>Recording…</value></data>
+  <data name="Remove attachment" xml:space="preserve"><value>Remove attachment</value></data>
+  <data name="Could not add attachment. Use up to four files, 8 MiB each and 16 MiB total." xml:space="preserve"><value>Could not add attachment. Use up to four files, 8 MiB each and 16 MiB total.</value></data>
+  <data name="Recording unavailable. Check microphone permission." xml:space="preserve"><value>Recording unavailable. Check microphone permission.</value></data>
+<data name="Transcribing voice…" xml:space="preserve"><value>Transcribing voice…</value></data>
+<data name="Voice transcription or attachment processing failed. Check the selected model and try again." xml:space="preserve"><value>Voice transcription or attachment processing failed. Check the selected model and try again.</value></data>
+<data name="A prompt or attachment is required." xml:space="preserve"><value>A prompt or attachment is required.</value></data>
+<data name="Invalid attachment metadata or size." xml:space="preserve"><value>Invalid attachment metadata or size.</value></data>
+<data name="Invalid attachment encoding." xml:space="preserve"><value>Invalid attachment encoding.</value></data>
+<data name="Attachments exceed the size limit." xml:space="preserve"><value>Attachments exceed the size limit.</value></data>
+<data name="Use PNG, JPEG, GIF or WebP images." xml:space="preserve"><value>Use PNG, JPEG, GIF or WebP images.</value></data>
+<data name="Install a speech.transcribe provider for this desktop platform." xml:space="preserve"><value>Install a speech.transcribe provider for this desktop platform.</value></data>
+<data name="The requested speech language is not installed on this desktop." xml:space="preserve"><value>The requested speech language is not installed on this desktop.</value></data>
+<data name="Speech recognition failed." xml:space="preserve"><value>Speech recognition failed.</value></data>
+<data name="No speech was recognized. Try recording again." xml:space="preserve"><value>No speech was recognized. Try recording again.</value></data>
+<data name="Use the voice recorder or select a PCM WAV recording." xml:space="preserve"><value>Use the voice recorder or select a PCM WAV recording.</value></data>
+</root>

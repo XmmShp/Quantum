@@ -1,0 +1,128 @@
+@using NOF.Contract
+@using Quantum.OfficialPlugins.Codex
+@namespace Quantum.OfficialPlugins.Codex.UI.Pages
+@using Microsoft.AspNetCore.Components.Web
+@using Microsoft.Extensions.Localization
+@using Quantum.OfficialPlugins.Codex.Application
+@using Quantum.OfficialPlugins.Codex.UI.Localization
+@implements IDisposable
+@inject IStringLocalizer<PluginStrings> L
+
+<PageTitle>Codex · Quantum</PageTitle>
+
+<section class="codex-shell">
+    <header class="page-header">
+        <div class="page-identity">
+            <span class="identity-mark" aria-hidden="true">✦</span>
+            <h1>Codex</h1>
+            <span class="header-divider" aria-hidden="true"></span>
+            <span class="page-subtitle">@L["Your Quantum assistant"]</span>
+        </div>
+        <div class="connection-pill @StateClass" role="status">
+            <span aria-hidden="true"></span>@StateLabel
+        </div>
+    </header>
+
+    @if (_snapshot.ErrorMessage is not null || _localError is not null)
+    {
+        <div class="error-banner" role="alert">
+            <span>@L[_localError ?? _snapshot.ErrorMessage!]</span>
+            <button type="button" aria-label="@L["Dismiss error"]" @onclick="() => _localError = null">×</button>
+        </div>
+    }
+
+    @if (_snapshot.ConnectionState != CodexConnectionState.Connected)
+    {
+        <section class="connect-card">
+            <div class="codex-mark" aria-hidden="true">✦</div>
+            <div>
+                <h2>@L["Connect local Codex"]</h2>
+                <p>@L["Automatically connects to local Codex. Connection errors appear here; you can retry."]</p>
+            </div>
+            <label>
+                <span>@L["Model"]</span>
+                <select @bind="_selectedModel" disabled="@IsConnecting">
+                    @foreach (var model in _snapshot.Models)
+                    {
+                        <option value="@model.Id">@model.DisplayName</option>
+                    }
+                </select>
+            </label>
+            <label>
+                <span>@L["Working directory"]</span>
+                <input @bind="_workingDirectory" disabled="@IsConnecting" />
+            </label>
+            <button type="button" class="primary-button" disabled="@IsConnecting" @onclick="ConnectAsync">
+                @(IsConnecting ? L["Connecting"] : L[_snapshot.ConnectionState == CodexConnectionState.Failed ? "Retry connection" : "Connect"])
+            </button>
+        </section>
+    }
+    else
+    {
+        <section class="workspace">
+            <header class="workspace-toolbar">
+                <div class="tool-summary">
+                    <strong>@_snapshot.ToolCount</strong>
+                    <span>@L["Quantum tools"]</span>
+                </div>
+                <label class="model-picker">
+                    <span>@L["Model"]</span>
+                    <select value="@_selectedModel" disabled="@_snapshot.IsBusy" @onchange="ChangeModelAsync">
+                        @foreach (var model in _snapshot.Models)
+                        {
+                            <option value="@model.Id">@model.DisplayName</option>
+                        }
+                    </select>
+                </label>
+                <span class="session-label" title="@_snapshot.ThreadId">@L["Current conversation"]</span>
+                <div class="toolbar-actions">
+                    <button type="button" disabled="@_snapshot.IsBusy" @onclick="NewThreadAsync"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" /></svg>@L["New conversation"]</button>
+                    <button type="button" @onclick="DisconnectAsync">@L["Disconnect"]</button>
+                </div>
+            </header>
+
+            <div class="conversation" aria-live="polite" aria-busy="@_snapshot.IsBusy">
+                @if (!_snapshot.Messages.Any(message => message.Role != CodexMessageRole.System))
+                {
+                    <div class="empty-state">
+                        <span aria-hidden="true">✦</span>
+                        <h2>@L["Start a conversation"]</h2>
+                        <p>@L["Ask Codex to inspect your calendar, create a task, or use RPCs published by other plugins."]</p>
+                    </div>
+                }
+                else
+                {
+                    @foreach (var message in _snapshot.Messages)
+                    {
+                        <article @key="message.Id" class="message @message.Role.ToString().ToLowerInvariant()">
+                            <div class="message-role">@L[message.Role.ToString()]</div>
+                            <div class="message-text">
+                                @message.Text
+                                            @if (message.IsTranscribing) { <small class="message-attachment" role="status">@L["Transcribing voice…"]</small> }
+                                            @foreach (var attachment in message.Attachments)
+                                            {
+                                                <small class="message-attachment">📎 @attachment.Name</small>
+                                            }
+                                @if (message.IsStreaming)
+                                {
+                                    <span class="cursor">▍</span>
+                                }
+                            </div>
+                        </article>
+                    }
+                }
+            </div>
+
+            <footer class="composer">
+                <CodexMediaInput @ref="_mediaInput" Disabled="@_sending" Value="@_attachments" Changed="@(files => _attachments = files)" RecordingChanged="@(value => _recording = value)" />
+                <textarea rows="2"
+                          aria-label="@L["Message Codex…"]"
+                          placeholder="@L["Message Codex…"]"
+                          disabled="@_sending"
+                          @bind="_prompt"
+                          @onkeydown="HandleKeyDownAsync"></textarea>
+                <button type="button" class="send-button" disabled="@(!CanSend)" @onclick="SendAsync">@L["Send"]<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V5m-6 6 6-6 6 6" /></svg></button>
+            </footer>
+        </section>
+    }
+</section>
