@@ -1,0 +1,92 @@
+@page "/"
+
+<PageTitle>Quantum · 可验证的插件发布平台</PageTitle>
+<HeadContent>
+    <meta name="description" content="Quantum Platform 为 Quantum 插件提供版本发布、审核、兼容性解析与安全下载。" />
+</HeadContent>
+
+<div class="product-page">
+    <header class="site-header">
+        <div class="page-container header-inner">
+            <a class="brand" href="/" aria-label="Quantum 首页">
+                <img src="/assets/quantum-mark.svg" alt="" />
+                <span>Quantum</span>
+            </a>
+            <nav class="desktop-nav" aria-label="主导航">
+                <a href="#workflow">发布流程</a>
+                <a href="#capabilities">平台能力</a>
+                <a href="#architecture">安全边界</a>
+            </nav>
+            <a class="header-cta" href="/portal/">进入发布台 <span aria-hidden="true">↗</span></a>
+        </div>
+    </header>
+
+    <main>
+        <section class="hero">
+            <div class="hero-grid" aria-hidden="true"></div>
+            <div class="hero-orb hero-orb-one" aria-hidden="true"></div>
+            <div class="page-container hero-content">
+                <div class="hero-copy">
+                    <div class="eyebrow"><span></span> QUANTUM PLUGIN PLATFORM</div>
+                    <h1>让每个插件版本，<br />都能被<span>可信交付。</span></h1>
+                    <p>从插件资料、版本上传到审核发布，在同一条可追踪链路中完成。Quantum 客户端只获取经过验证且兼容的版本。</p>
+                    <div class="hero-actions">
+                        <a class="button button-primary" href="/portal/">发布插件 <span>→</span></a>
+                        <a class="button button-ghost" href="#workflow">了解发布链路 <span>↓</span></a>
+                    </div>
+                    <div class="hero-proof">
+                        <span><i>✓</i> ZIP 安全验证</span>
+                        <span><i>✓</i> 版本兼容解析</span>
+                        <span><i>✓</i> 审核全程留痕</span>
+                    </div>
+                </div>
+                <ReleaseExplorer @rendermode="InteractiveWebAssembly" />
+            </div>
+        </section>
+
+        <section class="signal-strip" aria-label="平台特性">
+            <div class="page-container signal-list">
+                <span>开发者自助发布</span><i></i><span>审核后公开</span><i></i><span>SHA-256 校验</span><i></i><span>按版本适配</span><i></i><span>下载可审计</span>
+            </div>
+        </section>
+
+        <section class="section workflow-section" id="workflow">
+            <div class="page-container">
+                <div class="section-heading split-heading">
+                    <div><p class="section-label">01 / RELEASE FLOW</p><h2>一条清晰的链路，<br />从代码到用户。</h2></div>
+                    <p>发布和审核发生在网页工作台；Quantum 原生客户端保持专注，只负责发现、下载与安装。</p>
+                </div>
+                <div class="workflow-grid">
+                    <article><span class="card-number">01</span><div class="card-icon">ZIP</div><h3>提交版本</h3><p>上传插件包、版本号、兼容范围与更新说明，服务端完成结构和安全校验。</p></article>
+                    <article class="highlighted"><span class="card-number">02</span><div class="card-icon">✓</div><h3>审核发布</h3><p>Reviewer 核对待审版本并留下结论；开发者可以先测试自己的候选版本。</p></article>
+                    <article><span class="card-number">03</span><div class="card-icon">↓</div><h3>兼容分发</h3><p>为当前客户端解析最高兼容版本，校验摘要后再交付安装。</p></article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section capability-section" id="capabilities">
+            <div class="page-container">
+                <div class="section-heading centered-heading"><p class="section-label">02 / CAPABILITIES</p><h2>发布需要的边界，都在平台内。</h2><p>身份、插件目录、版本、审核和下载策略共享同一套领域规则。</p></div>
+                <div class="bento-grid">
+                    <article class="bento-card bento-wide"><div><p class="mini-label">CATALOG</p><h3>统一插件目录</h3><p>用稳定标识组织资料、作者和标签，让插件可以被可靠检索。</p></div><div class="catalog-demo"><span>com.quantum.insight</span><b>Insight Toolkit</b><small>productivity · verified</small></div></article>
+                    <article class="bento-card"><p class="mini-label">POLICY</p><h3>版本策略</h3><p>语义化版本与 Quantum 兼容约束共同决定可安装版本。</p><div class="version-stack"><span>1.4.0 <i>SELECTED</i></span><span>1.3.2</span><span>1.2.0</span></div></article>
+                    <article class="bento-card dark-card"><p class="mini-label">AUDIT</p><h3>关键动作留痕</h3><p>发布、审核与下载进入审计记录，重要变化有据可查。</p><div class="trace-demo"><span></span><span></span><span></span><span></span></div></article>
+                </div>
+            </div>
+        </section>
+
+        <section class="section architecture-section" id="architecture">
+            <div class="page-container architecture-grid">
+                <div><p class="section-label light-label">03 / TRUST BOUNDARY</p><h2>先验证，<br />再进入生态。</h2><p class="architecture-lead">平台拒绝路径穿越、重复路径和超限归档，并检查 manifest、运行时入口及数据库迁移制品。</p><ul class="security-list"><li><span>01</span><div><strong>身份与角色</strong><p>开发者、Reviewer 与 Admin 权限清晰分离。</p></div></li><li><span>02</span><div><strong>候选版本隔离</strong><p>待审版本仅对其开发者开放测试下载。</p></div></li><li><span>03</span><div><strong>原子存储</strong><p>插件包经摘要验证后以原子方式落盘。</p></div></li></ul></div>
+                <div class="boundary-map"><p>QUANTUM RELEASE BOUNDARY</p><div class="map-flow"><span>Developer</span><b>→</b><span class="accent-node">Validate</span><b>→</b><span>Review</span></div><div class="map-gate"><small>POLICY GATE</small><strong>manifest · archive · checksum · compatibility</strong></div><div class="map-output"><span>Quantum Client</span><b>VERIFIED PACKAGE</b></div></div>
+            </div>
+        </section>
+
+        <section class="final-cta-section">
+            <div class="hero-grid" aria-hidden="true"></div>
+            <div class="page-container final-cta-content"><p class="section-label light-label">SHIP WITH CONFIDENCE</p><h2>准备好发布<br />下一个 Quantum 插件？</h2><p>创建插件条目，提交第一个可验证版本。</p><a class="button button-primary" href="/portal/">进入开发者发布台 <span>→</span></a></div>
+        </section>
+    </main>
+
+    <footer class="site-footer"><div class="page-container footer-inner"><a class="brand" href="/"><img src="/assets/quantum-mark.svg" alt="" /><span>Quantum</span></a><p>Plugin delivery, with a verifiable path.</p><div><a href="/portal/">发布台</a><a href="/api/status">服务状态</a></div></div></footer>
+</div>

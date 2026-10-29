@@ -1,0 +1,89 @@
+using System.Globalization;
+using NOF.Domain;
+using Quantum.Platform.Domain;
+
+namespace Quantum.Platform.Application;
+
+public sealed class PlatformCallerResolver(
+    IPlatformCallerContext callerContext,
+    IRepository<PlatformUser> users,
+    ILoginSessionValidator? sessions = null)
+{
+    public bool IsCredentialClient => callerContext.CredentialClientId is not null;
+
+    public bool CanPublishPlugin(string pluginId)
+        => callerContext.HasPermission(QuantumPlatformPermissions.PluginPublish) &&
+           callerContext.HasPermission($"{QuantumPlatformPermissions.PluginPrefix}{pluginId}");
+
+    public async Task<PlatformCallerResolution> RequireAsync(
+        PlatformUserRole requiredRoles,
+        CancellationToken cancellationToken,
+        string? credentialPermission = null)
+    {
+        if (callerContext.CredentialClientId is not null &&
+            (credentialPermission is null || !callerContext.HasPermission(credentialPermission)))
+        {
+            return PlatformCallerResolution.Fail("credential_client_forbidden", "The Credential Client does not have the required permission.");
+        }
+
+        if (TryParseId(callerContext.UserId) is not { } userId)
+        {
+            return PlatformCallerResolution.Fail("authentication_required", "A valid bearer token is required.");
+        }
+
+        var user = await users
+            .Where(candidate => candidate.Id == userId)
+            .SingleOrDefaultAsync(cancellationToken);
+        if (user is null)
+        {
+            return PlatformCallerResolution.Fail("user_not_found", "The authenticated user no longer exists.");
+        }
+
+        if (callerContext.LoginSessionId is { } sessionId &&
+            (sessions is null || !await sessions.IsActiveAsync(user, sessionId, cancellationToken)))
+        {
+            return PlatformCallerResolution.Fail("authentication_required", "The login session is no longer valid.");
+        }
+
+        if (requiredRoles != PlatformUserRole.None && !user.HasAnyRole(requiredRoles))
+        {
+            return PlatformCallerResolution.Fail("forbidden", "The authenticated user does not have the required role.");
+        }
+
+        return PlatformCallerResolution.Success(user);
+    }
+
+    public async Task<PlatformUser?> ResolveOptionalAsync(CancellationToken cancellationToken)
+    {
+        if (TryParseId(callerContext.UserId) is not { } userId)
+        {
+            return null;
+        }
+
+        var user = await users
+            .Where(candidate => candidate.Id == userId)
+            .SingleOrDefaultAsync(cancellationToken);
+        return user is not null && (callerContext.LoginSessionId is not { } sessionId ||
+            sessions is not null && await sessions.IsActiveAsync(user, sessionId, cancellationToken)) ? user : null;
+    }
+
+    public static PlatformUserId? TryParseId(string? value)
+    {
+        if (long.TryParse(value, NumberStyles.None, CultureInfo.InvariantCulture, out var parsed) && parsed > 0)
+        {
+            return PlatformUserId.Of(parsed);
+        }
+
+        return null;
+    }
+}
+
+public sealed record PlatformCallerResolution(
+    PlatformUser? User,
+    string? ErrorCode,
+    string? ErrorMessage)
+{
+    public static PlatformCallerResolution Success(PlatformUser user) => new(user, null, null);
+
+    public static PlatformCallerResolution Fail(string code, string message) => new(null, code, message);
+}

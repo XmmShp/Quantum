@@ -1,0 +1,102 @@
+@host = http://localhost:5080
+@token = replace-after-login
+
+### Request registration email code
+POST {{host}}/rpc
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "registration-code-1",
+  "method": "RequestRegistrationEmailCode",
+  "params": {
+    "email": "developer@example.com"
+  }
+}
+
+### Register with the code from email (or Development logs)
+POST {{host}}/rpc
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "register-1",
+  "method": "RegisterUser",
+  "params": {
+    "username": "developer",
+    "email": "developer@example.com",
+    "password": "a-strong-development-password",
+    "verificationCode": "123456"
+  }
+}
+
+### Login
+POST {{host}}/rpc
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "login-1",
+  "method": "Login",
+  "params": {
+    "email": "developer@example.com",
+    "password": "a-strong-development-password"
+  }
+}
+
+### Create plugin
+POST {{host}}/rpc
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "plugin-1",
+  "method": "CreatePlugin",
+  "params": {
+    "pluginId": "quantum.plugin.example",
+    "name": "Example Plugin",
+    "description": "Example Quantum plugin",
+    "tags": ["sample", "desktop"]
+  }
+}
+
+### List published plugins
+POST {{host}}/rpc
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "plugins-1",
+  "method": "ListPlugins",
+  "params": {
+    "search": "example",
+    "tags": ["sample"]
+  }
+}
+
+### Request password reset code (same response for unknown addresses)
+POST {{host}}/rpc
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "password-reset-code-1",
+  "method": "RequestPasswordResetEmailCode",
+  "params": { "email": "developer@example.com" }
+}
+
+### Reset password using the code from email (or Development logs)
+POST {{host}}/rpc
+Content-Type: application/json
+
+{
+  "jsonrpc": "2.0",
+  "id": "password-reset-1",
+  "method": "ResetPassword",
+  "params": {
+    "email": "developer@example.com",
+    "verificationCode": "123456",
+    "newPassword": "a-new-strong-development-password"
+  }
+}

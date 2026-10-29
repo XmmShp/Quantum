@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+  </PropertyGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Quantum.Platform.Contract\Quantum.Platform.Contract.csproj" />
+    <ProjectReference Include="..\Quantum.Platform.Domain\Quantum.Platform.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="NOF.Application" />
+    <PackageReference Include="NOF.Contract" />
+    <PackageReference Include="NOF.Domain" />
+  </ItemGroup>
+</Project>

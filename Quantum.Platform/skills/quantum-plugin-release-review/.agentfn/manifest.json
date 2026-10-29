@@ -1,0 +1,8 @@
+{
+  "skillId": "quantum-plugin-release-review",
+  "version": "1.0.1",
+  "name": "Quantum Plugin Release Review",
+  "description": "Reviews Quantum plugin packages and returns a fail-closed publication recommendation with evidence.",
+  "visibility": "private",
+  "changeNotes": "Document the bounded review workspace and authoritative package inventory."
+}

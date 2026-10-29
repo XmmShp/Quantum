@@ -1,0 +1,44 @@
+name: Publish CLI
+
+on:
+  push:
+    tags: ["cli-v*"]
+  workflow_dispatch:
+    inputs:
+      version:
+        description: SemVer package version
+        required: true
+        type: string
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    environment: nuget-production
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: "10.0.x"
+      - run: dotnet restore src/Quantum.Platform.Cli/Quantum.Platform.Cli.csproj --verbosity quiet
+      - name: Resolve package version
+        id: package-version
+        env:
+          REQUESTED_VERSION: ${{ github.event_name == 'workflow_dispatch' && inputs.version || github.ref_name }}
+        run: |
+          version="${REQUESTED_VERSION#cli-v}"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([-.][0-9A-Za-z.-]+)?$ ]]
+          printf 'value=%s\n' "$version" >> "$GITHUB_OUTPUT"
+      - run: dotnet pack src/Quantum.Platform.Cli/Quantum.Platform.Cli.csproj -c Release --no-restore --output artifacts --verbosity quiet -p:Version=${{ steps.package-version.outputs.value }}
+      - name: Exchange GitHub OIDC token for a temporary NuGet key
+        id: nuget-login
+        uses: NuGet/login@v1
+        with:
+          user: ${{ vars.NUGET_USER }}
+      - name: Publish package
+        env:
+          NUGET_API_KEY: ${{ steps.nuget-login.outputs.NUGET_API_KEY }}
+        run: dotnet nuget push "artifacts/*.nupkg" --source https://api.nuget.org/v3/index.json --api-key "$NUGET_API_KEY" --skip-duplicate

@@ -1,0 +1,47 @@
+<section class="release-explorer" aria-label="插件发布流程交互演示">
+    <div class="release-tabs" role="tablist" aria-label="选择发布阶段">
+        @foreach (var stage in Stages)
+        {
+            <button type="button"
+                    role="tab"
+                    aria-selected="@(stage.Id == activeStage.Id)"
+                    class="@(stage.Id == activeStage.Id ? "active" : null)"
+                    @onclick="() => activeStage = stage">
+                <span>@stage.Number</span>
+                @stage.Label
+            </button>
+        }
+    </div>
+
+    <div class="release-console">
+        <div class="console-bar">
+            <span class="console-dots" aria-hidden="true"><i></i><i></i><i></i></span>
+            <span>quantum.plugin.release</span>
+            <span class="console-state"><i></i> @activeStage.State</span>
+        </div>
+        <div class="console-body" aria-live="polite">
+            <p class="console-kicker">STEP @activeStage.Number / 03</p>
+            <h3>@activeStage.Title</h3>
+            <p>@activeStage.Description</p>
+            <div class="package-card">
+                <div><small>PLUGIN</small><strong>com.example.insight</strong></div>
+                <div><small>VERSION</small><strong>1.4.0</strong></div>
+                <div><small>QUANTUM</small><strong>&gt;= 0.1.0</strong></div>
+                <span>@activeStage.Badge</span>
+            </div>
+        </div>
+    </div>
+</section>
+
+@code {
+    private sealed record Stage(string Id, string Number, string Label, string State, string Title, string Description, string Badge);
+
+    private static readonly Stage[] Stages =
+    [
+        new("package", "01", "打包", "READY", "验证插件包", "检查 manifest、入口、迁移文件和 ZIP 安全边界。", "SHA-256 VERIFIED"),
+        new("review", "02", "审核", "IN REVIEW", "进入审核队列", "开发者仍可在客户端测试自己的待审核版本。", "OWNER PREVIEW"),
+        new("release", "03", "发布", "AVAILABLE", "按兼容性分发", "客户端获得符合当前 Quantum 版本的最高可用版本。", "READY TO INSTALL")
+    ];
+
+    private Stage activeStage = Stages[0];
+}

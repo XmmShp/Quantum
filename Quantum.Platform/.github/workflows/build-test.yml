@@ -1,0 +1,36 @@
+name: Build and test
+
+on:
+  pull_request:
+    branches: ["main"]
+  workflow_dispatch:
+
+env:
+  DOTNET_VERSION: "10.0.x"
+  CONFIGURATION: "Release"
+  QuantumMobileInternalProject: ${{ github.workspace }}/.framework/Quantum/quantum/src/Quantum.Mobile.Internal/Quantum.Mobile.Internal.csproj
+
+jobs:
+  build-test:
+    name: Verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Read pinned framework revision
+        id: framework
+        run: echo "sha=$(cat .framework/quantum.ref)" >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@v4
+        with:
+          repository: XmmShp/Quantum
+          ref: ${{ steps.framework.outputs.sha }}
+          path: .framework/Quantum
+          sparse-checkout: quantum/src/Quantum.Mobile.Internal
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Restore
+        run: dotnet restore Quantum.Platform.slnx --verbosity quiet
+      - name: Build
+        run: dotnet build Quantum.Platform.slnx -c ${{ env.CONFIGURATION }} --no-restore --verbosity quiet
+      - name: Test
+        run: dotnet test tests/Quantum.Platform.Tests/Quantum.Platform.Tests.csproj -c ${{ env.CONFIGURATION }} --no-build --verbosity quiet

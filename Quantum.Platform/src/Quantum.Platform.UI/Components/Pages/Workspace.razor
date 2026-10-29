@@ -1,0 +1,145 @@
+@page "/portal"
+@rendermode @(new InteractiveWebAssemblyRenderMode(prerender: false))
+@inject HttpClient Http
+@inject IJSRuntime JS
+@using Quantum.Platform.Contract
+
+<PageTitle>Quantum Platform · 插件工作台</PageTitle>
+
+<div class="workbench-shell">
+    <header class="workbench-topbar">
+        <a class="workbench-brand" href="/"><img src="/assets/quantum-mark.svg" alt="" style="filter:brightness(0) invert(1);opacity:.9" /><span>Quantum Platform</span></a>
+        @if (_user is not null)
+        {
+            <div class="account"><span><b>@_user.Username</b><small>@_user.Email</small></span><button class="quiet-button" @onclick="LogoutAsync">退出</button></div>
+        }
+    </header>
+
+    @if (!_initialized)
+    {
+        <main class="loading-state"><span></span><p>正在连接发布平台…</p></main>
+    }
+    else if (_user is null)
+    {
+        <main class="auth-layout">
+            <section class="auth-story">
+                <p class="overline">QUANTUM DEVELOPER CLOUD</p>
+                <h1>从一次提交，<br />到可信交付。</h1>
+                <p>管理插件目录、自动发布身份和审核链路。CLI 与网页工作台共享相同的权限边界。</p>
+                <div class="auth-points"><span><b>01</b>创建插件</span><span><b>02</b>配置 CI</span><span><b>03</b>自动审核</span></div>
+            </section>
+            <form class="auth-panel" @onsubmit="AuthenticateAsync" @onsubmit:preventDefault>
+                <div class="auth-tabs"><button type="button" disabled="@_busy" class="@(!_registering && !_resettingPassword ? "active" : null)" @onclick="() => SetAuthMode(false)">登录</button><button type="button" disabled="@_busy" class="@(_registering ? "active" : null)" @onclick="() => SetAuthMode(true)">注册</button></div>
+                <p class="overline">DEVELOPER ACCOUNT</p><h2>@(_resettingPassword ? "找回密码" : _registering ? "创建开发者账号" : "欢迎回来")</h2>
+                @if (_resettingPassword)
+                {
+                    <p>通过注册邮箱接收验证码，设置新的登录密码。验证码 10 分钟内有效。</p>
+                }
+                @if (_registering)
+                {
+                    <label>开发者名称<input @bind="_username" maxlength="64" autocomplete="username" required /></label>
+                }
+                <label>邮箱<input @bind="_email" type="email" maxlength="320" autocomplete="email" required /></label>
+                @if (_registering || _resettingPassword)
+                {
+                    <label>邮箱验证码<span class="inline-control"><input @bind="_verificationCode" inputmode="numeric" maxlength="6" autocomplete="one-time-code" required /><button type="button" disabled="@_busy" @onclick="SendVerificationCodeAsync">发送验证码</button></span></label>
+                }
+                <label>@(_resettingPassword ? "新密码" : "密码")<input @bind="_password" type="password" minlength="12" maxlength="1024" autocomplete="@(_registering || _resettingPassword ? "new-password" : "current-password")" required /></label>
+                @if (_resettingPassword)
+                {
+                    <label>确认新密码<input @bind="_confirmPassword" type="password" minlength="12" maxlength="1024" autocomplete="new-password" required /></label>
+                }
+                <button type="submit" class="primary-button wide" disabled="@_busy">@(_resettingPassword ? "重置密码" : _registering ? "注册并登录" : "登录工作台")</button>
+                @if (!_registering && !_resettingPassword)
+                {
+                    <button type="button" class="quiet-button wide" disabled="@_busy" @onclick="BeginPasswordReset">忘记密码？</button>
+                }
+                @if (_resettingPassword)
+                {
+                    <button type="button" class="quiet-button wide" disabled="@_busy" @onclick="() => SetAuthMode(false)">返回登录</button>
+                }
+            </form>
+        </main>
+    }
+    else
+    {
+        <div class="workspace-layout">
+            <aside class="workspace-nav">
+                <div><p class="overline">WORKSPACE</p><h1>插件工作台</h1><p>发布、自动化与审核都在一个清晰的工作面里。</p></div>
+                <nav>
+                    <button class="@PluginsNavClass" @onclick="ShowPluginsAsync"><span>◇</span><b>插件与版本<small>目录和发布记录</small></b></button>
+                    <button class="@CredentialsNavClass" @onclick="ShowCredentialsAsync"><span>⌁</span><b>CI 发布身份<small>CLI 与 Credential Client</small></b></button>
+                    @if (CanReview)
+                    {
+                        <button class="@ReviewNavClass" @onclick="ShowReviewAsync"><span>✓</span><b>审核队列<small>候选版本决策</small></b></button>
+                    }
+                </nav>
+                <div class="nav-note"><strong>自动发布已可用</strong><p>Credential Client 使用私钥签名和十分钟短期令牌，不需要 API Key。</p><a href="/skills/publish-quantum-plugin/manifest.json">获取发布 SKILL →</a></div>
+            </aside>
+
+            <main class="workspace-main">
+                @if (_view == "plugins")
+                {
+                    <section class="view-heading"><div><p class="overline">PLUGIN CATALOG</p><h2>插件与版本</h2><p>维护稳定的插件身份，查看每个版本进入生态前的状态。</p></div><button class="primary-button" @onclick="BeginNewPlugin">＋ 新建插件</button></section>
+                    <div class="metrics"><article><small>我的插件</small><b>@_plugins.Length</b></article><article><small>已有版本</small><b>@_releaseTotal</b></article><article><small>待审核</small><b>@_pendingTotal</b></article></div>
+                    <div class="plugin-workspace">
+                        <section class="surface plugin-browser">
+                            <header><h3>插件目录</h3><button class="icon-button" title="刷新" @onclick="LoadPluginsAsync">↻</button></header>
+                            <div class="plugin-list">
+                                @if (_plugins.Length == 0) { <div class="empty-mini">还没有插件，先建立第一个稳定标识。</div> }
+                                @foreach (var plugin in _plugins)
+                                {
+                                    <button class="plugin-row @(plugin.PluginId == _selected?.PluginId ? "selected" : null)" @onclick="() => SelectPluginAsync(plugin)"><i>@plugin.Name[..1].ToUpperInvariant()</i><span><b>@plugin.Name</b><small>@plugin.PluginId</small></span><em>→</em></button>
+                                }
+                            </div>
+                        </section>
+                        <div class="plugin-detail">
+                            @if (_editing || _selected is not null)
+                            {
+                                <section class="surface editor-card">
+                                    <header><div><p class="overline">PLUGIN PROFILE</p><h3>@(_selected is null ? "创建插件" : _selected.Name)</h3></div>@if (_selected is not null){<button class="danger-button" @onclick="DeletePluginAsync">删除</button>}</header>
+                                    <div class="form-grid"><label>插件标识<input @bind="_pluginId" disabled="@(_selected is not null)" placeholder="com.example.plugin" /></label><label>显示名称<input @bind="_pluginName" /></label><label class="full">简介<textarea @bind="_pluginDescription" rows="3"></textarea></label><label class="full">标签<input @bind="_pluginTags" placeholder="productivity, utility" /><small>英文逗号分隔，最多 20 个</small></label></div>
+                                    <footer><button class="primary-button" @onclick="SavePluginAsync">保存插件资料</button></footer>
+                                </section>
+                            }
+                            else
+                            {
+                                <section class="surface empty-detail"><span>◇</span><h3>选择一个插件</h3><p>查看版本历史，或创建新的插件目录项。</p></section>
+                            }
+                            @if (_selected is not null)
+                            {
+                                <section class="surface release-card">
+                                    <header><div><p class="overline">RELEASES</p><h3>版本记录</h3></div><span class="count-pill">@_releases.Length 个版本</span></header>
+                                    <div class="cli-callout"><div><b>推荐通过 CLI 自动发布</b><p>为仓库创建独立 CI 身份后，每次 tag 都能提交自动审核。</p></div><button class="secondary-button" @onclick="ShowCredentialsAsync">配置 CI</button></div>
+                                    <div class="release-list">@if (_releases.Length == 0){<div class="empty-mini">还没有版本，使用 CLI 或下方表单提交。</div>}@foreach(var release in _releases){<article><div><b>v@(release.Version)</b><small>Quantum @release.QuantumVersionSupport · @FormatSize(release.PackageSizeBytes)</small></div><span class="status @StatusClass(release.Status)">@StatusLabel(release.Status)</span><p>@release.ReleaseNotes</p></article>}</div>
+                                    <details><summary>手动上传 ZIP</summary><div class="upload-grid"><label>版本号<input @bind="_releaseVersion" placeholder="1.0.0" /></label><label>Quantum 版本范围<input @bind="_versionSupport" /></label><label class="full">更新说明<textarea @bind="_releaseNotes" rows="2"></textarea></label><label class="file-field full">插件 ZIP<InputFile OnChange="SelectArchive" accept=".zip,application/zip" /><span>@(_archiveName ?? "选择不超过 256 MB 的 ZIP")</span></label><button class="primary-button" @onclick="UploadReleaseAsync">提交自动审核</button></div></details>
+                                </section>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (_view == "credentials")
+                {
+                    <section class="view-heading"><div><p class="overline">AUTOMATED DELIVERY</p><h2>CI 发布身份</h2><p>一个仓库一个 Credential Client，只开放明确的插件发布权限。</p></div><a class="secondary-button link-button" href="https://www.nuget.org/packages/Quantum.Platform.Cli" target="_blank">安装 CLI ↗</a></section>
+                    <div class="credential-grid">
+                        <section class="surface setup-card"><header><div><p class="overline">NEW CREDENTIAL</p><h3>创建仓库身份</h3></div><span class="secure-pill">PRIVATE_KEY_JWT</span></header><div class="form-stack"><label>Client ID<input @bind="_clientId" placeholder="calendar-plugin-ci" /></label><label>显示名称<input @bind="_clientName" placeholder="Calendar plugin · GitHub Actions" /></label><fieldset><legend>允许发布的插件</legend>@foreach(var plugin in _plugins){<label class="check-row"><input type="checkbox" checked="@_allowedPlugins.Contains(plugin.PluginId)" @onchange="eventArgs => ToggleAllowedPlugin(plugin.PluginId, eventArgs.Value is true)" /><span><b>@plugin.Name</b><small>@plugin.PluginId</small></span></label>}</fieldset><button class="primary-button wide" @onclick="CreateCredentialAsync">生成 Credential Client</button></div></section>
+                        <section class="surface guide-card"><p class="overline">QUICK START</p><h3>从仓库到自动审核</h3><ol><li><b>生成发布身份</b><span>私钥只显示和下载一次。</span></li><li><b>写入 GitHub Secrets</b><span><code>QUANTUM_CLIENT_ID</code> 与 <code>QUANTUM_CLIENT_PRIVATE_JWKS</code></span></li><li><b>安装并调用 CLI</b><span>tag 流水线提交插件包。</span></li></ol><pre>dotnet tool install --global Quantum.Platform.Cli
+quantum-cli plugins publish ./artifacts/plugin --quantum-version-support "&gt;=0.1.0" --output subprocess</pre></section>
+                    </div>
+                    <section class="surface credential-list-card"><header><div><p class="overline">ACTIVE CLIENTS</p><h3>已配置身份</h3></div><button class="icon-button" @onclick="LoadCredentialsAsync">↻</button></header><div class="credential-list">@if(_credentials.Length == 0){<div class="empty-mini">还没有 CI 发布身份。</div>}@foreach(var client in _credentials){<article><i>⌁</i><div><b>@client.DisplayName</b><small>@client.ClientId</small><p>@string.Join(" · ", client.AllowedPluginIds)</p></div><span class="enabled-dot">启用</span><button class="danger-button" @onclick="() => DeleteCredentialAsync(client)">删除</button></article>}</div></section>
+                }
+                else
+                {
+                    <section class="view-heading"><div><p class="overline">AUTOMATED REVIEW</p><h2>审核队列</h2><p>自动审核给出结论后，在这里处理需要人工决策的候选版本。</p></div><button class="secondary-button" @onclick="LoadReviewsAsync">刷新队列</button></section>
+                    <section class="surface review-list">@if(_reviews.Length == 0){<div class="empty-detail"><span>✓</span><h3>队列为空</h3><p>当前没有待处理版本。</p></div>}@foreach(var release in _reviews){<article><div><b>@release.PluginId · v@(release.Version)</b><small>SHA-256 @release.PackageSha256[..12]… · @FormatSize(release.PackageSizeBytes)</small><p>@release.ReleaseNotes</p></div><textarea value="@_reviewNotes.GetValueOrDefault(release.ReleaseId)" @onchange="eventArgs => SetReviewNotes(release.ReleaseId, eventArgs.Value?.ToString())" placeholder="审核意见"></textarea><button class="secondary-button" @onclick="() => ReviewAsync(release, PluginReleaseState.Rejected)">拒绝</button><button class="primary-button" @onclick="() => ReviewAsync(release, PluginReleaseState.Published)">发布</button></article>}</section>
+                }
+            </main>
+        </div>
+    }
+
+    @if (_generatedCredential is not null)
+    {
+        <div class="modal-backdrop"><section class="credential-modal"><span class="modal-icon">✓</span><p class="overline">CREATED ONCE</p><h2>发布身份已生成</h2><p>平台只保存公钥。关闭前请下载私有 JWKS，并写入仓库 Secret。</p><div class="secret-summary"><small>Client ID</small><code>@_generatedCredential.Client.ClientId</code></div><div class="modal-actions"><button class="primary-button" @onclick="DownloadPrivateJwksAsync">下载私有 JWKS</button><button class="secondary-button" @onclick="CopyClientIdAsync">复制 Client ID</button></div><label class="confirm-row"><input type="checkbox" @bind="_confirmedPrivateKey" />我已安全保存私钥</label><button class="quiet-button wide" disabled="@(!_confirmedPrivateKey)" @onclick="CloseCredentialModal">完成配置</button></section></div>
+    }
+    @if (!string.IsNullOrWhiteSpace(_notice)) { <div class="notice @(_noticeError ? "error" : null)">@_notice</div> }
+</div>

@@ -1,0 +1,4 @@
+interface:
+  display_name: "Publish Quantum Plugin"
+  short_description: "Publish Quantum plugins from CI using OIDC"
+  default_prompt: "Use $publish-quantum-plugin to package and publish this Quantum plugin through a Credential Client."

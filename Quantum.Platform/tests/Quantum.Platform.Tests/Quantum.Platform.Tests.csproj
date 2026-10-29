@@ -1,0 +1,56 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <IsPackable>false</IsPackable>
+    <IsTestProject>true</IsTestProject>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\..\src\Quantum.Platform\Persistence\PlatformDbContext.cs" Link="Host\Persistence\PlatformDbContext.cs" />
+    <Compile Include="..\..\src\Quantum.Platform\Persistence\Migrations\*.cs" Link="Host\Persistence\Migrations\%(Filename)%(Extension)" />
+    <Compile Include="..\..\src\Quantum.Platform\Authentication\QuantumPlatformOidcOptions.cs" Link="Host\Authentication\QuantumPlatformOidcOptions.cs" />
+    <Compile Include="..\..\src\Quantum.Platform\Authentication\PlatformJwtOptions.cs" Link="Host\Authentication\PlatformJwtOptions.cs" />
+    <Compile Include="..\..\src\Quantum.Platform\Authentication\RefreshTokenCodec.cs" Link="Host\Authentication\RefreshTokenCodec.cs" />
+    <Compile Include="..\..\src\Quantum.Platform\Authentication\JwtPlatformTokenIssuer.cs" Link="Host\Authentication\JwtPlatformTokenIssuer.cs" />
+    <Compile Include="..\..\src\Quantum.Platform\Authentication\HttpPlatformCallerContext.cs" Link="Host\Authentication\HttpPlatformCallerContext.cs" />
+    <ProjectReference Include="..\ManagedReviewFixture\ManagedReviewFixture.csproj" />
+    <ProjectReference Include="..\..\src\Quantum.Platform.Cli\Quantum.Platform.Cli.csproj" />
+    <ProjectReference Include="..\..\src\Quantum.Platform.Application\Quantum.Platform.Application.csproj" />
+    <ProjectReference Include="..\..\src\Quantum.Platform.Contract\Quantum.Platform.Contract.csproj" />
+    <ProjectReference Include="..\..\src\Quantum.Platform.Domain\Quantum.Platform.Domain.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="..\..\src\Quantum.Platform\Services\PhysicalMobileAttachmentStore.cs" Link="Host\PhysicalMobileAttachmentStore.cs" />
+    <Compile Include="..\..\src\Quantum.Platform\Services\ManagedAssemblyReview.cs" Link="Host\ManagedAssemblyReview.cs" />
+    <Compile Include="..\..\src\Quantum.Platform\Services\AgentFnPluginReleaseAutomatedReviewer.cs" Link="Host\AgentFnPluginReleaseAutomatedReviewer.cs" />
+    <Compile Include="..\..\src\Quantum.Platform\Services\AgentFnAutomatedReviewOptions.cs" Link="Host\AgentFnAutomatedReviewOptions.cs" />
+    <Compile Include="..\..\src\Quantum.Platform\Email\MailKitPlatformEmailSender.cs"
+             Link="Host\Email\MailKitPlatformEmailSender.cs" />
+    <Compile Include="..\..\src\Quantum.Platform\Email\PlatformEmailOptions.cs"
+             Link="Host\Email\PlatformEmailOptions.cs" />
+    <Compile Include="..\..\src\Quantum.Platform\Services\DevelopmentAutoApprovePluginReleaseReviewer.cs"
+             Link="Host\Services\DevelopmentAutoApprovePluginReleaseReviewer.cs" />
+    <Compile Include="..\..\src\Quantum.Platform\Services\Pbkdf2PlatformPasswordHasher.cs"
+             Link="Host\Services\Pbkdf2PlatformPasswordHasher.cs" />
+    <Compile Include="..\..\src\Quantum.Platform\Services\PhysicalPluginPackageStore.cs"
+             Link="Host\Services\PhysicalPluginPackageStore.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <PackageReference Include="ICSharpCode.Decompiler" />
+    <PackageReference Include="NOF.Infrastructure.EntityFrameworkCore" />
+    <PackageReference Include="NOF.Hosting.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.TestHost" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="NOF.Hosting.AspNetCore.Extension.OidcServer" />
+    <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
+    <PackageReference Include="AgentFn.Sdk" />
+    <PackageReference Include="MailKit" />
+    <PackageReference Include="Microsoft.NET.Test.Sdk" />
+    <PackageReference Include="xunit" />
+    <PackageReference Include="xunit.runner.visualstudio">
+      <PrivateAssets>all</PrivateAssets>
+      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+    </PackageReference>
+  </ItemGroup>
+</Project>

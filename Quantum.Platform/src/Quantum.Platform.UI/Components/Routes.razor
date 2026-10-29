@@ -1,0 +1,8 @@
+@namespace Quantum.Platform.UI.Components
+
+<Router AppAssembly="typeof(Pages.Home).Assembly">
+    <Found Context="routeData">
+        <RouteView RouteData="routeData" DefaultLayout="typeof(ProductLayout)" />
+        <FocusOnNavigate RouteData="routeData" Selector="h1" />
+    </Found>
+</Router>
