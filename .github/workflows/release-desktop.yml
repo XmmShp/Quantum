@@ -1,0 +1,123 @@
+name: Release Desktop
+
+on:
+  push:
+    tags: ['desktop-v*']
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Stable version (e.g. 0.2.0). Builds artifacts without publishing.'
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-release
+  cancel-in-progress: false
+
+env:
+  DOTNET_VERSION: '10.0.x'
+
+jobs:
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      matrix: ${{ steps.version.outputs.matrix }}
+    steps:
+      - id: version
+        shell: pwsh
+        env:
+          INPUT_VERSION: ${{ inputs.version }}
+          ENABLE_MACOS_RELEASE: ${{ vars.ENABLE_MACOS_RELEASE }}
+        run: |
+          $version = if ($env:GITHUB_EVENT_NAME -eq 'push') { $env:GITHUB_REF_NAME -replace '^desktop-v', '' } else { $env:INPUT_VERSION }
+          if ($version -notmatch '^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$') { throw 'Expected a stable X.Y.Z version.' }
+          "version=$version" >> $env:GITHUB_OUTPUT
+          $targets = @(@{ runner = 'windows-latest'; channel = 'win-x64' })
+          if ($env:ENABLE_MACOS_RELEASE -eq 'true') {
+            $targets += @{ runner = 'macos-15'; channel = 'osx-arm64' }
+            $targets += @{ runner = 'macos-15'; channel = 'osx-x64' }
+          }
+          'matrix=' + (ConvertTo-Json -Compress @{ include = $targets }) >> $env:GITHUB_OUTPUT
+
+  package:
+    needs: prepare
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.prepare.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: pwsh
+        working-directory: Quantum
+    env:
+      GH_TOKEN: ${{ github.token }}
+      WINDOWS_CERTIFICATE_BASE64: ${{ secrets.WINDOWS_CERTIFICATE_BASE64 }}
+      WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+      REQUIRE_WINDOWS_SIGNING: ${{ vars.REQUIRE_WINDOWS_SIGNING }}
+      MACOS_APPLICATION_CERTIFICATE_BASE64: ${{ secrets.MACOS_APPLICATION_CERTIFICATE_BASE64 }}
+      MACOS_INSTALLER_CERTIFICATE_BASE64: ${{ secrets.MACOS_INSTALLER_CERTIFICATE_BASE64 }}
+      MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+      MACOS_APPLICATION_IDENTITY: ${{ secrets.MACOS_APPLICATION_IDENTITY }}
+      MACOS_INSTALLER_IDENTITY: ${{ secrets.MACOS_INSTALLER_IDENTITY }}
+      APPLE_ID: ${{ secrets.APPLE_ID }}
+      APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+      APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: ${{ env.DOTNET_VERSION }}
+      - name: Install workload and pinned packaging tool
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $PSNativeCommandUseErrorActionPreference = $true
+          if ($IsWindows) { dotnet workload install maui-windows --skip-manifest-update } else { sudo dotnet workload install maui-maccatalyst --skip-manifest-update }
+          dotnet tool restore
+      - name: Test host
+        if: runner.os == 'Windows'
+        run: dotnet test quantum/tests/Quantum.Tests/Quantum.Tests.csproj -c Release -f net10.0 -p:QuantumCoreOnly=true
+      - name: Download previous stable package for delta generation
+        run: ./scripts/Get-DesktopReleaseBaseline.ps1 -Repository $env:GITHUB_REPOSITORY -Channel '${{ matrix.channel }}' -OutputDirectory 'artifacts/releases/${{ matrix.channel }}'
+      - name: Publish and package
+        run: |
+          if ($IsMacOS) { . ./scripts/Initialize-MacSigning.ps1 }
+          ./scripts/Build-DesktopRelease.ps1 -Version '${{ needs.prepare.outputs.version }}' -Channel '${{ matrix.channel }}'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: ${{ matrix.channel }}
+          path: Quantum/artifacts/delivery/${{ matrix.channel }}/*
+          if-no-files-found: error
+          retention-days: 14
+      - name: Remove temporary Apple keychain
+        if: always() && runner.os == 'macOS'
+        run: |
+          $keychain = Join-Path $env:RUNNER_TEMP '.quantum-signing.keychain-db'
+          if (Test-Path $keychain) { security delete-keychain $keychain }
+
+  release:
+    if: github.event_name == 'push'
+    needs: [prepare, package]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    env:
+      GH_TOKEN: ${{ github.token }}
+      ENABLE_MACOS_RELEASE: ${{ vars.ENABLE_MACOS_RELEASE }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - uses: actions/download-artifact@v4
+        with:
+          path: Quantum/artifacts/delivery
+      - name: Verify and publish complete release
+        run: python ci/publish-client-release.py

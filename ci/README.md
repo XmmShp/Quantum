@@ -1,6 +1,6 @@
 # GitLab CI/CD
 
-GitLab `io7/quantum` is the source of truth. GitHub `XmmShp/Quantum` is a public push mirror configured in GitLab repository settings with a dedicated writable SSH deploy key. No GitHub Actions workflow is active. Push changes and tags to GitLab only. The mirror keeps divergent refs so an unexpected GitHub change is reported instead of silently overwritten; resolve divergence from GitLab.
+GitLab `io7/quantum` is the source of truth. GitHub `XmmShp/Quantum` is a public push mirror configured in GitLab repository settings with a dedicated writable SSH deploy key. GitHub Actions builds and releases desktop/mobile clients; GitLab Runner handles the Linux pipeline below. Push changes and tags to GitLab only. The mirror keeps divergent refs so an unexpected GitHub change is reported instead of silently overwritten; resolve divergence from GitLab.
 
 ## Linux pipeline
 
@@ -13,37 +13,37 @@ The existing instance runners with the `ubuntu` tag run:
 
 The Docker executor uses the host Docker socket. It does not require Docker-in-Docker or privileged containers. Image publication does not change a running production deployment. Use the immutable image reported by `publish-platform-image` for deployment.
 
-The optional `pages` job builds DocFX on GitLab Runner and publishes GitLab Pages. Existing GitHub release downloads remain available; new native builds are retained as GitLab job artifacts until platform release hosting is configured.
+The optional `pages` job builds DocFX on GitLab Runner and publishes GitLab Pages. GitHub Releases is the public download and desktop update endpoint for desktop and mobile clients. GitHub Actions builds the packages from mirrored release tags and uploads them to GitHub Releases.
 
 ## Releases
 
 Create release tags on commits in the monorepo default branch, after updating the relevant component version:
 
-| Tag | Result | Protected masked GitLab variables |
+| Tag | Result | Credentials |
 | --- | --- | --- |
 | `sdk/vX.Y.Z` | NuGet `Quantum.Plugin.Abstraction` and npm `@io7/quantum-plugin-sdk` | `NUGET_API_KEY`, `NPM_TOKEN` |
 | `cli-vX.Y.Z` | NuGet `Quantum.Platform.Cli` | `NUGET_API_KEY` |
 | `calendar-vX.Y.Z` | Publish Calendar and wait for marketplace review | `QUANTUM_CLIENT_ID`, `QUANTUM_CLIENT_PRIVATE_JWKS` |
 | `codex-vX.Y.Z` | Publish Codex and wait for marketplace review | `QUANTUM_CODEX_CLIENT_ID`, `QUANTUM_CODEX_CLIENT_PRIVATE_JWKS` |
 | `ledger-vX.Y.Z` | Publish Ledger and wait for marketplace review | `QUANTUM_LEDGER_CLIENT_ID`, `QUANTUM_LEDGER_CLIENT_PRIVATE_JWKS` |
-| `desktop-vX.Y.Z` | Optional manual Windows/macOS package jobs | Platform signing variables below |
-| `mobile-vX.Y.Z[-preview.N]` | Optional manual mobile package jobs | Android signing variables below |
+| `desktop-vX.Y.Z` | GitHub Actions builds Windows and optional macOS packages, then publishes GitHub Releases | GitHub signing secrets below; built-in `GITHUB_TOKEN` publishes |
+| `mobile-vX.Y.Z[-preview.N]` | GitHub Actions builds Windows/Android packages and publishes a preview Release | GitHub Android signing secrets below; built-in `GITHUB_TOKEN` publishes |
 
 GitHub Actions secrets cannot be read back or exported. Registry credentials must be configured in GitLab; GitHub-bound npm/NuGet trusted publishing is not reused by GitLab Runner. The SDK job publishes only for explicit SDK tags, validates release ancestry, version ordering and the public package boundary, and uses a temporary npm configuration file removed after publication. Re-running a partially published SDK release skips versions already present in either registry.
 
 Protect the release tag patterns in GitLab and keep credentials protected and masked. Do not put credentials in files or mirror URLs. GitLab's built-in `CI_REGISTRY_*` variables authenticate container publication without an additional secret.
 
-## Optional platform runners
+### Client builds and downloads on GitHub
 
-Linux verification and container publication work with the current runners. Native jobs are manual and non-blocking until suitable runners are registered:
+Push code and release tags to GitLab only. The existing GitLab push mirror uses a dedicated writable SSH deploy key to synchronize branches and tags to GitHub. A mirrored `desktop-v*` or `mobile-v*` tag triggers the corresponding workflow in `.github/workflows/`. Ordinary branch pushes synchronize source without creating a release. Do not push several release tags together: GitHub does not emit tag push events when more than three tags are pushed at once.
 
-| Runner tag | Prerequisites |
-| --- | --- |
-| `quantum-windows` | Windows, PowerShell 7, .NET 10; run the runner service with administrator privileges for MAUI workloads |
-| `quantum-macos` | macOS with compatible Xcode, .NET 10, PowerShell, Apple signing and notarization credentials |
-| `quantum-android` | Linux Docker Runner with an image supplying .NET 10, Android SDK, Java 21 and PowerShell; set `QUANTUM_ANDROID_IMAGE` and `ANDROID_HOME` |
+GitHub Actions uses GitHub-hosted Windows, macOS and Linux runners; local native GitLab runners are not required. `workflow_dispatch` accepts a version for a build-only rehearsal and retains artifacts without publishing. Tag-triggered jobs build and verify all selected platforms, validate SHA256 manifests, create a draft release, verify uploaded digests, and publish only after the complete upload succeeds. Re-running a draft upload skips identical assets and rejects differing assets. Published releases are immutable. Desktop releases become latest; mobile releases remain previews and do not replace the desktop update channel.
 
-Windows signing uses `WINDOWS_CERTIFICATE_BASE64`, `WINDOWS_CERTIFICATE_PASSWORD`, and optional `REQUIRE_WINDOWS_SIGNING=true`. macOS uses `MACOS_APPLICATION_CERTIFICATE_BASE64`, `MACOS_INSTALLER_CERTIFICATE_BASE64`, `MACOS_CERTIFICATE_PASSWORD`, `MACOS_APPLICATION_IDENTITY`, `MACOS_INSTALLER_IDENTITY`, `APPLE_ID`, `APPLE_TEAM_ID`, and `APPLE_APP_SPECIFIC_PASSWORD`. Android uses `MOBILE_ANDROID_KEYSTORE_BASE64` and `MOBILE_ANDROID_KEYSTORE_PASSWORD`; preserve the existing key to keep installed clients upgradable.
+GitHub's built-in `GITHUB_TOKEN` has `contents: write` only in the release job. No `GITHUB_RELEASE_TOKEN` needs to be copied to GitLab. SDK, CLI and plugin release credentials from the table above remain protected/masked GitLab variables; client signing credentials remain GitHub Actions secrets.
+
+Windows signing uses GitHub secrets `WINDOWS_CERTIFICATE_BASE64`, `WINDOWS_CERTIFICATE_PASSWORD`, and repository variable `REQUIRE_WINDOWS_SIGNING=true` when signing must be enforced. Android requires `MOBILE_ANDROID_KEYSTORE_BASE64` and `MOBILE_ANDROID_KEYSTORE_PASSWORD`; preserve the existing key for installed clients to remain upgradable.
+
+The repository variable `ENABLE_MACOS_RELEASE=true` enables both macOS architectures. Before enabling it, configure GitHub secrets `MACOS_APPLICATION_CERTIFICATE_BASE64`, `MACOS_INSTALLER_CERTIFICATE_BASE64`, `MACOS_CERTIFICATE_PASSWORD`, `MACOS_APPLICATION_IDENTITY`, `MACOS_INSTALLER_IDENTITY`, `APPLE_ID`, `APPLE_TEAM_ID`, and `APPLE_APP_SPECIFIC_PASSWORD`. macOS signing initialization runs in the same PowerShell process as packaging, preserving its temporary keychain environment.
 
 ## History
 

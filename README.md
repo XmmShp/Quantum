@@ -11,7 +11,7 @@ Quantum 是本地优先的插件平台。本仓库统一维护桌面/移动客�
 | [ci](ci/README.md) | GitLab Runner 验证、发布、镜像构建与 Runner 要求 |
 
 主仓库：[GitLab io7/quantum](https://git.koala-studio.org.cn/io7/quantum)。
-公开镜像：[GitHub XmmShp/Quantum](https://github.com/XmmShp/Quantum)。请在 GitLab 提交代码和 Merge Request；GitHub 不运行 Actions，也不作为上游接受变更。
+公开镜像：[GitHub XmmShp/Quantum](https://github.com/XmmShp/Quantum)。桌面和移动端客户端通过 [GitHub Releases](https://github.com/XmmShp/Quantum/releases) 发布和下载。请在 GitLab 提交代码和 Merge Request；GitHub Actions 负责桌面和移动客户端的构建与发布。
 
 ## 开发
 
@@ -29,6 +29,6 @@ npm test --prefix Quantum.Sdk/typescript
 
 ## 发布与镜像
 
-所有流水线由根目录 `.gitlab-ci.yml` 驱动。GitLab 自动将分支与标签推送到 GitHub，GitHub 只提供公开源码及已有下载资源。发布标签、凭据及平台 Runner 配置见 [CI/CD 说明](ci/README.md)。
+GitLab Runner 通过根目录 `.gitlab-ci.yml` 执行 Linux 验证、SDK/插件发布与后端镜像构建。GitLab 自动将分支与标签推送到 GitHub；GitHub Actions 响应 `desktop-v*`、`mobile-v*` 标签，构建客户端并将安装包、自动更新资源和校验文件发布到 GitHub Releases。发布标签及凭据配置见 [CI/CD 说明](ci/README.md)。
 
 历史标签保留于 `legacy/<原仓库>/<原标签>`；桌面、移动、插件和 CLI 的既有发布标签保持原名，SDK 标签使用 `sdk/vX.Y.Z`。历史标签指向迁移前的提交，新的发布应在 Mono-Repo 提交上打标签。

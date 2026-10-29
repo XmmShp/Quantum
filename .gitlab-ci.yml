@@ -54,6 +54,7 @@ verify-publishing:
   stage: verify
   script:
     - pip install --disable-pip-version-check cryptography==50.0.2
+    - python -m unittest discover -s ci/tests -p 'test_*.py'
     - cd Quantum.OfficialPlugins
     - python -m unittest discover -s tests/publishing -p 'test_*.py'
 
@@ -148,6 +149,3 @@ pages:
     - mv _site ../public
   artifacts:
     paths: [public/]
-
-include:
-  - local: ci/native.yml
