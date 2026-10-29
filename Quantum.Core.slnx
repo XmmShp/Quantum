@@ -1,0 +1,29 @@
+<Solution>
+  <Folder Name="/SDK/">
+    <Project Path="Quantum.Sdk/dotnet/src/Quantum.Plugin.Abstraction/Quantum.Plugin.Abstraction.csproj" />
+    <Project Path="Quantum.Sdk/dotnet/test/Quantum.Plugin.Abstraction.Tests/Quantum.Plugin.Abstraction.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Host/">
+    <Project Path="Quantum/quantum/src/Quantum/Quantum.csproj" />
+    <Project Path="Quantum/quantum/src/Quantum.Mobile.Internal/Quantum.Mobile.Internal.csproj" />
+    <Project Path="Quantum/quantum/tests/Quantum.Tests/Quantum.Tests.csproj" />
+    <Project Path="Quantum/samples/Quantum.ExamplePlugin/Quantum.ExamplePlugin.csproj" />
+    <Project Path="Quantum/samples/Quantum.ExampleDependentPlugin/Quantum.ExampleDependentPlugin.csproj" />
+  </Folder>
+  <Folder Name="/Official Plugins/">
+    <Project Path="Quantum.OfficialPlugins/Calendar/Quantum.CalendarPlugin.csproj" />
+    <Project Path="Quantum.OfficialPlugins/Codex/Quantum.CodexPlugin.csproj" />
+    <Project Path="Quantum.OfficialPlugins/Ledger/Quantum.LedgerPlugin.csproj" />
+    <Project Path="Quantum.OfficialPlugins/tests/Quantum.OfficialPlugins.Tests/Quantum.OfficialPlugins.Tests.csproj" />
+    <Project Path="Quantum.OfficialPlugins/tests/Quantum.LedgerPlugin.Tests/Quantum.LedgerPlugin.Tests.csproj" />
+  </Folder>
+  <Folder Name="/Platform/">
+    <Project Path="Quantum.Platform/src/Quantum.Platform.Domain/Quantum.Platform.Domain.csproj" />
+    <Project Path="Quantum.Platform/src/Quantum.Platform.Contract/Quantum.Platform.Contract.csproj" />
+    <Project Path="Quantum.Platform/src/Quantum.Platform.Application/Quantum.Platform.Application.csproj" />
+    <Project Path="Quantum.Platform/src/Quantum.Platform.UI/Quantum.Platform.UI.csproj" />
+    <Project Path="Quantum.Platform/src/Quantum.Platform/Quantum.Platform.csproj" />
+    <Project Path="Quantum.Platform/src/Quantum.Platform.Cli/Quantum.Platform.Cli.csproj" />
+    <Project Path="Quantum.Platform/tests/Quantum.Platform.Tests/Quantum.Platform.Tests.csproj" />
+  </Folder>
+</Solution>

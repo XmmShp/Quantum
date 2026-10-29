@@ -13,6 +13,7 @@
     <ProjectReference Include="..\Quantum.Platform.Domain\Quantum.Platform.Domain.csproj" />
   </ItemGroup>
   <ItemGroup>
+    <PackageReference Include="AWSSDK.S3" />
     <PackageReference Include="AgentFn.Sdk" />
     <PackageReference Include="ICSharpCode.Decompiler" />
     <PackageReference Include="MailKit" />

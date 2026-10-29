@@ -30,10 +30,10 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/XmmShp/Quantum.Sdk.git"
+    "url": "https://github.com/XmmShp/Quantum.git"
   },
-  "homepage": "https://github.com/XmmShp/Quantum.Sdk#readme",
-  "bugs": "https://github.com/XmmShp/Quantum.Sdk/issues",
+  "homepage": "https://github.com/XmmShp/Quantum/tree/main/Quantum.Sdk#readme",
+  "bugs": "https://git.koala-studio.org.cn/io7/quantum/-/issues",
   "devDependencies": {
     "typescript": "5.9.2"
   }

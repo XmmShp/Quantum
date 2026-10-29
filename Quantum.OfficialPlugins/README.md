@@ -26,7 +26,7 @@ The client checks compatibility and validates the package before installing it.
 For local development, use each plugin's `plugin.json` manifest and the
 [official plugin development guide](docs/plugin-development.md) to prepare a
 package for testing in Quantum. Host-side packaging details are documented in the
-[Quantum plugin development guide](https://github.com/XmmShp/Quantum/blob/main/docs/plugin-development.md).
+[Quantum plugin development guide](../Quantum/docs/plugin-development.md).
 
 ## Mobile preview
 

@@ -5,17 +5,17 @@ foreach ($name in @('MACOS_APPLICATION_CERTIFICATE_BASE64', 'MACOS_INSTALLER_CER
     'MACOS_APPLICATION_IDENTITY', 'MACOS_INSTALLER_IDENTITY')) {
     if (![Environment]::GetEnvironmentVariable($name)) { throw "Required signing secret is missing: $name" }
 }
-$keychain = Join-Path $env:RUNNER_TEMP 'quantum-signing.keychain-db'
+$temporaryDirectory = if ($env:CI_PROJECT_DIR) { $env:CI_PROJECT_DIR } else { $env:RUNNER_TEMP }
+$keychain = Join-Path $temporaryDirectory '.quantum-signing.keychain-db'
 $keychainPassword = [Guid]::NewGuid().ToString('N')
-Write-Output "::add-mask::$keychainPassword"
-"QUANTUM_SIGNING_KEYCHAIN=$keychain" >> $env:GITHUB_ENV
+$env:QUANTUM_SIGNING_KEYCHAIN = $keychain
 security create-keychain -p $keychainPassword $keychain
 security set-keychain-settings -lut 21600 $keychain
 security unlock-keychain -p $keychainPassword $keychain
 # Keep the login keychain available for Apple's system signing tooling.
 security list-keychains -d user -s $keychain "$env:HOME/Library/Keychains/login.keychain-db"
 foreach ($kind in @('APPLICATION', 'INSTALLER')) {
-    $path = Join-Path $env:RUNNER_TEMP "quantum-$kind.p12"
+    $path = Join-Path $temporaryDirectory "quantum-$kind.p12"
     [IO.File]::WriteAllBytes($path, [Convert]::FromBase64String(
         [Environment]::GetEnvironmentVariable("MACOS_${kind}_CERTIFICATE_BASE64")))
     try {

@@ -38,7 +38,7 @@ samples/
 docs/                            架构与插件开发文档
 ```
 
-官方插件位于独立仓库 [Quantum.OfficialPlugins](https://github.com/XmmShp/Quantum.OfficialPlugins)，可在 Quantum 插件市场中获取。
+官方插件位于同仓库的 [Quantum.OfficialPlugins](../Quantum.OfficialPlugins/README.md)，可在 Quantum 插件市场中获取。
 
 ## 本地开发
 

@@ -112,7 +112,7 @@ precedence 参与范围比较，构建元数据完全不参与比较。
 
 数据库 schema 演进不属于 .NET ABI。插件可以在开发期使用 EF/NOF 模型，但发布包统一通过
 `plugin.json` 的 `database.migrations` 携带 SQLite SQL artifact；Host 在 `StartAsync` 前应用它。具体规则见
-[插件开发指南](https://github.com/XmmShp/Quantum/blob/main/docs/plugin-development.md#6-提供静态资源和-web-贡献)。
+[插件开发指南](../Quantum/docs/plugin-development.md#6-提供静态资源和-web-贡献)。
 
 ## Topic EventBus
 

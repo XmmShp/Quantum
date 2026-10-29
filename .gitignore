@@ -1,0 +1,26 @@
+# Local migration backups, legacy workspace projects, and developer state.
+/.migration-backup/
+/.release-artifacts/
+/.ui-check/
+/.vs/
+/CourseSelectionAssistant/
+/Obsolete/
+/XzzdCalendar/
+/XzzdModule/
+/ZdbkService/
+/ZjuamService/
+/Quantum.sln
+/*.zip
+/*.png
+*.user
+**/bin/
+**/obj/
+**/node_modules/
+**/TestResults/
+**/artifacts/
+/.cache/
+/.tools/
+/public/
+.env
+.env.*
+!.env.example

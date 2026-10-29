@@ -3,7 +3,7 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <QuantumMobileInternalProject Condition="'$(QuantumMobileInternalProject)' == ''">../../../Quantum/quantum/src/Quantum.Mobile.Internal/Quantum.Mobile.Internal.csproj</QuantumMobileInternalProject>
+    <QuantumMobileInternalProject Condition="'$(QuantumMobileInternalProject)' == ''">$(MSBuildThisFileDirectory)../../../Quantum/quantum/src/Quantum.Mobile.Internal/Quantum.Mobile.Internal.csproj</QuantumMobileInternalProject>
   </PropertyGroup>
   <ItemGroup>
     <ProjectReference Include="$(QuantumMobileInternalProject)" />

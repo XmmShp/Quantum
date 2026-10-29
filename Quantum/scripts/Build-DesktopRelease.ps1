@@ -7,7 +7,7 @@ $PSNativeCommandUseErrorActionPreference = $true
 $project = 'quantum/src/Quantum/Quantum.csproj'
 $output = "artifacts/releases/$Channel"
 $publish = "artifacts/publish/$Channel"
-$buildNumber = if ($env:GITHUB_RUN_NUMBER) { $env:GITHUB_RUN_NUMBER } else { '1' }
+$buildNumber = if ($env:CI_PIPELINE_IID) { $env:CI_PIPELINE_IID } elseif ($env:GITHUB_RUN_NUMBER) { $env:GITHUB_RUN_NUMBER } else { '1' }
 $feedPath = Join-Path $output "releases.$Channel.json"
 if (Test-Path $feedPath) {
     $baseline = Get-Content $feedPath -Raw | ConvertFrom-Json
