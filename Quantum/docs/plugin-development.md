@@ -403,7 +403,7 @@ var subscription = events.Subscribe(
 `head` 和 `postBlazor` 接受 HTML 片段。该能力等同于在宿主内执行代码，只应安装来源可信且经过审核的插件。
 
 动态插件不会在宿主编译期作为 Razor 项目引用，因此 CSS isolation 生成的 project bundle 需要由插件项目复制到输出目录的
-`wwwroot`，再通过 manifest 的 `web.head` 引用。[Quantum.OfficialPlugins 的 Calendar](https://github.com/XmmShp/Quantum.OfficialPlugins/tree/main/Calendar) 展示了完整做法：
+`wwwroot`，再通过 manifest 的 `web.head` 引用。[Quantum.OfficialPlugins 的 Calendar](../../Quantum.OfficialPlugins/Calendar) 展示了完整做法：
 `Calendar.razor.css` 构建为 `Quantum.CalendarPlugin.bundle.scp.css`，组件的 scope attribute 与 bundle
 选择器仍由 Razor SDK 自动生成。
 

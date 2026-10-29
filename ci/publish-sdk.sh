@@ -11,6 +11,7 @@ node -e 'const fs=require("fs"); const p=JSON.parse(fs.readFileSync("artifacts/s
 curl --fail --silent --show-error https://api.nuget.org/v3-flatcontainer/quantum.plugin.abstraction/index.json > artifacts/sdk/nuget-versions.json
 node Quantum.Sdk/scripts/assert-version-increases.mjs "$version" artifacts/sdk/npm-versions.json artifacts/sdk/nuget-versions.json
 dotnet pack Quantum.Sdk/dotnet/src/Quantum.Plugin.Abstraction/Quantum.Plugin.Abstraction.csproj -c Release -p:PackageVersion="$version" -p:ContinuousIntegrationBuild=true -o artifacts/sdk
+python3 ci/verify-sdk-package.py artifacts/sdk
 npm ci --prefix Quantum.Sdk/typescript
 npm version "$version" --prefix Quantum.Sdk/typescript --no-git-tag-version --allow-same-version
 npm run build --prefix Quantum.Sdk/typescript
@@ -21,4 +22,8 @@ export NPM_CONFIG_USERCONFIG="$config"
 channel=latest
 [[ "$version" != *-* ]] || channel=next
 dotnet nuget push 'artifacts/sdk/*.nupkg' --api-key "$NUGET_API_KEY" --source https://api.nuget.org/v3/index.json --skip-duplicate
-(cd Quantum.Sdk/typescript && npm publish --access public --tag "$channel")
+if npm view "@io7/quantum-plugin-sdk@$version" version --registry=https://registry.npmjs.org/ >/dev/null 2>&1; then
+    echo "npm package $version already exists; leaving its immutable contents unchanged."
+else
+    (cd Quantum.Sdk/typescript && npm publish --access public --tag "$channel")
+fi

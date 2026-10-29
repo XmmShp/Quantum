@@ -9,7 +9,7 @@
     "test": "npm run typecheck && npm run build"
   },
   "dependencies": {
-    "@io7/quantum-plugin-sdk": "0.1.1-nightly.20261020.26"
+    "@io7/quantum-plugin-sdk": "file:../../../Quantum.Sdk/typescript"
   },
   "devDependencies": {
     "esbuild": "0.25.9",

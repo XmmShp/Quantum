@@ -22,6 +22,7 @@ default:
   cache:
     key: dotnet-$CI_PROJECT_ID
     paths: [.cache/nuget/packages/]
+    when: always
 
 verify-dotnet:
   extends: .dotnet
@@ -42,13 +43,14 @@ verify-web:
     - npm ci --prefix Quantum.Sdk/typescript
     - npm test --prefix Quantum.Sdk/typescript
     - node --test Quantum.Sdk/scripts/compute-version.test.mjs
-    - npm ci --prefix Quantum/samples/Quantum.ExampleWebPlugin
-    - npm test --prefix Quantum/samples/Quantum.ExampleWebPlugin
+    - (cd Quantum/samples/Quantum.ExampleWebPlugin && npm ci && npm test)
     - node --test Quantum/quantum/tests/web-plugin-host.test.mjs
     - node --test Quantum.OfficialPlugins/scripts/test-codex-media.mjs
 
 verify-publishing:
-  image: python:3.13-slim
+  image:
+    name: python:3.12-alpine@sha256:92abd2ba1bdfb48b1e2ac224b582dd1558d0d4bb11c903b126b5bf9c448fd656
+    pull_policy: if-not-present
   stage: verify
   script:
     - pip install --disable-pip-version-check cryptography==50.0.2
@@ -67,7 +69,9 @@ package-plugins:
     expire_in: 14 days
 
 publish-platform-image:
-  image: docker:28.0.4
+  image:
+    name: docker:28.0.4
+    pull_policy: if-not-present
   stage: publish
   interruptible: false
   resource_group: platform-image
@@ -75,10 +79,12 @@ publish-platform-image:
     - if: '$CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH'
   script:
     - echo "$CI_REGISTRY_PASSWORD" | docker login "$CI_REGISTRY" -u "$CI_REGISTRY_USER" --password-stdin
-    - docker build --pull -f Quantum.Platform/Dockerfile -t "$CI_REGISTRY_IMAGE/platform:$CI_COMMIT_SHA" .
+    - docker build --pull -f Quantum.Platform/Dockerfile --label "org.opencontainers.image.source=$CI_PROJECT_URL" --label "org.opencontainers.image.revision=$CI_COMMIT_SHA" -t "$CI_REGISTRY_IMAGE/platform:$CI_COMMIT_SHA" .
     - docker push "$CI_REGISTRY_IMAGE/platform:$CI_COMMIT_SHA"
     - docker run --rm --entrypoint /bin/sh "$CI_REGISTRY_IMAGE/platform:$CI_COMMIT_SHA" -c 'test -z "$(find /app -maxdepth 1 -type f -name "appsettings*.json" -print)"'
-    - echo "PLATFORM_IMAGE=$CI_REGISTRY_IMAGE/platform:$CI_COMMIT_SHA" > platform-image.env
+    - image="$(docker image inspect --format '{{index .RepoDigests 0}}' "$CI_REGISTRY_IMAGE/platform:$CI_COMMIT_SHA")"
+    - test -n "$image"
+    - printf 'PLATFORM_IMAGE=%s\n' "$image" > platform-image.env
   artifacts:
     reports:
       dotenv: platform-image.env
@@ -92,7 +98,7 @@ publish-sdk:
   rules:
     - if: '$CI_COMMIT_TAG =~ /^sdk\/v[0-9]+\.[0-9]+\.[0-9]+(-[0-9A-Za-z.-]+)?$/'
   before_script:
-    - apt-get update -qq && apt-get install -y --no-install-recommends curl ca-certificates xz-utils
+    - apt-get update -qq && apt-get install -y --no-install-recommends curl ca-certificates xz-utils python3
     - bash ci/install-node.sh
   script:
     - bash ci/publish-sdk.sh

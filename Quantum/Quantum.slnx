@@ -12,6 +12,7 @@
   <Project Path="mobile/Quantum.Mobile/Quantum.Mobile.csproj" />
   <Project Path="quantum/src/Quantum.UpdateAgent/Quantum.UpdateAgent.csproj" />
   <Project Path="quantum/tests/Quantum.Tests/Quantum.Tests.csproj" />
+  <Project Path="quantum/tests/Fixtures/OptionalFrameworkPackage/OptionalFrameworkPackage.csproj" />
   <Project Path="samples/Quantum.ExampleDependentPlugin/Quantum.ExampleDependentPlugin.csproj" />
   <Project Path="samples/Quantum.ExamplePlugin/Quantum.ExamplePlugin.csproj" />
 </Solution>

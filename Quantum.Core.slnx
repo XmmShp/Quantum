@@ -7,6 +7,7 @@
     <Project Path="Quantum/quantum/src/Quantum/Quantum.csproj" />
     <Project Path="Quantum/quantum/src/Quantum.Mobile.Internal/Quantum.Mobile.Internal.csproj" />
     <Project Path="Quantum/quantum/tests/Quantum.Tests/Quantum.Tests.csproj" />
+    <Project Path="Quantum/quantum/tests/Fixtures/OptionalFrameworkPackage/OptionalFrameworkPackage.csproj" />
     <Project Path="Quantum/samples/Quantum.ExamplePlugin/Quantum.ExamplePlugin.csproj" />
     <Project Path="Quantum/samples/Quantum.ExampleDependentPlugin/Quantum.ExampleDependentPlugin.csproj" />
   </Folder>
@@ -25,5 +26,6 @@
     <Project Path="Quantum.Platform/src/Quantum.Platform/Quantum.Platform.csproj" />
     <Project Path="Quantum.Platform/src/Quantum.Platform.Cli/Quantum.Platform.Cli.csproj" />
     <Project Path="Quantum.Platform/tests/Quantum.Platform.Tests/Quantum.Platform.Tests.csproj" />
+    <Project Path="Quantum.Platform/tests/ManagedReviewFixture/ManagedReviewFixture.csproj" />
   </Folder>
 </Solution>

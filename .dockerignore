@@ -9,6 +9,7 @@
 **/.env.*
 **/.vs
 **/.tmp*
+**/.framework
 .migration-backup
 .release-artifacts
 .ui-check

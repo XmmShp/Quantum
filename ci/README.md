@@ -29,7 +29,7 @@ Create release tags on commits in the monorepo default branch, after updating th
 | `desktop-vX.Y.Z` | Optional manual Windows/macOS package jobs | Platform signing variables below |
 | `mobile-vX.Y.Z[-preview.N]` | Optional manual mobile package jobs | Android signing variables below |
 
-GitHub Actions secrets cannot be read back or exported. Registry credentials must be configured in GitLab; GitHub-bound npm/NuGet trusted publishing is not reused by GitLab Runner. The SDK job publishes only for explicit SDK tags, validates release ancestry and version ordering, and uses a temporary npm configuration file removed after publication. Re-running a partially published SDK release skips an existing NuGet package; check and recover the npm side separately if needed.
+GitHub Actions secrets cannot be read back or exported. Registry credentials must be configured in GitLab; GitHub-bound npm/NuGet trusted publishing is not reused by GitLab Runner. The SDK job publishes only for explicit SDK tags, validates release ancestry, version ordering and the public package boundary, and uses a temporary npm configuration file removed after publication. Re-running a partially published SDK release skips versions already present in either registry.
 
 Protect the release tag patterns in GitLab and keep credentials protected and masked. Do not put credentials in files or mirror URLs. GitLab's built-in `CI_REGISTRY_*` variables authenticate container publication without an additional secret.
 
